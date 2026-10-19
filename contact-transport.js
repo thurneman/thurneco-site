@@ -3,7 +3,7 @@
    Web3Forms, som mejlar till autopilot@thurneco.se där ATS-jobbet läser in kandidaten.
    Laddas efter contact.js. Rör inte contact.js, den ägs av designpaketet. */
 (()=>{
- const KEY='';   /* Web3Forms access key, kopplad till autopilot@thurneco.se */
+ const KEY='e3095b35-44bc-44e0-8098-1786bfb5d1f0';   /* Web3Forms access key (publik), formulär registrerat på filip@thurneco.se */
  const ENDPOINT='https://api.web3forms.com/submit';
  const FALLBACK_TO='filip@thurneco.se';
 
