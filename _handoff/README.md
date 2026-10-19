@@ -13,6 +13,8 @@ Fyra sidor: startsida, om företaget, lediga jobb och individuell annons. Webbpl
 
 ## Annonsdata och ATS
 
+Kontakt- och ansökningsknappar öppnar samma formulär, med annonskoppling för ansökningar. Claude kopplar mejlskickandet enligt `integration/contact-contract.md` (finns som `_handoff/contact-contract.md` i ZIP). Utkastet skickar inga meddelanden. Den publicerbara mallen anropar `POST /api/contact`; utan den tjänsten visas ingen skickat-bekräftelse. Formuläret finns i `dist/contact.js`, med gemensamma stilar i `dist/styles.css`.
+
 `dist/data/jobs.json` innehåller 32 annonser: 7 rekryteringar och 25 konsultuppdrag. Designrättningen ändrar inte annonsdata. Lägg inte CSS eller HTML i annonsfälten.
 
 Stabila annonsadresser använder `/jobb/?id=<id>`. Data hämtas från `/data/jobs.json` utan webbläsarcache. Framtida import från mejl, databas och automatisk publicering ska leverera samma publika dataformat; se `integration/ats-contract.md`. Dessa integrationer ingår inte i detta paket.
@@ -22,6 +24,8 @@ Stabila annonsadresser använder `/jobb/?id=<id>`. Data hämtas från `/data/job
 Innehållet i `dist/` placeras i webbplatsens rot. Sökvägarna `/assets/`, `/data/`, `/om/`, `/lediga-jobb/` och `/jobb/` ska behållas. Vanlig statisk webbserver räcker för visningen. Google Fonts kräver internetåtkomst; Segoe UI/sans-serif används som reserv.
 
 ## Verifiering 19 oktober 2026
+
+Kontaktformuläret är kontrollerat i webbläsaren från Ta kontakt, Skriv till mig och Ansök nu. Ansökan visar annonsens titel och extra fält för LinkedIn och dokument. Vid 390 pixels mobilbredd ryms formuläret utan horisontell scroll. Utkastets formulär gör inga POST-anrop. Ett misslyckat sändningsförsök i publiceringsmallen visar ett felmeddelande och behåller den skrivna texten; inget mejl skickades vid kontrollen. Verklig mejlleverans återstår att koppla och verifiera i backend.
 
 Kontroller av 32 annonssidor, länkar, kategorier, loggor, inbäddade bilder, dataexport och hantering av avslutade annonser passerar. Förhandsvisningens CSS och sidinnehåll kommer från samma mallar som paketet.
 
