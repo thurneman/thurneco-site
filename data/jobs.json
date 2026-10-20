@@ -70,6 +70,17 @@
       "companyLogo": "/assets/exclusive-cars.webp"
     },
     {
+      "id": "cpp-utvecklare-inbyggda-system-solna",
+      "type": "consulting",
+      "title": "C++-utvecklare, inbyggda system och enhetstestning",
+      "location": "Solna",
+      "workplace": "100 % · På plats",
+      "category": "IT & data",
+      "deadline": "23 oktober 2026",
+      "expiresAt": "2026-10-26T00:00:00+01:00",
+      "description": "## Om uppdraget\nEtt medicintekniskt företag i Solna söker en erfaren C++-utvecklare för modernisering, omstrukturering och kvalitetssäkring av en befintlig programvarustack för ventilatorer. Du förbättrar kvalitet, testbarhet och underhållbarhet i kodbasen, skriver enhetstester där täckning saknas, säkerställer funktion och prestanda vid omstruktureringen och håller den tekniska dokumentationen uppdaterad. Arbetet sker parvis med en annan konsult, tillsammans med testare och domänexperter.\n\nKort uppdrag, fem månader, med start 1 december.\n\n## Vi söker dig som\n- Har minst fem års yrkeserfarenhet av C++-utveckling och stark praktisk kompetens i språket.\n- Har dokumenterad erfarenhet av utveckling av inbyggda system.\n- Har gedigen erfarenhet av enhetstestning: design, utveckling och genomförande.\n- Har erfarenhet av AI-assisterad utveckling, till exempel med Codex eller Claude.\n- Har kandidat- eller magisterexamen inom datavetenskap, programvaruteknik, elektroteknik eller närliggande område.\n\n## Meriterande\n- Säkerhetskritiska och reglerade miljöer.\n- Statisk kodanalys med Clang-Tidy, Visual Studio Code, Docker.\n- CI/CD med GitLab eller Jenkins, agila metoder, testdriven utveckling.\n- Lauterbach-felsökningsverktyg.\n- Certifieringar inom C++ eller inbyggda system.\n\n## Praktiskt\n- Omfattning: 100 %.\n- Period: 1 december 2026, fem månader.\n- Plats: Solna, på plats, inget distansarbete."
+    },
+    {
       "id": "projektledare-leverans-elmotorer-vasa",
       "type": "consulting",
       "title": "Projektledare, leveransprojekt för elmotorer",
