@@ -70,6 +70,17 @@
       "companyLogo": "/assets/exclusive-cars.webp"
     },
     {
+      "id": "projektledare-leverans-elmotorer-vasa",
+      "type": "consulting",
+      "title": "Projektledare, leveransprojekt för elmotorer",
+      "location": "Vasa, Finland",
+      "workplace": "100 % · Hybrid",
+      "category": "Projektledning & verksamhet",
+      "deadline": "Löpande, start 2 november 2026",
+      "expiresAt": "2026-11-05T00:00:00+01:00",
+      "description": "## Om uppdraget\nEn industriell tillverkare i Vasa söker en projektledare som äger leveransprojekt för elmotorer, från orderbekräftelse till slutleverans och samordning av installation. Fokus ligger på planering, genomförande, nöjda kunder och leverans i tid. Du står för projektplanering, orderhantering, uppföljning och leveransplaner, samordnar kunder, säljteam, leverantörer och interna projektteam, hanterar kundkrav, projektdokumentation, tester och ändringar, och driver åtgärder när något riskerar att hamna efter.\n\n## Vi söker dig som\n- Har erfarenhet av projektledning, orderhantering eller samordning av industriella eller tekniska leveranser.\n- Planerar, organiserar och genomför med fokus på deadlines och resultat.\n- Är en trygg kommunikatör som kan hantera kundförväntningar och samordna flera intressenter.\n- Fattar självständiga beslut och hanterar komplexa uppgifter.\n- Talar och skriver flytande engelska.\n- Bor inom pendlingsavstånd till Vasa, eller är beredd att pendla och arbeta på plats tre dagar i veckan.\n\n## Meriterande\n- Finska eller svenska.\n- Vana vid SAP och teknisk dokumentation.\n\n## Praktiskt\n- Omfattning: 100 %.\n- Start: 2 november 2026, längd ej angiven.\n- Plats: Vasa, Finland, tre dagar i veckan på plats."
+    },
+    {
       "id": "systemutvecklare-ciam-norrkoping",
       "type": "consulting",
       "title": "Systemutvecklare inom CIAM, autentisering och digital signering",
