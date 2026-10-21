@@ -20,7 +20,7 @@
   form.reset();for(const input of form.elements)input.setCustomValidity?.('');status.hidden=true;status.textContent='';form.hidden=false;dialog.querySelector('.contact-success').hidden=true;
   application.hidden=!context;application.querySelectorAll('input').forEach(input=>input.disabled=!context);role.hidden=!context;role.textContent=context?.title||'';
   dialog.querySelector('#contact-title').textContent=context?(context.type==='consulting'?'Ansök till uppdraget':'Ansök till tjänsten'):'Skriv till Filip';
-  dialog.querySelector('#contact-intro').textContent=context?'Berätta kort om dig själv och ditt intresse för rollen.':'Berätta vad du har i tankarna, så hör jag av mig.';
+  dialog.querySelector('#contact-intro').textContent=context?(context.type==='consulting'?'Bifoga ditt CV och berätta kort om upplägg (eget bolag eller underkonsult) och när du är tillgänglig.':'Berätta kort om dig själv och ditt intresse för rollen.'):'Berätta vad du har i tankarna, så hör jag av mig.';
   submit.innerHTML=(context?'Skicka ansökan ':'Skicka meddelande ')+arrow;
   document.documentElement.classList.add('contact-open');if(!dialog.open)dialog.showModal();
   dialog.querySelector(options.focusProfile&&context?'#contact-linkedin':'#contact-name').focus();
