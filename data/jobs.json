@@ -70,6 +70,17 @@
       "companyLogo": "/assets/exclusive-cars.webp"
     },
     {
+      "id": "senior-ios-utvecklare-stockholm",
+      "type": "consulting",
+      "title": "Senior iOS-utvecklare, Stockholm",
+      "location": "Stockholm",
+      "workplace": "100 %",
+      "deadline": "5 november 2026",
+      "category": "IT & data",
+      "expiresAt": "2026-11-09T00:00:00+01:00",
+      "description": "## Om uppdraget\nEtt teknikbolag i Stockholm med en storskalig konsumentapp söker en senior iOS-utvecklare som utvecklar och optimerar användarnära funktioner som används av väldigt många. Start 23 november 2026, till 31 maj 2027. Heltid i Stockholm.\n\nDu utvecklar nya iOS-funktioner, förbättrar befintliga användarflöden och arbetar nära Android-, backend-, produkt-, design- och datateam. Du bidrar också till testning, prestanda, verktyg och teamets utvecklingsprocesser, och kan leda initiativ som spänner över flera team och plattformar.\n\n## Skallkrav\n- Minst 8 års erfarenhet av iOS-utveckling.\n- Djup kunskap om modern iOS-utveckling och Swift.\n- Tydlig, idiomatisk och underhållbar kod.\n- Djup kunskap om Cocoa-designmönster och API-design.\n- God förståelse för hur mobilappar samverkar med backend-system.\n- Erfarenhet av att optimera gränssnitt med höga krav på prestanda och responsivitet.\n- Erfarenhet av AI-agentverktyg och agentbaserade arbetssätt, exempelvis Cursor och Claude.\n\n## Meriterande\n- Erfarenhet av C++.\n- Erfarenhet av Androidutveckling.\n- Utveckling över flera plattformar och kodbaser.\n\n## Profil\nDu är samarbetsorienterad, trivs tvärfunktionellt och värdesätter kvalitet, kontinuerligt lärande och teamets gemensamma resultat."
+    },
+    {
       "id": "teknisk-projektledare-el-styr-energi-ostergotland",
       "type": "consulting",
       "title": "Teknisk projektledare, el och styr i energiprojekt, Östergötland",
