@@ -2,6 +2,16 @@
   "schemaVersion": 1,
   "jobs": [
     {
+      "id": "senior-group-accountant-brite-stockholm",
+      "type": "recruitment",
+      "title": "Senior Group Accountant till Brite Payments, Stockholm",
+      "company": "Brite Payments",
+      "location": "Stockholm",
+      "workplace": "Heltid · Kontoret i Stockholm",
+      "category": "Ekonomi",
+      "description": "Brite Payments är en snabbväxande fintech inom kontobaserade betalningar, med huvudkontor i Stockholm och bolag på flera europeiska marknader. Transaktionsvolymerna är mycket stora och växer. Nu söker Brite en Senior Group Accountant som äger koncernredovisningen och tar NetSuite och automationen i ekonomiarbetet till nästa nivå.\n\n## Om rollen\nDet här är en ren redovisningsroll med fullt ägarskap, inte en controllerroll och inte ett steg mot en chefsroll. Du rapporterar till Head of Accounting och arbetar i ett litet team med en Accountant som sköter reskontran och en Cash Manager som optimerar kassaflödena.\n\nDu ansvarar för månadsbokslut med balansavstämningar och resultatanalys, koncerninterna avstämningar och konsolidering, årsredovisningar enligt K3 för det svenska moderbolaget och det svenska tillståndspliktiga bolaget, skatt och moms, och du är med i transfer pricing. Du håller i revisionen och den löpande kontakten med revisorerna.\n\nNetSuite infördes under 2025 och du blir systemägare. Det finns ett uttalat mandat att automatisera och använda AI i ekonomiarbetet, och mycket som går att bygga bort. Koncernen har bolag i flera länder med olika regelverk, så du får arbeta med både svensk redovisning och internationella frågor.\n\n## Vi söker dig som\n- Har minst fem års erfarenhet av redovisning, varav minst ett år med eget ansvar för konsolidering och koncernredovisning i en internationell koncern.\n- Själv har tagit fram kompletta årsredovisningar enligt K3, med noter och förvaltningsberättelse, och varit huvudkontakt mot revisorn.\n- Är flytande i svenska och trygg i svensk bokföring och koncernredovisning. Flytande engelska.\n- Har arbetat praktiskt i NetSuite, eller ägt ett annat modernt ERP-system och vill ta över NetSuite.\n- Har driv för automation och AI i ekonomiflöden och gör jobbet själv.\n- Har en kandidatexamen inom ekonomi eller finans.\n\n## Meriterande\n- Bolag under finansiell tillsyn.\n- Redovisning på Malta eller i Spanien.\n- Stora transaktionsvolymer, betalningar eller reglerad verksamhet.\n\n## Vi erbjuder\n- En koncernroll med eget ansvar i ett bolag som växer internationellt.\n- Ett modernt systemlandskap med NetSuite och mandat att automatisera.\n- Kontor centralt i Stockholm, internationella kollegor och flera europeiska marknader.\n\n## Praktiskt\nHeltid med placering på kontoret i Stockholm. Start så snart som möjligt. Processen omfattar samtal, intervjuer, test, case och referenser, och bakgrundskontroll görs på slutkandidaten. Urval sker löpande.\n\n## Ansökan\nSkicka din ansökan via knappen nedan, gärna med CV eller länk till din LinkedIn-profil. Frågor om rollen besvaras av Filip Andén på Thurne Consulting."
+    },
+    {
       "id": "barnlakare-barnsjukhuset-martina",
       "type": "recruitment",
       "title": "Barnläkare till Barnsjukhuset Martina, Stockholm",
