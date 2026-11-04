@@ -8,6 +8,13 @@
  const ENDPOINT='https://api.web3forms.com/submit';
  const FALLBACK_TO='filip@thurneco.se';
  const MAX_FILE=5*1024*1024;   /* Web3Forms standarduppladdare tar högst 5 MB per fil */
+ const ATS='https://claude.ai/artifact/YCy2hY1E7L5Azix1sCDDux';
+ const candidateId=name=>{
+  const s=String(name||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
+   .replace(/ø/g,'o').replace(/æ/g,'ae').replace(/ß/g,'ss').replace(/[-'’.]/g,'').replace(/[^a-z0-9\s]/g,'')
+   .trim().split(/\s+/).filter(Boolean).join('_');
+  return s?`c_${s}`:'';
+ };
 
  /* Bilagor går med i inskicket, så den gamla mailto-knappen "Skicka in med bifogat CV" döljs. */
  const style=document.createElement('style');
@@ -33,6 +40,13 @@
    botcheck:get('website')?'1':''
   };
   const isApplication=data.type==='application';
+  if(isApplication){
+   /* Djuplänkar till ATS:et i mailet. Kandidat-id:t räknas fram på samma sätt som ATS-jobbet gör
+      (c_fornamn_efternamn, gemener, å ä ö som a a o, bindestreck bort), så länken fungerar när personen lästs in. */
+   const cid=candidateId(data.name);
+   data.ats_kandidat=cid?`${ATS}#cand=${cid}`:'';
+   data.ats_roll=data.job_id?`${ATS}#role=${data.job_id}`:'';
+  }
   const subject=isApplication?`Ansökan: ${data.job_title} [${data.job_id}]`:`Kontakt via thurneco.se: ${data.name}`;
   if(!KEY){
    /* Ingen nyckel ännu: öppna ett mejl med samma innehåll så att inget går förlorat. */
