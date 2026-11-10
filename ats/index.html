@@ -245,6 +245,7 @@ html.nofa .ilink .ifb{display:inline-flex}
 .mrole .t{font-weight:500;font-size:13px}
 .mrole .m{font-size:12px;color:var(--muted)}
 .mrole .reason{font-size:12px;color:var(--muted);padding:0 14px 10px}
+.frow.dlg,.mrow.dlg{background:rgba(120,170,255,.11)}
 .mrow{display:grid;grid-template-columns:52px 1fr;gap:12px;padding:10px 14px;border-top:1px solid var(--line);align-items:start}
 .mrow .name{font-weight:500;font-size:13px;display:flex;gap:10px;flex-wrap:wrap;align-items:baseline}
 .mrow .name a{font-weight:400;font-size:12px}
@@ -1368,9 +1369,11 @@ function focusListFor(roleId){
   const step=procPick[roleId];
   return linksForRole(roleId).filter(m=>procOf(m)===step).sort((a,b)=>(rank(a)-rank(b))||((b.spets?1:0)-(a.spets?1:0))||((b.score??-1)-(a.score??-1))||(a.candName||"").localeCompare(b.candName||"","sv"));
 }
+const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
+const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
 function focusRowHTML(m,i,active){
   const c=cands.get(m.candId);const st=stageOf(m);
-  return `<button class="frow ${st==="avslutad"?"done":""}" type="button" data-pick="${esc(m.id)}" aria-current="${active}">
+  return `<button class="frow ${st==="avslutad"?"done":""} ${dlg30(c)?"dlg":""}" ${dlg30(c)?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(m.id)}" aria-current="${active}">
     <span class="fi">${i+1}</span>
     <span class="fn">${esc(c?.name||m.candName||"Namnlös")}${m.spets?`<span class="fstar" title="Spets">★</span>`:""}</span>
     <span class="fs">${m.score!=null?`<span class="score ${scoreClass(m.score)}" title="${esc(scoreTitle(m))}">${m.score} %</span>`:""}</span>
@@ -1548,7 +1551,7 @@ function matchRowHTML(m){
   const edit=c?`<a href="#" data-cand="${esc(c.id)}">kort</a>`:"";
   const bin=canWrite?(m.dismissed?`<a href="#" data-restore="${esc(m.id)}">ångra</a>`:`<a href="#" data-dismiss="${esc(m.id)}" title="Lägg i slasken för det här uppdraget">slaska</a>`):"";
   const sent=canWrite&&!m.dismissed?`<a href="#" data-sent="${esc(m.id)}" title="Loggar bara, skickar ingenting">registrera manuellt InMail</a>`:"";
-  return `<div class="mrow ${m.dismissed?"dismissed":""}">${scoreHTML(m.score,m)}<div>
+  return `<div class="mrow ${m.dismissed?"dismissed":""} ${dlg30(c)?"dlg":""}">${scoreHTML(m.score,m)}<div>
     <div class="name"><span>${esc(m.candName||(c&&c.name)||"")}</span>${m.spets?`<span class="pill p1">Spets${m.spetsRank?" "+m.spetsRank:""}</span>`:""}${m.level?`<span class="pill">${esc(levelLabel(m.level))}</span>`:""}${stageOf(m)!=="matchad"?`<span class="pill">${esc(STAGE_LABEL[stageOf(m)]||stageOf(m))}</span>`:""}${flagHTML(m.praktisktStatus)}${m.dismissed?"":orderHTML(m)}${li}${orig}${cv}${ph}${em}${edit}${sent}${bin}</div>
     ${m.dismissed?`<div class="d"><span><b>Slask:</b> ${esc(roles.get(m.roleId)?.title||m.roleId)}${m.dismissedAt?`, ${fmtDate(m.dismissedAt)}`:""}${m.dismissReason?`. ${esc(m.dismissReason)}`:""}</span></div>`:""}
     <div class="d">
