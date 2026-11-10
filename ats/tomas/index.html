@@ -660,7 +660,7 @@ function cardHTML(m,idx,n){
   const tl=items.map(i=>({...i,cls:i.inn?"in":""}));
   if(o&&o.at)tl.push({at:o.at,who:"InMail beställd",kanal:o.bestallareNamn||"",text:o.instruktion?"Extra fråga: "+o.instruktion:"",cls:"ord"});
   if(o&&o.kvittens&&!items.some(i=>i.kanal==="InMail"&&!i.inn&&sameDay(i.at,o.kvittens)))tl.push({at:o.kvittens,who:"InMail skickad",kanal:"",text:"",cls:"ord"});
-  if(o&&o.status==="avvisad"&&o.fel)tl.push({at:o.statusAt||o.at,who:"Beställningen väntar",kanal:"",text:o.fel,cls:"prop"});
+  if(o&&(o.status==="avvisad"||o.status==="vantar-godkannande"||o.status==="vantar_godkannande")&&o.fel)tl.push({at:o.statusAt||o.at,who:"Beställningen väntar",kanal:"",text:o.fel,cls:"prop"});
   if(rp&&rp.at&&!items.some(i=>i.inn&&sameDay(i.at,rp.at)))tl.push({at:rp.at,who:"Svar från kandidaten",kanal:(TOLK[rp.tolkning]||TOLK.okand)[0],text:rp.text||"",cls:"in"});
   comm.forEach(q=>{if(q.av!=="system")tl.push({at:q.at,who:who0(q),kanal:"Kommentar",text:q.text,cls:"kom"});});
   tl.sort(sortAt);

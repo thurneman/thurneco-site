@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="sv"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OK:a önskemål</title>
+<style>
+:root{--bg:#f2f0ec;--surface:#ffffff;--line:#1e282d1c;--fg:#1c2428;--muted:#4a555a;--button:#2d5f8f;--ok:#2c7a46;--bad:#b0392f;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#242e33;--surface:#2b353a;--line:#ffffff21;--fg:#f6f5f3;--muted:#bcc0bf;--button:#3d6f9f;--ok:#8fbf9a;--bad:#e08f85;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "IBM Plex Sans","Segoe UI",sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 96px}
+h1{font:600 20px/1.25 "Montserrat","Segoe UI",sans-serif;margin:0 0 4px}
+.lead{color:var(--muted);margin:0 0 20px}
+section{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin:0 0 14px;overflow:hidden}
+h2{font:600 13px/1.3 "Montserrat","Segoe UI",sans-serif;margin:0;padding:10px 14px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:22px 1fr;gap:2px 10px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.row:last-child{border-bottom:0}
+.row input{grid-row:1 / span 3;margin-top:4px;width:16px;height:16px}
+.who{font-weight:600}.who a{color:inherit}
+.score{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+.why,.when{color:var(--muted);font-size:13px}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+button{font:inherit;padding:9px 16px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
+button.primary{background:var(--button);border-color:var(--button);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+#msg{color:var(--muted);font-size:13px}
+a{color:var(--button)}
+</style></head><body><main>
+<h1>OK:a önskemål</h1>
+<p class="lead" id="lead">Hämtar önskemålen.</p>
+<div id="list"></div>
+</main>
+<div class="bar" id="bar" hidden><button id="ok" class="primary" type="button">OK:a valda</button><button id="nej" type="button">Avvisa valda</button><span id="msg"></span></div>
+<script src="../config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script>
+(async function(){
+  const $=id=>document.getElementById(id);
+  const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const lead=$("lead"), list=$("list"), bar=$("bar"), msg=$("msg");
+  const C=window.ATS_CONFIG||{};
+  if(!window.supabase||!C.SUPABASE_URL||!C.SUPABASE_KEY){lead.textContent="Sidan kunde inte laddas. Ladda om.";return;}
+  const sb=window.supabase.createClient(String(C.SUPABASE_URL).replace(/\/+$/,""),C.SUPABASE_KEY,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  let session=null; try{session=(await sb.auth.getSession()).data.session;}catch(e){session=null;}
+  if(!session||!session.user){lead.innerHTML='Du är inte inloggad. <a href="../">Logga in i ATS:et</a> och öppna sedan länken igen.';return;}
+  const email=String(session.user.email||"").toLowerCase();
+  const anv=await sb.from("anvandare").select("roll,aktiv").eq("email",email);
+  if(anv.error||!anv.data||!anv.data[0]||anv.data[0].roll!=="agare"||!anv.data[0].aktiv){lead.textContent="Den här sidan är bara för ägaren.";return;}
+  async function load(){
+    const r=await sb.from("kontaktbestallningar").select("id,nyckel,role_id,cand_id,cand_name,match_id,bestallare_namn,fel,instruktion,created_at").eq("status","vantar-godkannande").order("created_at",{ascending:true});
+    if(r.error){lead.textContent="Kunde inte hämta önskemålen: "+r.error.message;return;}
+    const rows=r.data||[];
+    if(!rows.length){lead.textContent="Inga önskemål väntar på ditt OK.";list.innerHTML="";bar.hidden=true;return;}
+    const uniq=k=>[...new Set(rows.map(x=>x[k]).filter(Boolean))];
+    const [ro,ca,ma]=await Promise.all([
+      sb.from("roles").select("id,ref,title,location").in("id",uniq("role_id")),
+      sb.from("candidates").select("id,recruiter_url,linkedin").in("id",uniq("cand_id")),
+      sb.from("matches").select("id,score").in("id",uniq("match_id"))]);
+    const R=new Map((ro.data||[]).map(x=>[x.id,x])), K=new Map((ca.data||[]).map(x=>[x.id,x])), M=new Map((ma.data||[]).map(x=>[x.id,x]));
+    lead.textContent=rows.length+" önskemål väntar på ditt OK. Bocka ur dem du inte vill släppa.";
+    const groups=new Map(); rows.forEach(x=>{if(!groups.has(x.role_id))groups.set(x.role_id,[]);groups.get(x.role_id).push(x);});
+    list.innerHTML=[...groups.entries()].map(([id,xs])=>{
+      const ro=R.get(id)||{};
+      return "<section><h2>"+esc(((ro.ref||"")+" "+(ro.title||id)).trim())+(ro.location?", "+esc(ro.location):"")+"</h2>"+xs.map(x=>{
+        const c=K.get(x.cand_id)||{}, m=M.get(x.match_id)||{}, url=c.recruiter_url||c.linkedin||"";
+        const t=new Date(x.created_at).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
+        const namn=esc(x.cand_name||x.cand_id);
+        return '<label class="row"><input type="checkbox" data-id="'+esc(x.id)+'" checked><span class="who">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+namn+"</a>":namn)+(m.score!=null?' <span class="score">'+esc(Math.round(m.score))+"</span>":"")+'</span><span class="why">'+esc(x.fel||"")+(x.instruktion?"<br>Medskick: "+esc(x.instruktion):"")+'</span><span class="when">'+esc(x.bestallare_namn||"")+", "+esc(t)+"</span></label>";
+      }).join("")+"</section>";
+    }).join("");
+    bar.hidden=false;
+  }
+  async function act(ok){
+    const ids=[...list.querySelectorAll("input[type=checkbox]:checked")].map(i=>Number(i.dataset.id)).filter(n=>Number.isFinite(n));
+    if(!ids.length){msg.textContent="Inget valt.";return;}
+    $("ok").disabled=$("nej").disabled=true; msg.textContent="Sparar.";
+    const now=new Date().toISOString();
+    const patch=ok?{status:"bestalld",krav_godkannande:false,fel:"",status_at:now,status_av:email}:{status:"avvisad",fel:"Inte godkänd av Filip",status_at:now,status_av:email};
+    const r=await sb.from("kontaktbestallningar").update(patch).in("id",ids).eq("status","vantar-godkannande").select("id");
+    $("ok").disabled=$("nej").disabled=false;
+    if(r.error){msg.textContent="Det gick inte: "+r.error.message;return;}
+    const n=(r.data||[]).length;
+    await load();
+    msg.textContent=ok?n+" släppta. Utkasten skrivs vid nästa körning.":n+" avvisade.";
+  }
+  $("ok").addEventListener("click",()=>act(true));
+  $("nej").addEventListener("click",()=>act(false));
+  load();
+})();
+</script>
+</body></html>
