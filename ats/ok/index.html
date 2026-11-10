@@ -33,14 +33,14 @@ a{color:var(--button)}
 <p class="lead" id="lead">Hämtar önskemålen.</p>
 <div id="list"></div>
 </main>
-<div class="bar" id="bar" hidden><button id="ok" class="primary" type="button">OK:a alla</button><button id="nej" class="quiet" type="button">Avvisa valda</button><span id="msg"></span></div>
+<div class="bar" id="bar" hidden><button id="ok" class="primary" type="button">OK:a alla</button><button id="alla" class="quiet" type="button" hidden>Markera alla</button><button id="nej" class="quiet" type="button">Avvisa valda</button><span id="msg"></span></div>
 <script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script>
 (async function(){
   const $=id=>document.getElementById(id);
   const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const lead=$("lead"), list=$("list"), bar=$("bar"), msg=$("msg");
+  const lead=$("lead"), list=$("list"), bar=$("bar"), msg=$("msg"), GRANS=5;
   const C=window.ATS_CONFIG||{};
   if(!window.supabase||!C.SUPABASE_URL||!C.SUPABASE_KEY){lead.textContent="Sidan kunde inte laddas. Ladda om.";return;}
   const sb=window.supabase.createClient(String(C.SUPABASE_URL).replace(/\/+$/,""),C.SUPABASE_KEY,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
@@ -73,7 +73,9 @@ a{color:var(--button)}
       sb.from("candidates").select("id,recruiter_url,linkedin").in("id",uniq("cand_id")),
       sb.from("matches").select("id,score").in("id",uniq("match_id"))]);
     const R=new Map((ro.data||[]).map(x=>[x.id,x])), K=new Map((ca.data||[]).map(x=>[x.id,x])), M=new Map((ma.data||[]).map(x=>[x.id,x]));
-    lead.textContent=rows.length+" önskemål väntar på ditt OK. Ett klick släpper alla. Bocka ur dem du vill vänta med.";
+    const forbock=rows.length<=GRANS;   // få: allt förbockat, ett klick. Många: inget förbockat, så att en hel hög inte släpps av misstag.
+    lead.textContent=rows.length+" önskemål väntar på ditt OK. "+(forbock?"Ett klick släpper alla. Bocka ur dem du vill vänta med.":"Det är många, så inget är förbockat. Bocka i dem du vill släppa eller tryck Markera alla.");
+    $("alla").hidden=forbock;
     const groups=new Map(); rows.forEach(x=>{if(!groups.has(x.role_id))groups.set(x.role_id,[]);groups.get(x.role_id).push(x);});
     list.innerHTML=[...groups.entries()].map(([id,xs])=>{
       const ro=R.get(id)||{};
@@ -81,17 +83,19 @@ a{color:var(--button)}
         const c=K.get(x.cand_id)||{}, m=M.get(x.match_id)||{}, url=c.recruiter_url||c.linkedin||"";
         const t=new Date(x.created_at).toLocaleString("sv-SE",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
         const namn=esc(x.cand_name||x.cand_id);
-        return '<label class="row"><input type="checkbox" data-id="'+esc(x.id)+'" checked><span class="who">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+namn+"</a>":namn)+(m.score!=null?' <span class="score">'+esc(Math.round(m.score))+"</span>":"")+'</span><span class="why">'+esc(x.fel||"")+(x.instruktion?"<br>Medskick: "+esc(x.instruktion):"")+'</span><span class="when">'+esc(x.bestallare_namn||"")+", "+esc(t)+"</span></label>";
+        return '<label class="row"><input type="checkbox" data-id="'+esc(x.id)+'"'+(forbock?" checked":"")+'><span class="who">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+namn+"</a>":namn)+(m.score!=null?' <span class="score">'+esc(Math.round(m.score))+"</span>":"")+'</span><span class="why">'+esc(x.fel||"")+(x.instruktion?"<br>Medskick: "+esc(x.instruktion):"")+'</span><span class="when">'+esc(x.bestallare_namn||"")+", "+esc(t)+"</span></label>";
       }).join("")+"</section>";
     }).join("");
     bar.hidden=false; upd();
   }
   function upd(){
     const all=list.querySelectorAll("input[type=checkbox]").length, sel=list.querySelectorAll("input[type=checkbox]:checked").length;
-    $("ok").textContent=sel===all?"OK:a alla "+all:"OK:a "+sel+" valda";
+    $("ok").textContent=!sel?"Välj vilka du vill släppa":sel===all?"OK:a alla "+all:"OK:a "+sel+" valda";
+    $("alla").textContent=sel===all?"Avmarkera alla":"Markera alla";
     $("ok").disabled=$("nej").disabled=!sel;
   }
   list.addEventListener("change",upd);
+  $("alla").addEventListener("click",()=>{const bs=[...list.querySelectorAll("input[type=checkbox]")], on=bs.some(b=>!b.checked); bs.forEach(b=>{b.checked=on;}); upd();});
   async function act(ok){
     const ids=[...list.querySelectorAll("input[type=checkbox]:checked")].map(i=>Number(i.dataset.id)).filter(n=>Number.isFinite(n));
     if(!ids.length){msg.textContent="Inget valt.";return;}
