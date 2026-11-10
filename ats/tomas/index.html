@@ -849,16 +849,17 @@ function openOrder(list){
   const {bg}=modal(list.length===1?"Skicka InMail":`Skicka InMail till ${list.length} kandidater`,`<dl class="kv"><dt>Uppdrag</dt><dd>${t([r.ref,r.title].filter(Boolean).join(" "))}</dd><dt>Till</dt><dd>${list.length===1?`<b>${t(names[0])}</b>`:`<ul class="plain">${names.map(n=>`<li>${t(n)}</li>`).join("")}</ul>`}</dd><dt>Text</dt><dd>Uppdragets fasta InMail-text, med en kort rad om kandidatens bakgrund</dd><dt>Avsändare</dt><dd>Thurnes Recruiter-konto</dd></dl>
     <div class="ordbox"><p><b>Ditt klick är ett godkännande.</b> InMailen går ut vid kontaktkedjans nästa körning, normalt inom en timme på vardagar. Här visas "InMail skickat" först när utföraren lämnat kvittens. Svar visas på kortet när de lästs in.</p></div>
     <label for="o-instr">Något särskilt att stämma av i InMailen? Valfritt${list.length>1?", gäller alla":""}</label><textarea id="o-instr" maxlength="600" placeholder="Skriv en egen fråga eller lämna tomt">${esc(sugg)}</textarea>
+    <label class="o-annons" style="display:flex;gap:8px;align-items:flex-start;margin-top:10px"><input type="checkbox" id="o-annons" ${r.published?"checked":""} style="margin-top:3px"><span>${r.published?"Ta med länken till annonsen på thurneco.se i InMailen":"Lägg ut uppdraget som annons på thurneco.se och ta med länken. Annonsen läggs ut av Thurne, utan kundnamn. InMailen väntar inte på den: finns annonsen inte ute när InMailen går, skickas den utan länk."}</span></label>
     <div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Avbryt</button><button class="btn" type="button" id="o-send">Skicka InMail${list.length>1?` (${list.length})`:""}</button></div>`);
   let placing=false;
   bg.querySelector("#o-send").addEventListener("click",async()=>{if(placing)return;placing=true;bg.dataset.busy="1";const btn=bg.querySelector("#o-send");btn.disabled=true;btn.textContent="Registrerar …";
-    const instr=bg.querySelector("#o-instr").value.trim();const okList=[],bad=[];
-    for(const m of list){const c=cands.get(m.candId)||{name:m.candName};const res=await placeOrder(m,c,instr);if(res.ok)okList.push(c.name||m.candName);else bad.push(`${c.name||m.candName}: ${res.msg}`);}
+    const instr=bg.querySelector("#o-instr").value.trim();const okList=[],bad=[];const annons=bg.querySelector("#o-annons").checked?(r.published?"ja":"begar"):"nej";
+    for(const m of list){const c=cands.get(m.candId)||{name:m.candName};const res=await placeOrder(m,c,instr,annons);if(res.ok)okList.push(c.name||m.candName);else bad.push(`${c.name||m.candName}: ${res.msg}`);}
     if(okList.length)receipt(bg,"InMail beställt",[`<b>${okList.length===1?"Beställningen":okList.length+" beställningar"} registrerad${okList.length===1?"":"e"} ${fmt(nowIso())} med ditt godkännande, återläst från databasen.</b>`,`Går ut vid nästa körning. Inget är skickat ännu.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
     else{placing=false;fail(bg,"#o-send","Skicka InMail",bad.join("; ")||"Inget registrerades.");}
     renderDetail();});
 }
-async function placeOrder(m,c,instr){
+async function placeOrder(m,c,instr,annons){
   if(!db||!userId)return{ok:false,msg:"Ingen inloggad identitet, beställningen går inte att knyta till dig."};
   const k=key(m);const ref=db.doc("kontaktbestallningar/"+userId);
   try{
@@ -866,7 +867,7 @@ async function placeOrder(m,c,instr){
     const cur=snap.exists&&snap.data()&&snap.data().poster&&snap.data().poster[k];
     if(cur&&(OPEN.has(cur.status)||cur.status==="skickat"||cur.status==="svar"))return{ok:false,msg:"det finns redan en beställning."};
     const now=nowIso();
-    const entry={candId:m.candId,candName:c.name||m.candName||"",roleId:m.roleId,matchId:m.id,instruktion:instr,at:now,konto:"recruiter-filip",kravGodkannande:false,go:{status:"ja",via:"staende-go-konsult",av:userId,avNamn:userName,at:now},status:"bestalld",statusAt:now,statusAv:userId,bestallare:userId,bestallareNamn:userName,kalla:"konsult-ats",kvittens:null,fel:""};
+    const entry={candId:m.candId,candName:c.name||m.candName||"",roleId:m.roleId,matchId:m.id,instruktion:instr,annonslank:annons||"nej",at:now,konto:"recruiter-filip",kravGodkannande:false,go:{status:"ja",via:"staende-go-konsult",av:userId,avNamn:userName,at:now},status:"bestalld",statusAt:now,statusAv:userId,bestallare:userId,bestallareNamn:userName,kalla:"konsult-ats",kvittens:null,fel:""};
     if(snap.exists)await ref.update({poster:{[k]:entry},updatedAt:now});
     else await ref.set({bestallare:userId,bestallareNamn:userName,kalla:"konsult-ats",poster:{[k]:entry},createdAt:now,updatedAt:now});
     const check=await ref.get();const saved=check.exists&&check.data().poster&&check.data().poster[k];
