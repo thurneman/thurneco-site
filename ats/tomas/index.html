@@ -59,6 +59,7 @@ a{color:var(--blue-4)}
 .pill{display:inline-block;font-size:12px;border-radius:999px;padding:1px 9px;border:1px solid var(--line-strong);color:var(--muted);white-space:nowrap;line-height:1.6}
 .pill.ok{border-color:var(--ok);color:var(--ok)}.pill.warn{border-color:var(--warn);color:var(--warn)}.pill.bad{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
 .pill.blue{border-color:var(--blue-3);color:var(--blue-4)}.pill.yel{border-color:var(--yellow);color:var(--yellow);background:var(--yellow-soft)}.pill.miss{border-style:dashed;color:var(--faint)}
+.pill.antagen{border-style:dashed;border-color:#b48cf2;color:#c9a8ff}
 .dl[data-dl]{cursor:pointer}.dl[data-dl]:hover{text-decoration:underline dotted}
 .dl-pop{position:absolute;z-index:60;display:flex;gap:6px;align-items:center;padding:8px;background:var(--surface-3);border:1px solid var(--line-strong);border-radius:var(--r);box-shadow:0 10px 30px #0008}
 .dl-pop input{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:4px;background:var(--surface);color:var(--fg)}
@@ -328,7 +329,11 @@ function dayLabel(y){const[Y,M,D]=y.split("-").map(Number);return`${D} ${MONTHS[
 function daysHTML(r){
   const d=effDeadline(r);const open=!ARCHIVED.has(r.status);
   const edit=canWrite&&open?` data-dl="${esc(r.id)}" title="Sista inskickningsdag. Dubbelklicka för att ändra.${d.egen?" Din ändring, synkas till huvudregistret inom en timme.":""}"`:` title="Sista inskickningsdag"`;
-  if(!d.ymd)return open?`<span class="pill miss dl"${edit}>${d.text?esc(d.text)+", ":""}sätt deadline</span>`:"";
+  if(!d.ymd){
+    const ay=/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")?r.deadlineAntagen:"";
+    if(open&&ay){const an=daysLeft(ay),al=dayLabel(ay);const at2=canWrite?` data-dl="${esc(r.id)}"`:"";
+      return`<span class="pill antagen dl"${at2} title="Antagen sista inskickningsdag: publicering plus 7 dagar. Kundens datum saknas. Dubbelklicka för att sätta rätt dag.">${an<0?"antagen, passerad":an===0?"antagen, i dag":an===1?"antagen, 1 dag kvar":"antagen, "+an+" dagar kvar"} (${al})</span>`;}
+    return open?`<span class="pill miss dl"${edit}>${d.text?esc(d.text)+", ":""}sätt deadline</span>`:"";}
   const n=daysLeft(d.ymd),lab=dayLabel(d.ymd),mark=d.egen?" ✎":"";
   if(n<0)return`<span class="pill bad dl"${edit}>passerad (${lab})${mark}</span>`;
   if(n===0)return`<span class="pill yel dl"${edit}>i dag (${lab})${mark}</span>`;
@@ -339,7 +344,7 @@ const effPrio=r=>{const a=andr.get(r.id)||{};return String(a.prioSattAt?(a.prio|
 const hiddenRole=r=>ARCHIVED.has(r.status)||isPassed(r)||partArk(r);
 function refKey(r){const m=/^([A-Za-zÅÄÖåäö]+)\s*0*(\d+)(.*)$/.exec(String(r.ref||"").trim());return m?[0,m[1].toUpperCase(),+m[2],m[3]]:[1,"",Infinity,""];}
 function refCmp(a,b){const x=refKey(a),y=refKey(b);return(x[0]-y[0])||x[1].localeCompare(y[1])||(x[2]-y[2])||x[3].localeCompare(y[3])||(a.title||"").localeCompare(b.title||"","sv");}
-function deadlineSort(a,b){const x=effDeadline(a).ymd||"9999",y=effDeadline(b).ymd||"9999";return x.localeCompare(y)||refCmp(a,b);}
+function deadlineSort(a,b){const x=effDeadline(a).ymd||a.deadlineAntagen||"9999",y=effDeadline(b).ymd||b.deadlineAntagen||"9999";return x.localeCompare(y)||refCmp(a,b);}
 
 // ===== Process, samma stegindelning som huvudregistret. Stadier ändras inte här.
 const stageOf=m=>m.stage||"matchad";

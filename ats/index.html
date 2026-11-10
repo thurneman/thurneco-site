@@ -694,7 +694,11 @@ function daysLeft(d){if(!d)return null;const n=new Date();const a=new Date(n.get
 function daysHTML(r){
   const d=deadlineDate(r);const open=ACTIVE.has(r.status||"ny");
   const edit=canWrite&&open?` data-dl="${esc(r.id)}" title="Sista inskickningsdag. Dubbelklicka för att ändra."`:` title="Sista inskickningsdag"`;
-  if(!d)return open?`<span class="pill dl dlmiss"${edit}>${r.deadline?esc(r.deadline)+", ":""}sätt deadline</span>`:"";
+  if(!d){
+    const am=/^(\d{4})-(\d{2})-(\d{2})$/.exec(r.deadlineAntagen||"");
+    if(open&&am){const ad=new Date(+am[1],+am[2]-1,+am[3],23,59);const an=daysLeft(ad);const al=ad.toLocaleDateString("sv-SE",{day:"numeric",month:"short"});
+      return`<span class="pill dl" style="border-style:dashed;border-color:#b48cf2;color:#8a5fd6"${canWrite?` data-dl="${esc(r.id)}"`:""} title="Antagen sista inskickningsdag: publicering plus 7 dagar. Kundens datum saknas. Dubbelklicka för att sätta rätt dag.">${an<0?"antagen, passerad":an===0?"antagen, i dag":an===1?"antagen, 1 dag kvar":"antagen, "+an+" dagar kvar"} (${esc(al)})</span>`;}
+    return open?`<span class="pill dl dlmiss"${edit}>${r.deadline?esc(r.deadline)+", ":""}sätt deadline</span>`:"";}
   const n=daysLeft(d);const date=d.toLocaleDateString("sv-SE",{day:"numeric",month:"short"});
   if(n<0)return`<span class="pill dead dl"${edit}>passerad (${esc(date)})</span>`;
   const txt=n===0?`i dag (${date})`:n===1?`1 dag kvar (${date})`:`${n} dagar kvar (${date})`;

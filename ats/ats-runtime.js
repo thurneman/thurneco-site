@@ -128,7 +128,7 @@
   var MAP = {
     roles: M("ref:t:ref rawRef:t:raw_ref type:t:type source:t:source status:t:status title:t:title rawTitle:t:raw_title " +
       "location:t:location category:t:category customer:t:customer deadline:t:deadline deadlineStatus:t:deadline_status " +
-      "deadlineSattAt:ts:deadline_satt_at deadlineKalla:t:deadline_kalla prio:t:prio prioReason:t:prio_reason insats:jl:insats " +
+      "deadlineSattAt:ts:deadline_satt_at deadlineKalla:t:deadline_kalla deadlineAntagen:t:deadline_antagen prio:t:prio prioReason:t:prio_reason insats:jl:insats " +
       "facts:jd:facts brief:t:brief notes:t:notes kravVersion:i:krav_version inmail:j:inmail go:j:go triage:j:triage " +
       "miniwave:j:miniwave uppdateringar:jl:uppdateringar relatedRoles:a:related_roles delad:a:delad published:b:published " +
       "talendaryProjectId:t:talendary_project_id recruiterProjekt:j:recruiter_projekt partnerAnteckning:j:partner_anteckning " +
