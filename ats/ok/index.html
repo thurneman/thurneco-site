@@ -6,7 +6,7 @@
 @media (prefers-color-scheme:dark){:root{--bg:#242e33;--surface:#2b353a;--line:#ffffff21;--fg:#f6f5f3;--muted:#bcc0bf;--button:#3d6f9f;--ok:#8fbf9a;--bad:#e08f85;color-scheme:dark}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 "IBM Plex Sans","Segoe UI",sans-serif}
-main{max-width:760px;margin:0 auto;padding:24px 16px 96px}
+main{max-width:760px;margin:0 auto;padding:24px 16px 170px}
 h1{font:600 20px/1.25 "Montserrat","Segoe UI",sans-serif;margin:0 0 4px}
 .lead{color:var(--muted);margin:0 0 20px}
 section{background:var(--surface);border:1px solid var(--line);border-radius:6px;margin:0 0 14px;overflow:hidden}
@@ -20,7 +20,12 @@ h2{font:600 13px/1.3 "Montserrat","Segoe UI",sans-serif;margin:0;padding:10px 14
 .bar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
 button{font:inherit;padding:9px 16px;border-radius:4px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer}
 button.primary{background:var(--button);border-color:var(--button);color:#fff;font-weight:600}
+button.primary{padding:13px 26px;font-size:16px}
+button.quiet{border-color:transparent;color:var(--muted);text-decoration:underline;padding:9px 8px}
 button:disabled{opacity:.5;cursor:default}
+.login{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+.login input{flex:1 1 220px;font:inherit;padding:11px 12px;border-radius:4px;border:1px solid var(--line);background:var(--surface);color:var(--fg)}
+@media (max-width:520px){.bar button.primary{flex:1 1 100%}}
 #msg{color:var(--muted);font-size:13px}
 a{color:var(--button)}
 </style></head><body><main>
@@ -28,7 +33,7 @@ a{color:var(--button)}
 <p class="lead" id="lead">Hämtar önskemålen.</p>
 <div id="list"></div>
 </main>
-<div class="bar" id="bar" hidden><button id="ok" class="primary" type="button">OK:a valda</button><button id="nej" type="button">Avvisa valda</button><span id="msg"></span></div>
+<div class="bar" id="bar" hidden><button id="ok" class="primary" type="button">OK:a alla</button><button id="nej" class="quiet" type="button">Avvisa valda</button><span id="msg"></span></div>
 <script src="../config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script>
@@ -40,7 +45,20 @@ a{color:var(--button)}
   if(!window.supabase||!C.SUPABASE_URL||!C.SUPABASE_KEY){lead.textContent="Sidan kunde inte laddas. Ladda om.";return;}
   const sb=window.supabase.createClient(String(C.SUPABASE_URL).replace(/\/+$/,""),C.SUPABASE_KEY,{auth:{flowType:"implicit",persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   let session=null; try{session=(await sb.auth.getSession()).data.session;}catch(e){session=null;}
-  if(!session||!session.user){lead.innerHTML='Du är inte inloggad. <a href="../">Logga in i ATS:et</a> och öppna sedan länken igen.';return;}
+  if(!session||!session.user){
+    lead.textContent="Logga in för att se önskemålen. Du får en länk till din e-post, inget lösenord behövs.";
+    list.innerHTML='<form id="lf" class="login"><input id="le" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="primary" type="submit">Skicka inloggningslänk</button></form><p id="li" class="why" aria-live="polite"></p>';
+    $("lf").addEventListener("submit",async e=>{
+      e.preventDefault(); const adr=$("le").value.trim(), li=$("li"), b=$("lf").querySelector("button");
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adr)){li.textContent="Skriv en giltig e-postadress.";return;}
+      b.disabled=true; li.textContent="Skickar.";
+      try{const r=await sb.auth.signInWithOtp({email:adr,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}}); if(r.error)throw r.error;
+        li.textContent="Klart. Länken är skickad till "+adr+". Öppna den på den här enheten. Hamnar du i ATS:et i stället, öppna den här sidan igen.";}
+      catch(err){li.textContent="Det gick inte att skicka länken ("+((err&&err.message)||"fel")+").";}
+      finally{b.disabled=false;}
+    });
+    return;
+  }
   const email=String(session.user.email||"").toLowerCase();
   const anv=await sb.from("anvandare").select("roll,aktiv").eq("email",email);
   if(anv.error||!anv.data||!anv.data[0]||anv.data[0].roll!=="agare"||!anv.data[0].aktiv){lead.textContent="Den här sidan är bara för ägaren.";return;}
@@ -55,7 +73,7 @@ a{color:var(--button)}
       sb.from("candidates").select("id,recruiter_url,linkedin").in("id",uniq("cand_id")),
       sb.from("matches").select("id,score").in("id",uniq("match_id"))]);
     const R=new Map((ro.data||[]).map(x=>[x.id,x])), K=new Map((ca.data||[]).map(x=>[x.id,x])), M=new Map((ma.data||[]).map(x=>[x.id,x]));
-    lead.textContent=rows.length+" önskemål väntar på ditt OK. Bocka ur dem du inte vill släppa.";
+    lead.textContent=rows.length+" önskemål väntar på ditt OK. Ett klick släpper alla. Bocka ur dem du vill vänta med.";
     const groups=new Map(); rows.forEach(x=>{if(!groups.has(x.role_id))groups.set(x.role_id,[]);groups.get(x.role_id).push(x);});
     list.innerHTML=[...groups.entries()].map(([id,xs])=>{
       const ro=R.get(id)||{};
@@ -66,8 +84,14 @@ a{color:var(--button)}
         return '<label class="row"><input type="checkbox" data-id="'+esc(x.id)+'" checked><span class="who">'+(url?'<a href="'+esc(url)+'" target="_blank" rel="noopener">'+namn+"</a>":namn)+(m.score!=null?' <span class="score">'+esc(Math.round(m.score))+"</span>":"")+'</span><span class="why">'+esc(x.fel||"")+(x.instruktion?"<br>Medskick: "+esc(x.instruktion):"")+'</span><span class="when">'+esc(x.bestallare_namn||"")+", "+esc(t)+"</span></label>";
       }).join("")+"</section>";
     }).join("");
-    bar.hidden=false;
+    bar.hidden=false; upd();
   }
+  function upd(){
+    const all=list.querySelectorAll("input[type=checkbox]").length, sel=list.querySelectorAll("input[type=checkbox]:checked").length;
+    $("ok").textContent=sel===all?"OK:a alla "+all:"OK:a "+sel+" valda";
+    $("ok").disabled=$("nej").disabled=!sel;
+  }
+  list.addEventListener("change",upd);
   async function act(ok){
     const ids=[...list.querySelectorAll("input[type=checkbox]:checked")].map(i=>Number(i.dataset.id)).filter(n=>Number.isFinite(n));
     if(!ids.length){msg.textContent="Inget valt.";return;}
@@ -75,11 +99,11 @@ a{color:var(--button)}
     const now=new Date().toISOString();
     const patch=ok?{status:"bestalld",krav_godkannande:false,fel:"",status_at:now,status_av:email}:{status:"avvisad",fel:"Inte godkänd av Filip",status_at:now,status_av:email};
     const r=await sb.from("kontaktbestallningar").update(patch).in("id",ids).eq("status","vantar-godkannande").select("id");
-    $("ok").disabled=$("nej").disabled=false;
-    if(r.error){msg.textContent="Det gick inte: "+r.error.message;return;}
+    if(r.error){upd();msg.textContent="Det gick inte: "+r.error.message;return;}
     const n=(r.data||[]).length;
     await load();
-    msg.textContent=ok?n+" släppta. Utkasten skrivs vid nästa körning.":n+" avvisade.";
+    const txt=ok?n+" släppta. Utkasten skrivs vid nästa körning.":n+" avvisade.";
+    msg.textContent=txt; if(bar.hidden)lead.textContent=txt+" Inget mer väntar på ditt OK.";
   }
   $("ok").addEventListener("click",()=>act(true));
   $("nej").addEventListener("click",()=>act(false));
