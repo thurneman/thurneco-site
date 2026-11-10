@@ -2,6 +2,17 @@
   "schemaVersion": 1,
   "jobs": [
     {
+      "id": "avtalsansvarig-elnat-stockholm",
+      "type": "consulting",
+      "title": "Avtalsansvarig elnät, konsultuppdrag, Stockholm",
+      "location": "Stockholm",
+      "workplace": "100 % · Hybrid",
+      "category": "Teknik & industri",
+      "description": "Konsultuppdrag på heltid hos ett större energibolag. Start snarast, till och med 31 december 2027 med möjlighet till förlängning.\n\n## Var du behöver vara\nUppdraget utgår från kundens kontor i Stockholmsområdet. Arbetet sker delvis på distans, men du behöver kunna vara på plats på kontoret en del av tiden. Placering längre norrut kan gå efter överenskommelse med kunden. Hur många dagar på plats det blir bestäms med kunden, så räkna med regelbunden närvaro i Stockholmsområdet.\n\n## Om uppdraget\nDu förvaltar och utvecklar avtalen med anslutande elnätsaktörer och är kundens kontaktväg in mot elnätsbolagen, tidigt och genom förstudier och projekt. Du arbetar tillsammans med en kollega som ansvarar för tekniken. Din del är avtal och samordning, inte teknik.\n\n## Arbetsuppgifter\n- Hålla samman avtal och abonnemang som rör anläggningarna\n- Ajourhålla, justera och ta fram anläggningsnära avtal: anslutningsavtal, nätavtal, nyttjandeavtal, nyttjanderättsavtal och administrationsavtal\n- Ta fram underlag för fakturering och överlåtelseavtal\n- Samordna lokalkraftsabonnemang, justera befintliga abonnemang och ansöka om nya\n- Föra samtalen med anslutande elnätsaktör i tidiga skeden och stötta i senare delar av förstudier och projekt\n- Dokumentera och arkivera\n\n## Det här behöver du ha med dig\n- Kunskap om elnätsverksamhet, från ett nätbolag eller från en roll som arbetat direkt mot nätägare med nätavtal och anslutningar\n- Eget ansvar för avtal inom elnät\n- Erfarenhet av förhandling i komplexa avtalssituationer\n- Vana att samordna externa parter i förstudier eller projekt\n- Relevant akademisk utbildning eller motsvarande erfarenhet\n- Minst ett eget referensprojekt från liknande uppdrag, som framgår av ditt CV\n\n## Säkerhetsprövning\nGodkänd säkerhetsprövning krävs innan uppdraget startar.\n\n## Upplägg\nUppdraget förmedlas av Thurne Consulting och går via eget bolag eller underkonsultavtal, med löpande timarvode. Urval sker löpande. Skicka CV och ange timpris och var du utgår från, så hör vi av oss.",
+      "deadline": "Löpande",
+      "expiresAt": "2026-11-24T00:00:00+01:00"
+    },
+    {
       "id": "senior-group-accountant-brite-stockholm",
       "type": "recruitment",
       "title": "Senior Group Accountant till Brite Payments, Stockholm",
