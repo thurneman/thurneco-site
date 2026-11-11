@@ -36,6 +36,10 @@ textarea.intern{width:100%;max-width:85ch;font:inherit;font-size:15px;padding:8p
 .delbtn{font:inherit;font-size:13px;border-radius:999px;padding:4px 14px;border:1px solid var(--min);color:var(--min);background:transparent;cursor:pointer}
 .delbtn.on{border-color:var(--ok,#2c7a46);color:#fff;background:var(--ok,#2c7a46)}
 span.delbtn{cursor:default;opacity:.85}
+.ppage{max-width:1150px;margin:0 auto;padding:14px 18px 0}.ppage+.fcv{max-width:1150px;margin:14px auto 40px}
+.prow{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline;padding:8px 0;border-top:1px solid var(--line,#ffffff22)}.prow>a{font-weight:600}
+.pill.ptyp.k{border-color:var(--button,#2d5f8f);color:var(--button,#7fb0de)}
+.pbed{border:1px solid var(--line,#ffffff22);border-radius:6px;padding:8px 12px;margin:8px 0;max-width:95ch}.pbed summary{cursor:pointer;font-weight:600}.pbed h4{margin:10px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#bcc0bf)}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -1291,6 +1295,9 @@ function renderDetail(){
   if(view==="matchning"){({}).disabled=true;detail.innerHTML=matchingHTML();wireMatching(detail);
     if(scrollToSelected&&selected){detail.querySelector(`.mrole[data-role="${CSS.escape(selected)}"]`)?.scrollIntoView({block:"start",behavior:"smooth"});scrollToSelected=false;}
     return;}
+  if(view==="kandidater"&&personSel&&cands.has(personSel)){
+    const ae=document.activeElement;if(ae&&ae.closest&&ae.closest(".ppage")&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&detail.querySelector(".ppage"))return;   // skriver i ett fält, rör inte sidan
+    detail.classList.add("scrolly");detail.innerHTML=personHTML(cands.get(personSel));wirePerson(detail);neutralizeText(detail);return;}
   if(view==="kandidater"){({}).disabled=!canWrite;
     const ta0=document.activeElement;
     if(ta0&&ta0.id==="kand-q"&&detail.querySelector("#kand-results")){detail.querySelector("#kand-results").innerHTML=candResultsHTML();return;}   // skriver i sökfältet, byt bara resultaten
@@ -1488,7 +1495,71 @@ const bevNar=d=>d<0?"tillgänglig nu":d===0?"i dag":"om "+d+" dagar";
 function bevakHTML(){
   const list=[...cands.values()].filter(c=>/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||"")).sort((a,b)=>a.tillgangligFran.localeCompare(b.tillgangligFran));
   if(!list.length)return`<section class="bevak"><h2>Bevakning · tillgängliga framåt</h2><p class="fmeta">Ingen person har ett tillgänglighetsdatum än. Sätt det på personkortet, under Villkor.</p></section>`;
-  return`<section class="bevak"><h2>Bevakning · tillgängliga framåt · ${list.length}</h2><p class="fmeta">Personer med tillgänglighetsdatum, närmast först. Uppdragen är ordlikhet mot öppna konsultuppdrag, ingen bedömning. Påminnelsen kommer i Att göra ${BEV_DAGAR} dagar före datumet.</p>${list.map(c=>{const d=bevDagar(c.tillgangligFran);const pot=konsultPot(c).slice(0,3);const m0=linksFor(c.id)[0];return`<div class="bvrow ${baraMin(c.id)?"minp":""}"><span class="bvn">${m0?`<a href="#match=${esc(m0.id)}">${esc(c.name||c.id)}</a>`:esc(c.name||c.id)} ${mineTagHTML(c.id)}</span><span class="bvd"><b>${esc(bevDatum(c.tillgangligFran))}</b> · ${bevNar(d)}${c.timpris?" · "+esc(String(c.timpris)):""}</span><span class="bvp">${pot.length?pot.map(x=>`<a href="#role=${esc(x.r.id)}" class="pill">${esc(((x.r.ref||"")+" "+(x.r.title||"")).slice(0,48))}</a>`).join(" "):`<span class="fmeta">inget öppet konsultuppdrag liknar profilen just nu</span>`}</span></div>`;}).join("")}</section>`;
+  return`<section class="bevak"><h2>Bevakning · tillgängliga framåt · ${list.length}</h2><p class="fmeta">Personer med tillgänglighetsdatum, närmast först. Uppdragen är ordlikhet mot öppna konsultuppdrag, ingen bedömning. Påminnelsen kommer i Att göra ${BEV_DAGAR} dagar före datumet.</p>${list.map(c=>{const d=bevDagar(c.tillgangligFran);const pot=konsultPot(c).slice(0,3);const m0=linksFor(c.id)[0];return`<div class="bvrow ${baraMin(c.id)?"minp":""}"><span class="bvn"><a href="#" data-person="${esc(c.id)}">${esc(c.name||c.id)}</a> ${mineTagHTML(c.id)}</span><span class="bvd"><b>${esc(bevDatum(c.tillgangligFran))}</b> · ${bevNar(d)}${c.timpris?" · "+esc(String(c.timpris)):""}</span><span class="bvp">${pot.length?pot.map(x=>`<a href="#role=${esc(x.r.id)}" class="pill">${esc(((x.r.ref||"")+" "+(x.r.title||"")).slice(0,48))}</a>`).join(" "):`<span class="fmeta">inget öppet konsultuppdrag liknar profilen just nu</span>`}</span></div>`;}).join("")}</section>`;
+}
+function personRowsHTML(c){
+  const tf=/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||"")?c.tillgangligFran:"";
+  const villkorRow=`<div class="frow2 fvillkor"><span class="fl">Villkor</span><span class="ftags"><label class="vl">Tillgänglig från <input class="cq" type="date" data-cq="tillgangligFran" data-cand="${esc(c.id)}" value="${esc(tf)}" ${canWrite?"":"disabled"}></label>${tf?`<span class="ftxt"><b>${esc(bevDatum(tf))}</b> · ${esc(bevNar(bevDagar(tf)))}</span>`:c.tillganglig?`<span class="ftxt">${esc(c.tillganglig)}</span>`:""}<label class="vl">Timpris <input class="cq" type="text" data-cq="timpris" data-cand="${esc(c.id)}" value="${esc(c.timpris||"")}" size="14" placeholder="kr per timme" autocomplete="off" ${canWrite?"":"disabled"}></label></span></div>`;
+  const synsT=!baraMin(c.id);const dialT=[...matches.values()].some(x=>x.candId===c.id&&!x.dismissed&&partnerRole(roles.get(x.roleId))&&!["matchad","ansokt","avslutad"].includes(stageOf(x)));
+  const delRow=`<div class="frow2 fdela"><span class="fl">Delning</span><span class="ftags">${lasInfort&&canWrite?`<button type="button" class="delbtn ${synsT?"on":""}" data-dela="${esc(c.id)}" data-till="${synsT?"0":"1"}" data-dial="${dialT?"1":"0"}" aria-pressed="${synsT}" title="${synsT?"Klicka för att dölja personen för andra":"Klicka för att dela personkortet"}">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</button>`:`<span class="delbtn ${synsT?"on":""}" aria-disabled="true">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</span>`}<span class="ftxt">${synsT?"Tomas ser personkortet: profiltext, CV, kontakt och villkor. Aldrig din dialog, dina uppdrag eller den interna anteckningen.":"Tomas ser ingenting om personen."}${lasInfort?"":" Knappen tänds när låset är infört i databasen."}</span></span></div>`;
+  return{villkorRow,delRow};
+}
+
+let personSel=null,personFrom=null,pTab="profil";
+function openPerson(id){if(!cands.has(id))return;document.body.classList.remove("pmode");if(!personSel)personFrom={view,selected};personSel=id;pTab="profil";view="kandidater";syncView();render();const d=$("#detail");if(d)d.scrollTop=0;}
+function closePerson(){const f=personFrom;personSel=null;personFrom=null;if(f&&f.view&&f.view!=="kandidater"){view=f.view;selected=f.selected;}syncView();render();}
+document.addEventListener("click",e=>{const t=e.target;if(!t||!t.closest)return;if(t.closest("#view-toggle"))personSel=null;},true);
+document.addEventListener("click",e=>{const pp=e.target&&e.target.closest&&e.target.closest("[data-person]");if(!pp)return;e.preventDefault();e.stopPropagation();openPerson(pp.dataset.person);});
+function personHTML(c){
+  const all=[...matches.values()].filter(m=>m.candId===c.id);
+  const akt=all.filter(m=>!m.dismissed&&stageOf(m)!=="avslutad").sort((a,b)=>String(b.stageAt||"").localeCompare(String(a.stageAt||"")));
+  const slut=all.filter(m=>m.dismissed||stageOf(m)==="avslutad");
+  const typ=r=>`<span class="pill ptyp ${r&&r.type==="consulting"?"k":"r"}">${r&&r.type==="consulting"?"Konsult":"Rekrytering"}</span>`;
+  const rad=m=>{const r=roles.get(m.roleId)||{};const s=m.svar||{};const ja=s.tolkning==="positiv"||s.forstaJaAt;return`<div class="prow">${typ(r)}<a href="#" data-openm="${esc(m.id)}">${esc([r.ref,r.title].filter(Boolean).join(" ")||m.roleId)}</a><span class="fmeta">${esc(r.location||"")}</span><span class="pill">${esc(STAGE_LABEL[stageOf(m)]||stageOf(m))}</span>${ja?`<span class="pill vunnen">Har sagt ja</span>`:s.tolkning==="negativ"?`<span class="pill forlorad">Har sagt nej</span>`:""}${m.score!=null?`<span class="score ${scoreClass(m.score)}" title="${esc(scoreTitle(m))}">${m.score} %</span>`:`<span class="fmeta">ej bedömd</span>`}${partnerRole(r)?`<span class="fmeta">hos Tomas</span>`:""}</div>`;};
+  const pot=rollPot(c,()=>true);
+  const potRad=x=>`<div class="prow">${typ(x.r)}<a href="#" data-openr="${esc(x.r.id)}">${esc([x.r.ref,x.r.title].filter(Boolean).join(" "))}</a><span class="fmeta">${esc(x.r.location||"")}</span>${daysHTML(x.r)}<span class="ftags">${x.hits.slice(0,4).map(w=>`<span class="pill">${esc(w)}</span>`).join("")}</span>${partnerRole(x.r)?`<span class="fmeta">hos Tomas</span>`:""}</div>`;
+  const rows=personRowsHTML(c);
+  const tel=c.phone?`<a href="tel:${esc(String(c.phone).replace(/\s/g,""))}">${esc(c.phone)}</a>`:canWrite?`<input class="cq" type="tel" data-cq="phone" data-cand="${esc(c.id)}" placeholder="Telefon saknas, lägg in" size="22" autocomplete="off">`:"";
+  const mej=c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:canWrite?`<input class="cq" type="email" data-cq="email" data-cand="${esc(c.id)}" placeholder="Mejl saknas, lägg in" size="22" autocomplete="off">`:"";
+  const cvUp=canWrite&&assets?`<label class="btn small cvup" title="Välj en PDF eller Word-fil. Den kopplas till personen direkt."><input type="file" accept=".pdf,.doc,.docx,application/pdf" data-cvup="${esc(c.id)}" hidden>${c.cv||c.cvOriginalId?"Byt CV":"Ladda upp CV"}</label>`:"";
+  const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(String(x))}</li>`).join("")}</ul>`:"";
+  const bed=[...akt,...slut].filter(m=>m.score!=null||(Array.isArray(m.belagt)&&m.belagt.length)).map((m,i)=>{const r=roles.get(m.roleId)||{};return`<details class="pbed" ${i===0?"open":""}><summary>${esc([r.ref,r.title].filter(Boolean).join(" ")||m.roleId)}${m.score!=null?` · ${m.score} %`:""}${m.kravstatus?` · ${esc(m.kravstatus)}`:""}</summary>${lista("Belagt",m.belagt)}${lista("Verifiera",m.verifiera)}${lista("Saknas",m.saknas)}${m.rekommendation?`<p class="pre">${esc(m.rekommendation)}</p>`:""}</details>`;}).join("");
+  const{list:hl}=sortedContacts(c);
+  const fli=k=>{const r=k.roleId?roles.get(k.roleId):null;return`<li class="${k.riktning==="in"?"in":k.riktning==="ut"?"ut":""}"><span class="dw"><b>${esc(k.riktning==="in"?(c.name||"Kandidaten"):(k.av||k.skickatAv||(k.riktning==="ut"?"Filip":"Anteckning")))}</b> · ${esc(KANALER.find(x=>x[0]===k.kanal)?.[1]||k.kanal||"")}${r?" · "+esc(r.ref||r.title||""):""} · ${k.at?esc(fmtDate(k.at)||k.at):"datum saknas"}</span><span class="pre">${esc(k.brodtext||k.text||"")}</span></li>`;};
+  const noter=all.filter(m=>m.linkNote).map(m=>{const r=roles.get(m.roleId)||{};return`<li><span class="dw"><b>Anteckning</b> · ${esc(r.ref||r.title||m.roleId)}</span><span class="pre">${esc(m.linkNote)}</span></li>`;}).join("");
+  const res=slut.filter(m=>m.result||m.dismissReason).map(m=>{const r=roles.get(m.roleId)||{};return`<li><span class="dw"><b>Resultat</b> · ${esc(r.ref||r.title||m.roleId)}</span><span class="pre">${esc([m.result,m.dismissReason].filter(Boolean).join(". "))}</span></li>`;}).join("");
+  const lead=String(c.note||"").replace(/\s+/g," ").trim();
+  return`<div class="ppage">
+    <p><button class="tbtn" type="button" data-pback>‹ Tillbaka${personFrom&&personFrom.view&&personFrom.view!=="kandidater"?"":" till Kandidater"}</button></p>
+    <header class="pfirst ${baraMin(c.id)?"minp":""}">
+      <div class="fname"><h2>${esc(c.name||"Namnlös")}</h2>${mineTagHTML(c.id)}${liLink(c.linkedin)}${recLink(c)}<button class="iconbtn" type="button" data-cand="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></div>
+      ${lead?`<p class="froleline">${esc(lead.length>260?lead.slice(0,259)+"…":lead)}</p>`:""}
+      <div class="flinks">${tel}${mej}${cvUp}</div>
+      ${rows.villkorRow}
+      ${rows.delRow}
+    </header>
+    <section class="fsec"><h3>Aktuell för${akt.length?` · ${akt.length}`:""}</h3>${akt.length?akt.map(rad).join(""):`<p class="fempty">Inte aktuell på något uppdrag just nu.</p>`}</section>
+    <section class="fsec"><h3>Möjliga andra matchningar${pot.length?` · ${pot.length}`:""}</h3><p class="fmeta">Ordlikhet mot öppna uppdrag, ingen bedömning. Procent sätts först när personen har bedömts mot uppdragets krav.</p>${pot.length?pot.map(potRad).join(""):`<p class="fempty">Inget öppet uppdrag liknar profilen just nu.</p>`}</section>
+    <div class="ftabs" role="tablist" aria-label="Personens uppgifter"><button type="button" role="tab" data-ptab="profil" aria-selected="${pTab==="profil"}">Profil</button><button type="button" role="tab" data-ptab="flode" aria-selected="${pTab==="flode"}">Flöde${hl.length?` · ${hl.length}`:""}</button></div>
+    <div class="fpanel" data-ppanel="profil" ${pTab==="profil"?"":"hidden"}>
+      <section class="fsec"><h3>Profiltext</h3>${c.note?`<p class="pre">${esc(c.note)}</p>`:`<p class="fempty">Ingen profiltext registrerad.</p>`}</section>
+      <section class="fsec"><h3>Intern anteckning</h3><p class="fmeta">Visas aldrig för Tomas.</p>${canWrite?`<textarea class="intern" data-intern="${esc(c.id)}" rows="3" placeholder="Till exempel: pratade i dag, vill ha uppdrag från mars">${esc(c.internNote||"")}</textarea>`:`<p class="pre">${esc(c.internNote||"")}</p>`}</section>
+      ${bed?`<section class="fsec"><h3>Bedömning per uppdrag</h3><p class="fmeta">Bedömningen hör till uppdraget och följer inte med till ett nytt. På ett nytt uppdrag görs en ny bedömning mot de kraven.</p>${bed}</section>`:""}
+    </div>
+    <div class="fpanel" data-ppanel="flode" ${pTab==="flode"?"":"hidden"}>
+      ${noter||res||hl.length?`<ul class="fdlg">${noter}${res}${hl.map(fli).join("")}</ul>`:`<p class="fempty">Inget i flödet än.</p>`}
+    </div>
+  </div>
+  ${c.cvOriginalId?`<section class="fcv" data-cvpath="${esc(c.cvOriginalId)}"><h3>CV${c.cvOriginalName?" · "+esc(c.cvOriginalName):""} <a href="/_blob/${esc(c.cvOriginalId)}" target="_blank" rel="noopener">Öppna i ny flik ↗</a></h3><div class="fcv-body"><p class="cnote">Hämtar CV …</p></div></section>`:c.cv?`<section class="fcv"><h3>CV</h3><p class="cnote">CV:t ligger som länk: <a href="${esc(c.cv)}" target="_blank" rel="noopener">öppna ↗</a></p></section>`:""}`;
+}
+function wirePerson(el){
+  el.onclick=e=>{
+    if(e.target.closest("[data-pback]")){e.preventDefault();closePerson();return;}
+    const om=e.target.closest("[data-openm]");if(om){e.preventDefault();personSel=null;openMatchInProcess(om.dataset.openm);return;}
+    const or=e.target.closest("[data-openr]");if(or){e.preventDefault();personSel=null;openRoleProcess(or.dataset.openr);return;}
+    const tb=e.target.closest("[data-ptab]");if(tb){pTab=tb.dataset.ptab;for(const b of el.querySelectorAll("[data-ptab]"))b.setAttribute("aria-selected",String(b.dataset.ptab===pTab));for(const p of el.querySelectorAll("[data-ppanel]"))p.hidden=p.dataset.ppanel!==pTab;return;}
+    const cd=e.target.closest("button[data-cand]");if(cd){e.preventDefault();openCandDrawer(cands.get(cd.dataset.cand));}
+  };
 }
 function focusRowHTML(m,i,active){
   const c=cands.get(m.candId);const st=stageOf(m);
@@ -1502,8 +1573,8 @@ function focusRowHTML(m,i,active){
 // Kandidatkortet: huvud ovanför flikarna (namn, poäng, stadie, nästa steg, kontaktlänkar), sedan fyra flikar med en synlig panel.
 // Flikvalet är bara visning: inget skrivs, kandidat och stadie rörs inte. Vid kandidatbyte väljs standardfliken igen.
 let fTab={id:null,tab:null},histOpen=new Set();
-const FTABS=[["profil","Profil"],["bedomning","Bedömning"],["historik","Historik"],["anteckning","Anteckning"]];
-const defaultTab=m=>["intresserad","presenterad","intervju"].includes(stageOf(m))?"historik":"profil";
+const FTABS=[["profil","Profil"],["flode","Flöde"]];
+const defaultTab=m=>["intresserad","presenterad","intervju"].includes(stageOf(m))?"flode":"profil";
 const curTab=m=>fTab.id===m.id&&fTab.tab?fTab.tab:defaultTab(m);
 // Kontakthistorik, nyast först. Datum används bara om alla poster har giltig tidsstämpel, annars registreringsordningen (senast registrerad först).
 function sortedContacts(c){
@@ -1598,9 +1669,9 @@ function focusProfileHTML(m,idx,n){
   const histHTML=hl.length?`<ul class="fhist">${hl.slice(0,3).map(hli).join("")}</ul>${hl.length>3?`<ul class="fhist" id="fhist-rest" ${showAllH?"":"hidden"}>${hl.slice(3).map(hli).join("")}</ul><p><button class="tbtn" type="button" data-histall="${esc(m.id)}" aria-expanded="${showAllH}" aria-controls="fhist-rest">${showAllH?"Visa bara de tre senaste":`Visa hela historiken (${hl.length})`}</button></p>`:""}${byDate?"":`<p class="fmeta">Visas i registreringsordning, senast registrerad först, eftersom datum saknas eller inte går att läsa på någon post.</p>`}`:`<p class="fempty">Ingen kontakt registrerad på personen.</p>`;
   const oth=(()=>{const li=x=>`<li>${esc([roles.get(x.roleId)?.ref,roles.get(x.roleId)?.title||x.roleId].filter(Boolean).join(" "))}: ${esc(STAGE_LABEL[stageOf(x)]||stageOf(x))}${x.score!=null?`, ${x.score} %`:""}</li>`;
       const same=others.filter(x=>roles.get(x.roleId)?.type===roles.get(m.roleId)?.type),diff=others.filter(x=>roles.get(x.roleId)?.type!==roles.get(m.roleId)?.type);
-      return(same.length?sec("Andra uppdrag i samma affär",`<ul>${same.map(li).join("")}</ul>`):"")+(diff.length?`<details class="brief"><summary>Uppdrag i andra affärer · ${diff.length}</summary><div class="brief-body"><ul>${diff.map(x=>`${li(x).replace("<li>",`<li>${esc(BIZ_LABEL[roles.get(x.roleId)?.type]||roles.get(x.roleId)?.type||"Okänd affär")}: `)}`).join("")}</ul></div></details>`:"")||sec("Andra uppdrag","","Inte kopplad till något annat uppdrag.");})();
+      return(same.length?sec("Andra uppdrag i samma affär",`<ul>${same.map(li).join("")}</ul>`):"")+(diff.length?`<details class="brief"><summary>Uppdrag i andra affärer · ${diff.length}</summary><div class="brief-body"><ul>${diff.map(x=>`${li(x).replace("<li>",`<li>${esc(BIZ_LABEL[roles.get(x.roleId)?.type]||roles.get(x.roleId)?.type||"Okänd affär")}: `)}`).join("")}</ul></div></details>`:"")||"";})();
   const pHist=`<section class="fsec"><h3>Kontakthistorik${hl.length?` · ${hl.length}`:""}</h3>${histHTML}</section>
-    ${sec("Resultat",m.result?`<p>${esc(m.result)}${m.dismissReason?`. ${esc(m.dismissReason)}`:""}</p>`:m.dismissReason?`<p>Slask: ${esc(m.dismissReason)}</p>`:"","Inget resultat registrerat på uppdraget.")}
+    ${sec("Resultat",m.result?`<p>${esc(m.result)}${m.dismissReason?`. ${esc(m.dismissReason)}`:""}</p>`:m.dismissReason?`<p>Slask: ${esc(m.dismissReason)}</p>`:"")}
     ${oth}`;
   // Anteckning
   const pNote=`<section class="fsec"><h3>Anteckning för uppdraget</h3>${m.linkNote?`<p class="pre">${esc(m.linkNote)}</p>`:`<p class="fempty">Ingen anteckning för det här uppdraget.</p>`}<p class="fsec-act"><button class="tbtn" type="button" data-link="${esc(m.id)}" ${canWrite?"":"disabled"}>Redigera anteckning och nästa steg</button><button class="tbtn" type="button" data-edit="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></p></section>`;
@@ -1621,12 +1692,12 @@ function focusProfileHTML(m,idx,n){
   const dli=k=>`<li class="${k.riktning==="in"?"in":k.riktning==="ut"?"ut":""}"><span class="dw"><b>${esc(who(k))}</b> · ${esc(KANALER.find(x=>x[0]===k.kanal)?.[1]||k.kanal||"")} · ${k.at?esc(fmtDT(k.at)):"datum saknas"}</span>${k.brodtext?`<span class="pre">${esc(k.brodtext)}</span>${k.brodtextUtdrag?`<span class="sub warn">Utdrag, hela meddelandet är inte sparat${k.brodtextNot?": "+esc(k.brodtextNot):""}.</span>`:""}`:`<span class="pre">${esc(k.text||"")}</span>${k.riktning==="in"?`<span class="sub">Sammanfattning. Hela meddelandet är inte inläst.</span>`:""}`}${isManualInmail(k)?`<span class="sub warn">Manuellt registrerat, utskick ej verifierat</span>`:""}</li>`;
   const pulsTxt=puls&&puls.at?`Brevlådorna lästes senast ${fmtDT(puls.at)}. Tiden gäller mejlkörningen som helhet, inte när just den här Recruiter-tråden kontrollerades.`:"När brevlådorna senast lästes visas inte än. Enskilda Recruiter-trådar kontrolleras inte av den körningen.";
   const dialogHTML=`<section class="fsec fdialog"><h3>Dialog på uppdraget${dlg.length?` · ${dlg.length}`:""}</h3><p class="fmeta">${esc(pulsTxt)}</p>${dlg.length?`<ul class="fdlg">${dlg.map(dli).join("")}</ul>`:`<p class="fempty">Ingen kontakt registrerad på det här uppdraget.</p>`}${ovr?`<p class="fmeta">${ovr} kontakt${ovr===1?"":"er"} till på andra uppdrag, se fliken Historik.</p>`:""}</section>`;
-  const panels={profil:pProfil,bedomning:pBed,historik:pHist,anteckning:pNote};
+  const panels={profil:pProfil+pBed,flode:pHist+pNote};
   return `<div class="fnav"><button class="btn light small" type="button" data-nav="-1" ${idx<=0?"disabled":""}>‹ Föregående</button><span class="fcount">Kandidat ${idx+1} av ${n}</span><button class="btn light small" type="button" data-nav="1" ${idx>=n-1?"disabled":""}>Nästa ›</button><span class="fhint">Piltangenter byter kandidat</span></div>
   <article class="fcard" data-id="${esc(m.id)}">
     <header class="pfirst ${baraMin(m.candId)?"minp":""}">
       <button class="tbtn pcrumb" type="button" data-pmode="0">‹ Tillbaka till ${esc([rr.ref,rr.title].filter(Boolean).join(" ")||"uppdraget")}</button>
-      <div class="fname"><h2><button type="button" class="namebtn" data-pmode="1" title="Visa bara personen">${esc(c.name||m.candName||"Namnlös")}</button></h2>${mineTagHTML(m.candId)}</div>
+      <div class="fname"><h2><button type="button" class="namebtn" data-person="${esc(c.id)}" title="Öppna personen, utan uppdraget">${esc(c.name||m.candName||"Namnlös")}</button></h2>${mineTagHTML(m.candId)}</div>
       ${roleLine?`<p class="froleline">${esc(roleLine)}</p>`:""}
       ${intBox}
       <div class="flinks">${kontaktHTML}${cvUpHTML}${orig}${tpl}${cv}${rec}${li}${orderHTML(m)}${pingHTML("kandidat",m,null)}</div>
@@ -1777,7 +1848,7 @@ function candResultsHTML(){
     const nameEl=bl.length===1?`<a href="#" data-openm="${esc(bl[0].id)}" title="Öppna kandidatkortet på uppdraget">${esc(c.name||c.id)}</a>`:bl.length>1?`<a href="#" data-pickrole="${esc(c.id)}" title="Välj uppdrag">${esc(c.name||c.id)} ▾</a>`:`<span>${esc(c.name||c.id)}</span>`;
     const chooser=bl.length>1?`<div class="d" data-chooser="${esc(c.id)}" hidden><span><b>Välj uppdrag:</b></span>${bl.map(m=>{const r=roles.get(m.roleId);return`<button class="btn light small" type="button" data-openm="${esc(m.id)}">${esc([r.ref,r.title].filter(Boolean).join(" "))} · ${esc(STAGE_LABEL[stageOf(m)]||stageOf(m))}</button>`;}).join("")}</div>`:"";
     const snippet=[c.note,c.tillganglig?`Tillgänglig: ${c.tillganglig}`:"",c.timpris?`Timpris: ${c.timpris}`:""].filter(Boolean).join(" · ");
-    return`<div class="mrow ${baraMin(c.id)?"minp":""}"><span></span><div><div class="name">${nameEl} ${mineTagHTML(c.id)}${liLink(c.linkedin)}${recLink(c)}<button class="iconbtn" type="button" data-cand="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></div>${chooser}
+    return`<div class="mrow ${baraMin(c.id)?"minp":""}"><span></span><div><div class="name"><a href="#" data-person="${esc(c.id)}" title="Öppna personen">${esc(c.name||c.id)}</a> ${mineTagHTML(c.id)}${liLink(c.linkedin)}${recLink(c)}<button class="iconbtn" type="button" data-cand="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></div>${chooser}
       ${snippet?`<div class="d"><span>${esc(snippet)}</span></div>`:""}${links?`<div class="d">${links}</div>`:`<div class="d"><span>Ingen koppling till något uppdrag.</span></div>`}</div></div>`;
   };
   return`<div class="meta" style="margin:0 0 6px"><span><b>${list.length}</b> av ${bizPersonIds().size} unika personer${biz==="all"?"":` i ${BIZ_LABEL[biz].toLowerCase()}`}${candQuery.trim()?` matchar "${esc(candQuery.trim())}"`:""}</span></div>
