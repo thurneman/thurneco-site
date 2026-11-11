@@ -1060,6 +1060,7 @@
       pendingUploads.set(path, { path: path, name: name, url: url });
       return { id: path, url: url, sizeBytes: blob.size, contentType: type };
     },
+    url: async function (path) { return signed(String(path)); },
     list: async function () { return { assets: [], usage: { files: 0, bytes: 0, maxFiles: 0, maxBytes: 0 } }; },
     delete: async function () { throw upErr("capability_removed", "unsupported"); }
   };
