@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Thurneco, profiler för granskning</title>
+<style>
+:root{--bg:#f6f5f2;--kort:#fff;--text:#1d2226;--dov:#5d666d;--linje:#dcd9d2;--knapp:#1f4f7a;--knapptext:#fff;--ok:#2c7a46;--varn:#9a5b00}
+@media (prefers-color-scheme:dark){:root{--bg:#161a1d;--kort:#1f2529;--text:#e9ecee;--dov:#a3adb4;--linje:#343c42;--knapp:#7fb0de;--knapptext:#10161b;--ok:#6fcf97;--varn:#e0b060}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+header.top{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:20px;margin:0}h2{font-size:18px;margin:26px 0 4px}h3{font-size:19px;margin:0}
+.dov{color:var(--dov);font-size:14px}.kort{background:var(--kort);border:1px solid var(--linje);border-radius:10px;padding:16px 18px;margin:12px 0}
+.rad{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:baseline}.pill{border:1px solid var(--linje);border-radius:999px;padding:1px 10px;font-size:13px}
+.pill.ok{border-color:var(--ok);color:var(--ok)}.pill.varn{border-color:var(--varn);color:var(--varn)}
+ul{margin:6px 0 0;padding-left:20px}li{margin:2px 0}h4{margin:14px 0 2px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dov)}
+button,.knapp{font:inherit;border-radius:8px;border:1px solid var(--knapp);background:var(--knapp);color:var(--knapptext);padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block}
+button.ljus{background:transparent;color:var(--knapp)}button:disabled{opacity:.55;cursor:default}
+input,textarea{font:inherit;width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--linje);background:var(--kort);color:var(--text)}
+.atg{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.form{margin-top:10px;display:grid;gap:8px}.fel{color:var(--varn)}
+a{color:var(--knapp)}
+</style>
+</head>
+<body>
+<main>
+  <header class="top"><h1>Thurneco · profiler för granskning</h1><span id="vem" class="dov"></span></header>
+  <div id="yta"><p class="dov">Läser in …</p></div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_KEY);
+const yta=document.getElementById("yta"),vem=document.getElementById("vem");
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dag=iso=>{try{return new Date(iso).toLocaleDateString("sv-SE",{day:"numeric",month:"long"});}catch(e){return"";}};
+let uppdrag=[],profiler=[],best=[],oppen=null;
+
+function inloggning(msg){
+  vem.textContent="";
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka länk</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form></div>`;
+  document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
+    const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});
+    b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.":"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
+}
+async function las(){
+  const[u,p,b]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("xbestallningar").select("id,role_id,cand_id,typ,status,at")]);
+  if(u.error||p.error){yta.innerHTML=`<div class="kort"><p class="fel">Det gick inte att läsa profilerna. Försök igen om en stund eller hör av dig till Filip.</p></div>`;return;}
+  uppdrag=u.data||[];profiler=p.data||[];best=(b.data||[]);rita();
+}
+function bestRad(p){return best.filter(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id).map(x=>`<span class="pill ok">${x.typ==="intervju"?"Intervju beställd":"Mer underlag begärt"} ${esc(dag(x.at))}</span>`).join("");}
+function kort(p){
+  const har=t=>best.some(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id&&x.typ===t&&x.status==="ny");
+  const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
+  const f=oppen&&oppen.id===p.id?oppen.typ:null;
+  return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Namn saknas")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${bestRad(p)}</div>
+    ${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
+    ${lista("Stöd mot kraven",p.belagt)}${lista("Att stämma av",p.verifiera)}
+    <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:`<span class="dov">CV är inte inlagt än</span>`}
+      <button type="button" data-b="intervju" ${har("intervju")?"disabled":""}>Boka intervju</button><button class="ljus" type="button" data-b="underlag" ${har("underlag")?"disabled":""}>Be om mer underlag</button></div>
+    ${f?`<form class="form" data-f="${f}"><label class="dov" for="t-${esc(p.id)}">${f==="intervju"?"Förslag på tider eller annat vi bör veta (valfritt)":"Vad vill du veta mer om?"}</label><textarea id="t-${esc(p.id)}" rows="3" maxlength="1000" ${f==="underlag"?"required":""}></textarea><div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-avbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`:""}
+  </article>`;
+}
+function rita(){
+  if(!profiler.length){yta.innerHTML=`<div class="kort"><p>Det finns inga profiler att granska just nu.</p><p class="dov">När en profil läggs fram till dig syns den här. Hör av dig till Filip om du väntar på något.</p></div><p><button class="ljus" type="button" data-ut>Logga ut</button></p>`;return;}
+  yta.innerHTML=uppdrag.map(u=>{const ps=profiler.filter(p=>p.role_id===u.id);return`<section><h2>${esc(u.title||"Uppdrag")}</h2><p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(kort).join("")}</section>`;}).join("")+`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
+}
+yta.addEventListener("click",async e=>{
+  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut();inloggning("Du är utloggad.");return;}
+  const k=t.closest("article[data-id]");if(!k)return;const p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
+  if(t.closest("[data-avbryt]")){oppen=null;rita();return;}
+  const b=t.closest("[data-b]");if(b){oppen={id:p.id,typ:b.dataset.b};rita();const ta=document.getElementById("t-"+p.id);if(ta)ta.focus();return;}
+  const cv=t.closest("[data-cv]");if(cv){cv.disabled=true;const{data,error}=await sb.storage.from("cv").createSignedUrl(cv.dataset.cv,600);cv.disabled=false;if(error||!data){cv.textContent="CV gick inte att öppna";return;}window.open(data.signedUrl,"_blank","noopener");}
+});
+yta.addEventListener("submit",async e=>{
+  const f=e.target.closest("form[data-f]");if(!f)return;e.preventDefault();const k=f.closest("article[data-id]"),p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
+  const knapp=f.querySelector("button[type=submit]"),fm=f.querySelector("[data-fm]");knapp.disabled=true;fm.textContent="";
+  const id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2));
+  const{error}=await sb.from("xbestallningar").insert({id,data:{typ:f.dataset.f,roleId:p.role_id,candId:p.cand_id,text:f.querySelector("textarea").value.trim()}});
+  if(error){knapp.disabled=false;fm.textContent=error.message||"Det gick inte att skicka.";return;}
+  oppen=null;await las();
+});
+sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){vem.textContent=s.user.email;las();}else if(h==="SIGNED_OUT"){inloggning();}});
+sb.auth.getSession().then(({data})=>{if(data&&data.session){vem.textContent=data.session.user.email;las();}else inloggning();});
+</script>
+</body>
+</html>
