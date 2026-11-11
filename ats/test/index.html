@@ -40,6 +40,12 @@ span.delbtn{cursor:default;opacity:.85}
 .prow{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline;padding:8px 0;border-top:1px solid var(--line,#ffffff22)}.prow>a{font-weight:600}
 .pill.ptyp.k{border-color:var(--button,#2d5f8f);color:var(--button,#7fb0de)}
 .pbed{border:1px solid var(--line,#ffffff22);border-radius:6px;padding:8px 12px;margin:8px 0;max-width:95ch}.pbed summary{cursor:pointer;font-weight:600}.pbed h4{margin:10px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#bcc0bf)}
+.kunder{max-width:1150px}
+.kf{border:1px solid var(--line,#ffffff22);border-radius:8px;margin:8px 0;padding:0 14px}.kf>summary{cursor:pointer;padding:12px 0;display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline;font-size:16px}.kf[open]{padding-bottom:10px}
+.kks{display:grid;gap:0}.kk{display:grid;grid-template-columns:minmax(200px,1.2fr) minmax(220px,1.6fr) auto auto;gap:4px 14px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line,#ffffff22)}.kk .ka{grid-column:1/-1;color:var(--muted,#bcc0bf);font-size:14px}
+.kup{margin:10px 0 0;display:flex;gap:6px 10px;flex-wrap:wrap;align-items:baseline}
+.pill.lage.kund{border-color:var(--ok,#2c7a46);color:var(--ok,#2c7a46)}.pill.lage.demo{border-color:var(--button,#2d5f8f);color:var(--button,#7fb0de)}
+@media (max-width:820px){.kk{grid-template-columns:1fr}}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -640,7 +646,7 @@ body{font-size:15px}
 <div class="app">
   <header class="topbar">
     <div class="brand" title="Huvudregistret, bara Filip. Partnervyn heter ATS Tomas.">ATS Filip <small id="counts" hidden>laddar …</small></div>
-    <nav class="nav" id="view-toggle" aria-label="Huvudvyer"><button type="button" data-v="oversikt" aria-pressed="false">Översikt</button><button type="button" data-v="pipeline" aria-pressed="true">Uppdrag</button><button type="button" data-v="kandidater" aria-pressed="false">Kandidater</button><button type="button" data-v="ko" aria-pressed="false">Kö <span id="ko-count"></span></button></nav>
+    <nav class="nav" id="view-toggle" aria-label="Huvudvyer"><button type="button" data-v="oversikt" aria-pressed="false">Översikt</button><button type="button" data-v="pipeline" aria-pressed="true">Uppdrag</button><button type="button" data-v="kandidater" aria-pressed="false">Kandidater</button><button type="button" data-v="kunder" aria-pressed="false">Kunder</button><button type="button" data-v="ko" aria-pressed="false">Kö <span id="ko-count"></span></button></nav>
     <div class="bizseg" id="bizseg" role="group" aria-label="Affär"><button type="button" data-biz="recruitment">Rekrytering</button><button type="button" data-biz="consulting">Konsult</button><button type="button" data-biz="all">Alla affärer</button></div>
     <div class="spacer"></div>
     <button class="tbtn" type="button" id="btn-roles-toggle" aria-pressed="true" title="Visa eller dölj uppdragslistan">☰ Lista</button>
@@ -676,7 +682,7 @@ body{font-size:15px}
 <div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">ATS Filip</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=c1e49707"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=eb7f8eb8"></script> <!-- supabase -->
 <script>
 const STAGES=[["matchad","Matchad"],["ansokt","Ansökt"],["kontaktad","Kontaktad"],["intresserad","Intresserad"],["presenterad","Presenterad"],["intervju","Intervju"],["erbjudande","Erbjudande"],["avslutad","Avslutad"]];
 const ROLE_STATUS=[["ny","Ny"],["pagar","Pågår"],["presenterad","Presenterad"],["vunnen","Vunnen"],["tillsatt","Tillsatt"],["forlorad","Förlorad"],["stoppad","Stoppad"],["utgangen","Utgången"]];
@@ -1295,6 +1301,9 @@ function renderDetail(){
   if(view==="matchning"){({}).disabled=true;detail.innerHTML=matchingHTML();wireMatching(detail);
     if(scrollToSelected&&selected){detail.querySelector(`.mrole[data-role="${CSS.escape(selected)}"]`)?.scrollIntoView({block:"start",behavior:"smooth"});scrollToSelected=false;}
     return;}
+  if(view==="kunder"){
+    const aq=document.activeElement;if(aq&&aq.id==="kund-q"&&detail.querySelector("#kund-lista")){detail.querySelector("#kund-lista").innerHTML=kundListaHTML();return;}
+    detail.classList.add("scrolly");detail.innerHTML=kunderHTML();wireKunder(detail);return;}
   if(view==="kandidater"&&personSel&&cands.has(personSel)){
     const ae=document.activeElement;if(ae&&ae.closest&&ae.closest(".ppage")&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&detail.querySelector(".ppage"))return;   // skriver i ett fält, rör inte sidan
     detail.classList.add("scrolly");detail.innerHTML=personHTML(cands.get(personSel));wirePerson(detail);neutralizeText(detail);return;}
@@ -1561,6 +1570,77 @@ function wirePerson(el){
     const or=e.target.closest("[data-openr]");if(or){e.preventDefault();personSel=null;openRoleProcess(or.dataset.openr);return;}
     const tb=e.target.closest("[data-ptab]");if(tb){pTab=tb.dataset.ptab;for(const b of el.querySelectorAll("[data-ptab]"))b.setAttribute("aria-selected",String(b.dataset.ptab===pTab));for(const p of el.querySelectorAll("[data-ppanel]"))p.hidden=p.dataset.ppanel!==pTab;return;}
     const cd=e.target.closest("button[data-cand]");if(cd){e.preventDefault();openCandDrawer(cands.get(cd.dataset.cand));}
+  };
+}
+
+// ===== Kundregister: företag med kontaktpersoner. Bara ägaren. Läge: prospekt, demoanvändare eller kund.
+let foretag=new Map(),fkont=new Map(),kundQ="",kundOpen=new Set();
+const LAGE=[["prospekt","Prospekt"],["demo","Demoanvändare"],["kund","Kund"]];
+const lageL=v=>(LAGE.find(x=>x[0]===v)||["","Läge saknas"])[1];
+function kundUppdrag(f){const n=String(f.namn||"").trim().toLowerCase();if(n.length<3)return[];return[...roles.values()].filter(r=>{const c=String(r.customer||"").trim().toLowerCase();return c&&(c===n||c.includes(n)||n.includes(c));}).sort(refCmp);}
+function kundRader(){
+  const q=kundQ.trim().toLowerCase();const byF=new Map();
+  for(const k of fkont.values()){const fid=k.foretagId&&foretag.has(k.foretagId)?k.foretagId:"";if(!byF.has(fid))byF.set(fid,[]);byF.get(fid).push(k);}
+  const rows=[...foretag.values()].map(f=>({f,ks:(byF.get(f.id)||[]).sort((a,b)=>String(a.namn||"").localeCompare(String(b.namn||""),"sv"))}));
+  if((byF.get("")||[]).length)rows.push({f:{id:"",namn:"Utan företag"},ks:byF.get("")});
+  const hit=x=>!q||[x.f.namn,x.f.ort,...x.ks.flatMap(k=>[k.namn,k.mejl,k.befattning,k.telefon])].filter(Boolean).join(" ").toLowerCase().includes(q);
+  return rows.filter(hit).sort((a,b)=>(a.f.id===""?1:0)-(b.f.id===""?1:0)||String(a.f.namn||"").localeCompare(String(b.f.namn||""),"sv"));
+}
+function kundListaHTML(){
+  const rows=kundRader();const q=kundQ.trim();
+  if(!rows.length)return`<p class="fempty">${foretag.size||fkont.size?"Ingen träff.":"Registret är tomt. Lägg till ett företag eller en kontakt."}</p>`;
+  return rows.map(({f,ks})=>{const up=f.id?kundUppdrag(f):[];
+    return`<details class="kf" data-f="${esc(f.id)}" ${kundOpen.has(f.id)||q?"open":""}><summary><b>${esc(f.namn||"Namnlöst")}</b>${f.id?`<span class="pill lage ${esc(f.typ||"")}">${esc(lageL(f.typ))}</span>`:""}<span class="fmeta">${ks.length} ${ks.length===1?"kontakt":"kontakter"}${up.length?` · ${up.length} uppdrag`:""}${f.ort?" · "+esc(f.ort):""}</span></summary>
+      ${ks.length?`<div class="kks">${ks.map(k=>`<div class="kk"><span class="kn"><b>${esc(k.namn||"Namn saknas")}</b>${k.befattning?`, ${esc(k.befattning)}`:""}${k.typ&&k.typ!==f.typ?` <span class="pill lage ${esc(k.typ)}">${esc(lageL(k.typ))}</span>`:""}</span><span class="kc">${k.mejl?`<a href="mailto:${esc(k.mejl)}">${esc(k.mejl)}</a>`:`<span class="fmeta">mejl saknas</span>`}${k.telefon?` · <a href="tel:${esc(String(k.telefon).replace(/\s/g,""))}">${esc(k.telefon)}</a>`:""}${k.linkedin?` · <a href="${esc(k.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>`:""}</span><span class="fmeta">${esc([k.kalla,k.skapadAt?fmtDate(k.skapadAt):""].filter(Boolean).join(", "))}</span><button class="tbtn" type="button" data-redk="${esc(k.id)}" ${canWrite?"":"disabled"}>Redigera</button>${k.anteckning?`<span class="ka">${esc(k.anteckning)}</span>`:""}</div>`).join("")}</div>`:`<p class="fempty">Ingen kontaktperson än.</p>`}
+      ${up.length?`<p class="kup"><span class="fl">Uppdrag</span> ${up.map(r=>`<a href="#" data-openr="${esc(r.id)}">${esc([r.ref,r.title].filter(Boolean).join(" "))}</a>`).join(" · ")}</p>`:""}
+      ${f.anteckning?`<p class="pre">${esc(f.anteckning)}</p>`:""}
+      <p class="fsec-act"><button class="tbtn" type="button" data-nyk="${esc(f.id)}" ${canWrite?"":"disabled"}>Lägg till kontakt</button>${f.id?`<button class="tbtn" type="button" data-redf="${esc(f.id)}" ${canWrite?"":"disabled"}>Redigera företag</button>`:""}</p>
+    </details>`;}).join("");
+}
+function kunderHTML(){
+  const n=l=>[...foretag.values()].filter(f=>f.typ===l).length;
+  return`<div class="matching kunder"><div><h1>Kunder</h1>
+    <p class="fmeta" style="margin:6px 0 0">${foretag.size} företag, ${fkont.size} kontakter · ${n("kund")} kunder, ${n("demo")} demoanvändare, ${n("prospekt")} prospekt. Bara du ser registret.</p>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0"><label class="search" style="flex:1;min-width:240px;max-width:60ch"><input id="kund-q" type="search" placeholder="Sök företag, person eller mejl …" aria-label="Sök i kundregistret" value="${esc(kundQ)}" style="width:100%"></label><button class="btn small" type="button" data-nyf ${canWrite?"":"disabled"}>Nytt företag</button><button class="btn light small" type="button" data-nyk="" ${canWrite?"":"disabled"}>Ny kontakt</button></p></div>
+    <section id="kund-lista">${kundListaHTML()}</section></div>`;
+}
+function foretagDrawer(f){
+  const e=f||{};
+  drawer(f?"Redigera företag":"Nytt företag",F("kf-namn","Företag",`<input id="kf-namn" name="namn" required value="${esc(e.namn||"")}" autocomplete="off">`)+F("kf-typ","Läge",`<select id="kf-typ" name="typ">${LAGE.map(([v,l])=>`<option value="${v}" ${(e.typ||"prospekt")===v?"selected":""}>${l}</option>`).join("")}</select>`)+F("kf-ort","Ort",`<input id="kf-ort" name="ort" value="${esc(e.ort||"")}" autocomplete="off">`)+F("kf-webb","Webbplats",`<input id="kf-webb" name="webb" value="${esc(e.webb||"")}" autocomplete="off">`)+F("kf-ant","Anteckning",`<textarea id="kf-ant" name="anteckning" rows="3">${esc(e.anteckning||"")}</textarea>`),async fd=>{
+    const namn=String(fd.get("namn")||"").trim();if(!namn){toast("Företaget behöver ett namn.");return false;}
+    const dub=[...foretag.values()].find(x=>x.id!==e.id&&String(x.namn||"").trim().toLowerCase()===namn.toLowerCase());if(dub){toast("Företaget finns redan i registret.");return false;}
+    const falt={namn,typ:String(fd.get("typ")||"prospekt"),ort:String(fd.get("ort")||"").trim(),webb:String(fd.get("webb")||"").trim(),anteckning:String(fd.get("anteckning")||"").trim()};
+    try{
+      if(f){await db.doc("foretag/"+f.id).update({...falt,andradAt:nowIso()});}
+      else{let id="f_"+slug(namn);if(!id||id==="f_")id="f_"+Date.now();while(foretag.has(id))id+="_2";await db.doc("foretag/"+id).set({...falt,kalla:"manuell",skapadAt:nowIso(),skapadAv:"Filip"});kundOpen.add(id);}
+      toast("Sparat: "+namn);return true;
+    }catch(err){toast("Kunde inte spara: "+(err&&err.message||err));return false;}
+  });
+}
+function kontaktDrawer(k,fid){
+  const e=k||{foretagId:fid||""};const fs=[...foretag.values()].sort((a,b)=>String(a.namn||"").localeCompare(String(b.namn||""),"sv"));
+  drawer(k?"Redigera kontakt":"Ny kontakt",F("kk-f","Företag",`<select id="kk-f" name="foretagId"><option value="">Utan företag</option>${fs.map(f=>`<option value="${esc(f.id)}" ${e.foretagId===f.id?"selected":""}>${esc(f.namn||f.id)}</option>`).join("")}</select>`)+F("kk-namn","Namn",`<input id="kk-namn" name="namn" required value="${esc(e.namn||"")}" autocomplete="off">`)+F("kk-bef","Befattning",`<input id="kk-bef" name="befattning" value="${esc(e.befattning||"")}" autocomplete="off">`)+F("kk-mejl","Mejl",`<input id="kk-mejl" name="mejl" type="email" value="${esc(e.mejl||"")}" autocomplete="off">`)+F("kk-tel","Telefon",`<input id="kk-tel" name="telefon" type="tel" value="${esc(e.telefon||"")}" autocomplete="off">`)+F("kk-li","LinkedIn",`<input id="kk-li" name="linkedin" value="${esc(e.linkedin||"")}" autocomplete="off">`)+F("kk-typ","Läge",`<select id="kk-typ" name="typ">${LAGE.map(([v,l])=>`<option value="${v}" ${(e.typ||foretag.get(e.foretagId)?.typ||"prospekt")===v?"selected":""}>${l}</option>`).join("")}</select>`)+F("kk-ant","Anteckning",`<textarea id="kk-ant" name="anteckning" rows="3">${esc(e.anteckning||"")}</textarea>`),async fd=>{
+    const namn=String(fd.get("namn")||"").trim();if(!namn){toast("Kontakten behöver ett namn.");return false;}
+    const mejl=String(fd.get("mejl")||"").trim();
+    if(mejl){const dub=[...fkont.values()].find(x=>x.id!==e.id&&String(x.mejl||"").trim().toLowerCase()===mejl.toLowerCase());if(dub){toast("Mejladressen finns redan på "+(dub.namn||"en annan kontakt")+".");return false;}}
+    const falt={foretagId:String(fd.get("foretagId")||""),namn,befattning:String(fd.get("befattning")||"").trim(),mejl,telefon:String(fd.get("telefon")||"").trim(),linkedin:String(fd.get("linkedin")||"").trim(),typ:String(fd.get("typ")||"prospekt"),anteckning:String(fd.get("anteckning")||"").trim()};
+    try{
+      if(k){await db.doc("foretagskontakter/"+k.id).update({...falt,andradAt:nowIso()});}
+      else{let id="k_"+slug(namn);while(fkont.has(id))id+="_2";await db.doc("foretagskontakter/"+id).set({...falt,kalla:"manuell",skapadAt:nowIso(),skapadAv:"Filip"});}
+      if(falt.foretagId)kundOpen.add(falt.foretagId);toast("Sparat: "+namn);return true;
+    }catch(err){toast("Kunde inte spara: "+(err&&err.message||err));return false;}
+  });
+}
+function wireKunder(el){
+  const q=el.querySelector("#kund-q");let t=null;
+  q?.addEventListener("input",()=>{kundQ=q.value;clearTimeout(t);t=setTimeout(()=>{const b=el.querySelector("#kund-lista");if(b)b.innerHTML=kundListaHTML();},120);});
+  el.addEventListener("toggle",e=>{const d=e.target;if(d&&d.matches&&d.matches("details.kf")){if(d.open)kundOpen.add(d.dataset.f);else kundOpen.delete(d.dataset.f);}},true);
+  el.onclick=e=>{
+    if(e.target.closest("[data-nyf]")){foretagDrawer(null);return;}
+    const nk=e.target.closest("[data-nyk]");if(nk){kontaktDrawer(null,nk.dataset.nyk);return;}
+    const rf=e.target.closest("[data-redf]");if(rf){foretagDrawer(foretag.get(rf.dataset.redf));return;}
+    const rk=e.target.closest("[data-redk]");if(rk){kontaktDrawer(fkont.get(rk.dataset.redk));return;}
+    const or=e.target.closest("[data-openr]");if(or){e.preventDefault();openRoleProcess(or.dataset.openr);}
   };
 }
 function focusRowHTML(m,i,active){
@@ -2489,6 +2569,8 @@ window.addEventListener("hashchange",()=>{deepLinkHandled="";applyDeepLink();});
   db.collection("kontaktbestallningar").onSnapshot(snap=>{orders=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,d.data()]));updOkPill();if(gotRoles&&gotCands)render();},()=>{});
   db.collection("ko").onSnapshot(snap=>{koPosts=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));updateKoCount();refreshFingerprints();renderTodo();},()=>{});
   // Att göra nu: åtgärdsposter från chattarna och rolldrivaren, samt partnerns förslag (synkas hit från ATS-Tomas)
+  db.collection("foretag").onSnapshot(snap=>{foretag=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="kunder")render();},()=>{});
+  db.collection("foretagskontakter").onSnapshot(snap=>{fkont=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="kunder")render();},()=>{});
   db.collection("atgarder").onSnapshot(snap=>{atgarder=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));renderTodo();},()=>{});
   db.collection("forslag").onSnapshot(snap=>{forslagPosts=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));renderTodo();},()=>{});
   db.collection("pingar").onSnapshot(snap=>{pings=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="pipeline")renderDetail();},()=>{});
