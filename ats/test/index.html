@@ -1472,7 +1472,7 @@ const baraMin=cid=>!tomasMap().has(cid);
 function mineTagHTML(cid){const refs=tomasMap().get(cid)||[];return refs.length?`<span class="pill tomp" title="Personen ligger på uppdrag i Tomas vy och syns där">Syns hos Tomas · ${esc(refs.slice(0,3).join(", "))}${refs.length>3?" med flera":""}</span>`:`<span class="pill minp" title="Personen ligger inte på något uppdrag i Tomas vy. Han ser varken personen, dialogen eller CV:t.">Bara min</span>`;}
 const pmRT=new Map();
 function pmRoleTok(r){const key=r.id+"|"+(r.updatedAt||r.version||"");let v=pmRT.get(r.id);if(v&&v.key===key)return v;v={key,title:pmTok([r.title,r.category].join(" ")),body:pmTok([r.brief,...Object.values(r.facts||{}).map(x=>typeof x==="string"?x:""),r.location].join(" "))};pmRT.set(r.id,v);return v;}
-function pmRoleOpen(r){if(["utgangen","forlorad","stoppad","tillsatt","vunnen"].includes(r.status))return false;const d=deadlineDate(r);return!(d&&workdaysLeft(d)<0);}
+function pmRoleOpen(r){if(["utgangen","forlorad","stoppad","tillsatt","vunnen"].includes(r.status)||/^PLAC/i.test(r.ref||"")||/^Placering:/i.test(r.title||""))return false;const d=deadlineDate(r);return!(d&&workdaysLeft(d)<0);}
 function rollPot(c,filt){
   const parts=[c.note,c.tillganglig];const linked=new Set();
   for(const m of matches.values()){if(m.candId!==c.id)continue;linked.add(m.roleId);parts.push(...(Array.isArray(m.belagt)?m.belagt:[]));parts.push(m.rekommendation);}
