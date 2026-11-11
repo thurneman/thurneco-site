@@ -27,6 +27,12 @@ textarea.intern{width:100%;max-width:85ch;font:inherit;font-size:15px;padding:8p
 .pfirst.minp{border-left:4px solid var(--min);padding-left:14px;background:linear-gradient(90deg,var(--min-soft),transparent 55%)}
 .pfirst .fname{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .tpl{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-width:100ch}.tpl li{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline}
+.kog .motab td:nth-child(2){min-width:min(360px,60vw)}.kog .motab td.nw .m{white-space:normal;max-width:36ch}
+.fvillkor .vl{display:inline-flex;gap:8px;align-items:center;font-size:14px;color:var(--muted,#bcc0bf)}.fvillkor input[type=date]{color-scheme:light dark}
+.bevak{margin:14px 0 18px;border:1px solid var(--line,#ffffff22);border-radius:8px;padding:12px 14px}.bevak h2{font-size:15px;margin:0 0 4px}
+.bvrow{display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(200px,1fr) 2fr;gap:6px 14px;align-items:baseline;padding:8px 0 8px 10px;border-top:1px solid var(--line,#ffffff22);border-left:3px solid transparent}
+.bvrow.minp{border-left-color:var(--min)}
+@media (max-width:820px){.bvrow{grid-template-columns:1fr}}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -700,7 +706,7 @@ document.addEventListener("change",async e=>{
   const q=e.target&&e.target.closest&&e.target.closest("input[data-cq],textarea[data-intern]");if(!q)return;
   const id=q.dataset.cand||q.dataset.intern,c=cands.get(id);if(!c)return;const f=q.dataset.cq||"internNote",v=q.value.trim();if(v===(c[f]||""))return;
   if(f==="email"&&v&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){toast("Mejladressen ser inte komplett ut, inget sparat.");return;}
-  const ok=await writeDoc("candidates",{...c,[f]:v},true);if(ok)toast(f==="internNote"?"Intern anteckning sparad.":"Sparat på "+(c.name||"personen")+".");
+  const txt=f==="tillgangligFran"&&v&&(!c.tillganglig||/^Från \d/.test(c.tillganglig))?{tillganglig:"Från "+bevDatum(v)}:{};const ok=await writeDoc("candidates",{...c,[f]:v,...txt},true);if(ok)toast(f==="internNote"?"Intern anteckning sparad.":"Sparat på "+(c.name||"personen")+".");
 });
 // Kontaktperson för uppdraget, skrivs in direkt i rolldetaljerna
 document.addEventListener("change",async e=>{
@@ -952,7 +958,7 @@ document.addEventListener("click",e=>{const pg=e.target.closest("[data-ping]");i
 // plus härledda poster ur det som redan finns: pausade köposter, utkast utan ja, köposter utan Kör, passerade nästa steg, svar utan flytt, uppdrag utan deadline.
 let atgarder=new Map(),forslagPosts=new Map(),leftPane="roles",todoShowDone=false,todoBusy=new Set();
 try{leftPane=localStorage.getItem("ats.left")==="todo"?"todo":"roles";}catch{}
-const TODO_TYP={go:"GO",beslut:"Beslut",kundaction:"Kund",fel:"Fel","recruiter-manuell":"Recruiter",forslag:"Förslag",paminnelse:"Påminnelse",utkast:"Utkast",ko:"Kö",deadline:"Deadline",svar:"Svar",partner:"Partner",ping:"Ping"};
+const TODO_TYP={go:"GO",beslut:"Beslut",kundaction:"Kund",fel:"Fel","recruiter-manuell":"Recruiter",forslag:"Förslag",paminnelse:"Påminnelse",utkast:"Utkast",ko:"Kö",deadline:"Deadline",bevakning:"Bevakning",svar:"Svar",partner:"Partner",ping:"Ping"};
 const roleRef=id=>{const r=roles.get(id);return r?[r.ref,r.title].filter(Boolean).join(" "):(id||"");};
 function todoItems(){
   // Returnerar {id, typ, roleId, candId, text, matchId, koId, at, av, kind (doc|forslag|derived), klar, cls}
@@ -978,6 +984,11 @@ function todoItems(){
       if(wait.length)out.push({id:"ko-utkast-"+k.id,typ:"utkast",roleId:rid,text:`${wait.length} utkast väntar på ditt ja: ${wait.slice(0,3).map(u=>u.namn||"").filter(Boolean).join(", ")}${wait.length>3?" med flera":""}`,koId:k.id,at:k.at||"",kind:"derived",cls:"go"});
     }
     if(k.status==="ny"&&!koState(k).approved)out.push({id:"ko-kor-"+k.id,typ:"ko",roleId:rid,text:`Köpost utan Kör: ${k.chatt||""} ${k.typ||""}${k.prio?`, prio ${k.prio}`:""}`,koId:k.id,at:k.at||"",kind:"derived",cls:""});
+  }
+  for(const c of cands.values()){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||""))continue;const d=bevDagar(c.tillgangligFran);if(d>BEV_DAGAR||d<-30)continue;
+    const m0=linksFor(c.id)[0];
+    out.push({id:"tillg-"+c.id,typ:"bevakning",roleId:"",candId:c.id,matchId:m0?m0.id:"",text:`${c.name||c.id} är tillgänglig ${d<0?"sedan":"från"} ${bevDatum(c.tillgangligFran)}${d>0?`, om ${d} dagar`:""}. Dags att hitta uppdrag.`,at:c.tillgangligFran,kind:"derived",cls:"go"});
   }
   const LATE=new Set(["intresserad","presenterad","intervju","erbjudande"]);
   for(const m of matches.values()){
@@ -1230,12 +1241,13 @@ function utkastHTML(k){
   const ps=Object.entries(k.utkast).filter(([,u])=>u&&typeof u==="object");if(!ps.length)return"";
   const ja=ps.filter(([,u])=>u.godkand==="ja").length,nej=ps.filter(([,u])=>u.godkand==="nej").length,sent=ps.filter(([,u])=>u.skickatAt).length,wait=ps.length-ja-nej;
   const can=canWrite&&isOwner&&KO_OPEN.has(k.status||"ny");
-  const sum=`${ps.length} utkast · ${ja} ja${sent?` (${sent} skickade)`:""}${nej?` · ${nej} nej`:""}${wait?` · <b>${wait} väntar på ditt ja</b>`:""}`;
+  const sum=`${ps.length} utkast · ${ja} ja${sent?` (${sent} skickade)`:""}${nej?` · ${nej} nej`:""}${wait?` · <b>${wait} väntar på ditt ja</b>: ${ps.filter(([,u])=>u.godkand!=="ja"&&u.godkand!=="nej").slice(0,6).map(([cid,u])=>{const url=u.recruiterUrl||cands.get(cid)?.recruiterUrl||"";const nm=esc(u.namn||cands.get(cid)?.name||cid);return url?`<a href="${esc(url)}" target="_blank" rel="noopener" data-ext title="Öppna i Recruiter">${nm} ↗</a>`:nm;}).join(", ")}${wait>6?" med flera":""}`:""}`;
   const rows=ps.sort((a,b)=>(a[1].godkand==null?0:1)-(b[1].godkand==null?0:1)).map(([cid,u])=>{
     const st=u.skickatAt?`<span class="sub ok">Skickat ${esc(fmtDate(u.skickatAt))}</span>`:u.godkand==="ja"?`<span class="sub ok">Ja${u.godkandAv?`, ${esc(u.godkandAv)}`:""}</span>`:u.godkand==="nej"?`<span class="sub bad">Nej</span>`:`<span class="sub warn">Väntar</span>`;
     const btns=can&&!u.skickatAt?`<button class="tbtn" type="button" data-utk="ja" data-id="${esc(k.id)}" data-cid="${esc(cid)}" ${u.godkand==="ja"?"disabled":""}>Ja</button><button class="tbtn" type="button" data-utk="nej" data-id="${esc(k.id)}" data-cid="${esc(cid)}" ${u.godkand==="nej"?"disabled":""}>Nej</button>`:"";
     const name=matches.has(`${koRoleIds(k)[0]}__${cid}`)?`<button type="button" class="wcand" data-openm="${esc(koRoleIds(k)[0]+"__"+cid)}">${esc(u.namn||cid)}</button>`:`<b>${esc(u.namn||cid)}</b>`;
-    return`<div class="utk-row"><div class="utk-h">${name}${st}<span class="utk-b">${btns}</span></div>${u.amne?`<div class="utk-a">${esc(u.amne)}</div>`:""}${u.text?`<pre class="utk-t">${esc(u.text)}</pre>`:`<span class="m">Text saknas</span>`}</div>`;}).join("");
+    const ru=u.recruiterUrl||cands.get(cid)?.recruiterUrl||"";const rl=ru?recLink({recruiterUrl:ru}):"";
+    return`<div class="utk-row"><div class="utk-h">${name}${rl}${st}<span class="utk-b">${btns}</span></div>${u.amne?`<div class="utk-a">${esc(u.amne)}</div>`:""}${u.text?`<pre class="utk-t">${esc(u.text)}</pre>`:`<span class="m">Text saknas</span>`}</div>`;}).join("");
   const all=can&&wait?`<button class="btn small" type="button" data-utkall="${esc(k.id)}" title="Sätter ja på alla som väntar. Skickas först när posten har Kör och Kandidatkontakt körs.">Ja till alla ${wait} som väntar</button>`:"";
   return`<details class="utk" data-utk-open="${esc(k.id)}" ${utkOpen.has(k.id)?"open":""}><summary>${sum}</summary>${all}${rows}</details>`;
 }
@@ -1451,14 +1463,24 @@ function mineTagHTML(cid){const refs=tomasMap().get(cid)||[];return refs.length?
 const pmRT=new Map();
 function pmRoleTok(r){const key=r.id+"|"+(r.updatedAt||r.version||"");let v=pmRT.get(r.id);if(v&&v.key===key)return v;v={key,title:pmTok([r.title,r.category].join(" ")),body:pmTok([r.brief,...Object.values(r.facts||{}).map(x=>typeof x==="string"?x:""),r.location].join(" "))};pmRT.set(r.id,v);return v;}
 function pmRoleOpen(r){if(["utgangen","forlorad","stoppad","tillsatt","vunnen"].includes(r.status))return false;const d=deadlineDate(r);return!(d&&workdaysLeft(d)<0);}
-function tomasPot(c){
+function rollPot(c,filt){
   const parts=[c.note,c.tillganglig];const linked=new Set();
   for(const m of matches.values()){if(m.candId!==c.id)continue;linked.add(m.roleId);parts.push(...(Array.isArray(m.belagt)?m.belagt:[]));parts.push(m.rekommendation);}
   const ct=pmTok(parts.join(" "));if(!ct.size)return[];const out=[];
-  for(const r of roles.values()){if(!partnerRole(r)||linked.has(r.id)||!pmRoleOpen(r))continue;const rt=pmRoleTok(r);let sc=0,th=false;const hits=[];for(const w of ct){if(rt.title.has(w)){sc+=2;th=true;hits.unshift(w);}else if(rt.body.has(w)){sc+=1;hits.push(w);}}if(sc>=4||(sc>=3&&th))out.push({r,sc,hits});}
+  for(const r of roles.values()){if(!filt(r)||linked.has(r.id)||!pmRoleOpen(r))continue;const rt=pmRoleTok(r);let sc=0,th=false;const hits=[];for(const w of ct){if(rt.title.has(w)){sc+=2;th=true;hits.unshift(w);}else if(rt.body.has(w)){sc+=1;hits.push(w);}}if(sc>=4||(sc>=3&&th))out.push({r,sc,hits});}
   return out.sort((a,b)=>b.sc-a.sc).slice(0,6);
 }
 function tomasPotHTML(c){const list=tomasPot(c);return`<section class="fsec tpot"><h3>Möjliga uppdrag hos Tomas${list.length?` · ${list.length}`:""}</h3><p class="fmeta">Ordlikhet mellan profilen och uppdragens kravtext, ingen bedömning. Inget skapas här och Tomas ser inget.</p>${list.length?`<ul class="tpl">${list.map(x=>`<li><a href="#role=${esc(x.r.id)}">${esc([x.r.ref,x.r.title].filter(Boolean).join(" "))}</a><span class="fmeta">${esc(x.r.location||"")}</span>${daysHTML(x.r)}<span class="ftags">${x.hits.slice(0,5).map(h=>`<span class="pill">${esc(h)}</span>`).join("")}</span></li>`).join("")}</ul>`:`<p class="fempty">Inget öppet uppdrag hos Tomas liknar profilen just nu.</p>`}</section>`;}
+const tomasPot=c=>rollPot(c,partnerRole),konsultPot=c=>rollPot(c,r=>r.type==="consulting");
+const BEV_DAGAR=70;
+const bevDatum=iso=>new Date(iso+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"});
+const bevDagar=iso=>Math.round((new Date(iso+"T00:00:00")-new Date(new Date().toDateString()))/86400000);
+const bevNar=d=>d<0?"tillgänglig nu":d===0?"i dag":"om "+d+" dagar";
+function bevakHTML(){
+  const list=[...cands.values()].filter(c=>/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||"")).sort((a,b)=>a.tillgangligFran.localeCompare(b.tillgangligFran));
+  if(!list.length)return`<section class="bevak"><h2>Bevakning · tillgängliga framåt</h2><p class="fmeta">Ingen person har ett tillgänglighetsdatum än. Sätt det på personkortet, under Villkor.</p></section>`;
+  return`<section class="bevak"><h2>Bevakning · tillgängliga framåt · ${list.length}</h2><p class="fmeta">Personer med tillgänglighetsdatum, närmast först. Uppdragen är ordlikhet mot öppna konsultuppdrag, ingen bedömning. Påminnelsen kommer i Att göra ${BEV_DAGAR} dagar före datumet.</p>${list.map(c=>{const d=bevDagar(c.tillgangligFran);const pot=konsultPot(c).slice(0,3);const m0=linksFor(c.id)[0];return`<div class="bvrow ${baraMin(c.id)?"minp":""}"><span class="bvn">${m0?`<a href="#match=${esc(m0.id)}">${esc(c.name||c.id)}</a>`:esc(c.name||c.id)} ${mineTagHTML(c.id)}</span><span class="bvd"><b>${esc(bevDatum(c.tillgangligFran))}</b> · ${bevNar(d)}${c.timpris?" · "+esc(String(c.timpris)):""}</span><span class="bvp">${pot.length?pot.map(x=>`<a href="#role=${esc(x.r.id)}" class="pill">${esc(((x.r.ref||"")+" "+(x.r.title||"")).slice(0,48))}</a>`).join(" "):`<span class="fmeta">inget öppet konsultuppdrag liknar profilen just nu</span>`}</span></div>`;}).join("")}</section>`;
+}
 function focusRowHTML(m,i,active){
   const c=cands.get(m.candId);const st=stageOf(m);
   return `<button class="frow ${baraMin(m.candId)?"minp":""} ${st==="avslutad"?"done":""} ${dlg30(c)?"dlg":""}" ${dlg30(c)?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(m.id)}" aria-current="${active}">
@@ -1532,6 +1554,8 @@ function focusProfileHTML(m,idx,n){
   const rr=roles.get(m.roleId)||{};const tomasSer=rr.source==="tomas"||rr.source==="delad"||(Array.isArray(rr.delad)&&rr.delad.includes("tomas"));
   const pb=m.partnerBedomning&&typeof m.partnerBedomning==="object"?m.partnerBedomning:null;
   const partnerRow=`<div class="frow2"><span class="fl">Partner</span><span class="ftags">${tomasSer?`<span class="pill vunnen" title="Uppdraget ligger i hans vy, och personen syns där så länge matchningen inte är struken">Tillgänglig för Tomas</span>${m.dismissed?`<span class="ftxt warn">men matchningen är struken, då syns den inte</span>`:pb&&pb.bedomning?`<span class="ftxt">Hans bedömning: ${pb.bedomning==="ja"?"Ja":"Nej"}${pb.at?" · "+esc(fmtDate(pb.at)):""}</span>`:`<span class="ftxt warn">Har inte bedömt</span>`}`:`<span class="pill" title="Uppdraget hör inte till partnern och är inte delat">Inte tillgänglig för Tomas</span>`}</span></div>`;
+  const tf=/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||"")?c.tillgangligFran:"";
+  const villkorRow=`<div class="frow2 fvillkor"><span class="fl">Villkor</span><span class="ftags"><label class="vl">Tillgänglig från <input class="cq" type="date" data-cq="tillgangligFran" data-cand="${esc(c.id)}" value="${esc(tf)}" ${canWrite?"":"disabled"}></label>${tf?`<span class="ftxt">${esc(bevNar(bevDagar(tf)))}</span>`:c.tillganglig?`<span class="ftxt">${esc(c.tillganglig)}</span>`:""}<label class="vl">Timpris <input class="cq" type="text" data-cq="timpris" data-cand="${esc(c.id)}" value="${esc(c.timpris||"")}" size="14" placeholder="kr per timme" autocomplete="off" ${canWrite?"":"disabled"}></label></span></div>`;
   const sug=suggestMove(m,c);
   const sugBox=sug?`<div class="fnext fsug"><span class="fl">Förslag</span><span class="fnt">${esc(sug.text)}</span><button class="btn small primary" type="button" data-sugmove="${esc(m.id)}" data-stage="${sug.stage}" data-result="${esc(sug.result||"")}" ${canWrite?"":"disabled"} title="Flyttar först när du klickar. Loggas med vem som klickade.">${esc(sug.label)}</button></div>`:"";
   const hasNext=!!(m.nextStep||m.nextAt);
@@ -1595,6 +1619,7 @@ function focusProfileHTML(m,idx,n){
       ${roleLine?`<p class="froleline">${esc(roleLine)}</p>`:""}
       ${intBox}
       <div class="flinks">${kontaktHTML}${cvUpHTML}${orig}${tpl}${cv}${rec}${li}${orderHTML(m)}${pingHTML("kandidat",m,null)}</div>
+      ${villkorRow}
       ${partnerRow}
       ${nextBox2}
       ${sugBox}
@@ -1752,6 +1777,7 @@ function candidatesHTML(){
     <div><h1>Kandidater</h1>
       <p style="margin:8px 0 0;font-size:12px;color:var(--faint);max-width:80ch">Fritextsök på namn, erfarenhet, bransch, ort, teknik, uppdrag eller vad som helst som står om personen i ATS:et. Flera ord smalnar av sökningen. Passerade uppdrag göms i rollistan men personerna finns kvar här.</p>
       <label class="search" style="display:block;margin-top:10px"><input id="kand-q" type="search" placeholder="Sök kandidat: namn, bransch, teknik, ort, uppdrag …" aria-label="Sök kandidat" value="${esc(candQuery)}" style="width:100%;max-width:60ch"></label></div>
+    ${bevakHTML()}
     <section id="kand-results">${candResultsHTML()}</section>
   </div>`;
 }
