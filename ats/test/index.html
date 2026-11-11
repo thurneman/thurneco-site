@@ -1583,17 +1583,19 @@ function kundRader(){
   for(const k of fkont.values()){const fid=k.foretagId&&foretag.has(k.foretagId)?k.foretagId:"";if(!byF.has(fid))byF.set(fid,[]);byF.get(fid).push(k);}
   const rows=[...foretag.values()].map(f=>({f,ks:(byF.get(f.id)||[]).sort((a,b)=>String(a.namn||"").localeCompare(String(b.namn||""),"sv"))}));
   if((byF.get("")||[]).length)rows.push({f:{id:"",namn:"Utan företag"},ks:byF.get("")});
-  const hit=x=>!q||[x.f.namn,x.f.ort,...x.ks.flatMap(k=>[k.namn,k.mejl,k.befattning,k.telefon])].filter(Boolean).join(" ").toLowerCase().includes(q);
+  const hit=x=>!q||[x.f.namn,x.f.ort,x.f.bransch,x.f.mejl,...x.ks.flatMap(k=>[k.namn,k.mejl,k.befattning,k.telefon])].filter(Boolean).join(" ").toLowerCase().includes(q);
   return rows.filter(hit).sort((a,b)=>(a.f.id===""?1:0)-(b.f.id===""?1:0)||String(a.f.namn||"").localeCompare(String(b.f.namn||""),"sv"));
 }
 function kundListaHTML(){
   const rows=kundRader();const q=kundQ.trim();
   if(!rows.length)return`<p class="fempty">${foretag.size||fkont.size?"Ingen träff.":"Registret är tomt. Lägg till ett företag eller en kontakt."}</p>`;
   return rows.map(({f,ks})=>{const up=f.id?kundUppdrag(f):[];
-    return`<details class="kf" data-f="${esc(f.id)}" ${kundOpen.has(f.id)||q?"open":""}><summary><b>${esc(f.namn||"Namnlöst")}</b>${f.id?`<span class="pill lage ${esc(f.typ||"")}">${esc(lageL(f.typ))}</span>`:""}<span class="fmeta">${ks.length} ${ks.length===1?"kontakt":"kontakter"}${up.length?` · ${up.length} uppdrag`:""}${f.ort?" · "+esc(f.ort):""}</span></summary>
+    return`<details class="kf" data-f="${esc(f.id)}" ${kundOpen.has(f.id)||q?"open":""}><summary><b>${esc(f.namn||"Namnlöst")}</b>${f.id?`<span class="pill lage ${esc(f.typ||"")}">${esc(lageL(f.typ))}</span>`:""}<span class="fmeta">${ks.length} ${ks.length===1?"kontakt":"kontakter"}${up.length?` · ${up.length} uppdrag`:""}${f.bransch?" · "+esc(f.bransch):""}${f.ort?" · "+esc(f.ort):""}${f.storlek?" · "+esc(f.storlek):""}</span></summary>
       ${ks.length?`<div class="kks">${ks.map(k=>`<div class="kk"><span class="kn"><b>${esc(k.namn||"Namn saknas")}</b>${k.befattning?`, ${esc(k.befattning)}`:""}${k.typ&&k.typ!==f.typ?` <span class="pill lage ${esc(k.typ)}">${esc(lageL(k.typ))}</span>`:""}</span><span class="kc">${k.mejl?`<a href="mailto:${esc(k.mejl)}">${esc(k.mejl)}</a>`:`<span class="fmeta">mejl saknas</span>`}${k.telefon?` · <a href="tel:${esc(String(k.telefon).replace(/\s/g,""))}">${esc(k.telefon)}</a>`:""}${k.linkedin?` · <a href="${esc(k.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>`:""}</span><span class="fmeta">${esc([k.kalla,k.skapadAt?fmtDate(k.skapadAt):""].filter(Boolean).join(", "))}</span><button class="tbtn" type="button" data-redk="${esc(k.id)}" ${canWrite?"":"disabled"}>Redigera</button>${k.anteckning?`<span class="ka">${esc(k.anteckning)}</span>`:""}</div>`).join("")}</div>`:`<p class="fempty">Ingen kontaktperson än.</p>`}
       ${up.length?`<p class="kup"><span class="fl">Uppdrag</span> ${up.map(r=>`<a href="#" data-openr="${esc(r.id)}">${esc([r.ref,r.title].filter(Boolean).join(" "))}</a>`).join(" · ")}</p>`:""}
+      ${f.telefon||f.mejl||f.kontaktnot?`<p class="kup"><span class="fl">Företaget</span>${f.telefon?` <a href="tel:${esc(String(f.telefon).replace(/\s/g,""))}">${esc(f.telefon)}</a>`:""}${f.mejl?` <a href="mailto:${esc(f.mejl)}">${esc(f.mejl)}</a>`:""}${f.kontaktnot?` <span class="fmeta">${esc(f.kontaktnot)}</span>`:""}</p>`:""}
       ${f.anteckning?`<p class="pre">${esc(f.anteckning)}</p>`:""}
+      ${f.kalla?`<p class="fmeta">Källa: ${esc(f.kalla)}</p>`:""}
       <p class="fsec-act"><button class="tbtn" type="button" data-nyk="${esc(f.id)}" ${canWrite?"":"disabled"}>Lägg till kontakt</button>${f.id?`<button class="tbtn" type="button" data-redf="${esc(f.id)}" ${canWrite?"":"disabled"}>Redigera företag</button>`:""}</p>
     </details>`;}).join("");
 }
