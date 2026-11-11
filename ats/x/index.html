@@ -25,7 +25,7 @@ a{color:var(--knapp)}
 </head>
 <body>
 <main>
-  <header class="top"><h1>Thurneco · profiler för granskning</h1><span id="vem" class="dov"></span></header>
+  <header class="top"><h1 id="rub">Thurneco · profiler för granskning</h1><span id="vem" class="dov"></span></header>
   <div id="yta"><p class="dov">Läser in …</p></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
@@ -35,7 +35,9 @@ const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_K
 const yta=document.getElementById("yta"),vem=document.getElementById("vem");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dag=iso=>{try{return new Date(iso).toLocaleDateString("sv-SE",{day:"numeric",month:"long"});}catch(e){return"";}};
-let uppdrag=[],profiler=[],best=[],oppen=null;
+let uppdrag=[],profiler=[],best=[],oppen=null,inst={};
+const rub=document.getElementById("rub"),RUB0=rub.textContent;
+const knappPa=t=>!Array.isArray(inst.knappar)||inst.knappar.includes(t);
 
 function inloggning(msg){
   vem.textContent="";
@@ -45,11 +47,11 @@ function inloggning(msg){
     b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.":"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
 }
 async function las(){
-  const[u,p,b]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("xbestallningar").select("id,role_id,cand_id,typ,status,at")]);
+  const[u,p,b,j]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("xbestallningar").select("id,role_id,cand_id,typ,status,at"),sb.from("v_x_jag").select("*")]);
   if(u.error||p.error){yta.innerHTML=`<div class="kort"><p class="fel">Det gick inte att läsa profilerna. Försök igen om en stund eller hör av dig till Filip.</p></div>`;return;}
-  uppdrag=u.data||[];profiler=p.data||[];best=(b.data||[]);rita();
+  uppdrag=u.data||[];profiler=p.data||[];best=(b.data||[]);const jag=(j&&j.data&&j.data[0])||null;inst=(jag&&jag.installningar)||{};rub.textContent=String(inst.rubrik||"").trim()||RUB0;rita();
 }
-function bestRad(p){return best.filter(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id).map(x=>`<span class="pill ok">${x.typ==="intervju"?"Intervju beställd":"Mer underlag begärt"} ${esc(dag(x.at))}</span>`).join("");}
+function bestRad(p){return best.filter(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id).map(x=>`<span class="pill ${x.status==="ny"?"ok":""}">${x.typ==="intervju"?(x.status==="ny"?"Intervju beställd":"Intervju hanterad"):(x.status==="ny"?"Mer underlag begärt":"Underlag hanterat")} ${esc(dag(x.at))}</span>`).join("");}
 function kort(p){
   const har=t=>best.some(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id&&x.typ===t&&x.status==="ny");
   const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
@@ -57,17 +59,18 @@ function kort(p){
   return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Namn saknas")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${bestRad(p)}</div>
     ${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
     ${lista("Stöd mot kraven",p.belagt)}${lista("Att stämma av",p.verifiera)}
-    <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:`<span class="dov">CV är inte inlagt än</span>`}
-      <button type="button" data-b="intervju" ${har("intervju")?"disabled":""}>Boka intervju</button><button class="ljus" type="button" data-b="underlag" ${har("underlag")?"disabled":""}>Be om mer underlag</button></div>
+    <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:(inst.visaCv===false?"":`<span class="dov">CV är inte inlagt än</span>`)}
+      ${knappPa("intervju")?`<button type="button" data-b="intervju" ${har("intervju")?"disabled":""}>Boka intervju</button>`:""}${knappPa("underlag")?`<button class="ljus" type="button" data-b="underlag" ${har("underlag")?"disabled":""}>Be om mer underlag</button>`:""}</div>
     ${f?`<form class="form" data-f="${f}"><label class="dov" for="t-${esc(p.id)}">${f==="intervju"?"Förslag på tider eller annat vi bör veta (valfritt)":"Vad vill du veta mer om?"}</label><textarea id="t-${esc(p.id)}" rows="3" maxlength="1000" ${f==="underlag"?"required":""}></textarea><div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-avbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`:""}
   </article>`;
 }
 function rita(){
   if(!profiler.length){yta.innerHTML=`<div class="kort"><p>Det finns inga profiler att granska just nu.</p><p class="dov">När en profil läggs fram till dig syns den här. Hör av dig till Filip om du väntar på något.</p></div><p><button class="ljus" type="button" data-ut>Logga ut</button></p>`;return;}
-  yta.innerHTML=uppdrag.map(u=>{const ps=profiler.filter(p=>p.role_id===u.id);return`<section><h2>${esc(u.title||"Uppdrag")}</h2><p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(kort).join("")}</section>`;}).join("")+`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
+  const hals=String(inst.halsning||"").trim();
+  yta.innerHTML=(hals?`<p>${esc(hals).replace(/\n/g,"<br>")}</p>`:"")+uppdrag.map(u=>{const ps=profiler.filter(p=>p.role_id===u.id);return`<section><h2>${esc(u.title||"Uppdrag")}</h2><p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(kort).join("")}</section>`;}).join("")+`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
 }
 yta.addEventListener("click",async e=>{
-  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut();inloggning("Du är utloggad.");return;}
+  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut();inst={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
   const k=t.closest("article[data-id]");if(!k)return;const p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
   if(t.closest("[data-avbryt]")){oppen=null;rita();return;}
   const b=t.closest("[data-b]");if(b){oppen={id:p.id,typ:b.dataset.b};rita();const ta=document.getElementById("t-"+p.id);if(ta)ta.focus();return;}

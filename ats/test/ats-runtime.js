@@ -279,7 +279,7 @@
   var kontaktKey = function (p) { var r = kontaktRow("x", p); r.at = r.at ? tsOut(r.at) : null; return stable(kontaktDoc(r)); };
 
   // ---- generiska tabeller: kolumner för sökning, hela dokumentet i data ----
-  var GENERIC = ["atgarder", "forslag", "pingar", "matchbegaran", "bedomningar", "andringar", "searchbegaran", "egna", "cv_uppladdningar", "kommentarer", "kontaktuppgifter", "partnersvar", "foretag", "foretagskontakter"];
+  var GENERIC = ["atgarder", "forslag", "pingar", "matchbegaran", "bedomningar", "andringar", "searchbegaran", "egna", "cv_uppladdningar", "kommentarer", "kontaktuppgifter", "partnersvar", "foretag", "foretagskontakter", "xslapp", "xgranskare", "xbestallningar"];
   var COLL_TABLE = { cv: "cv_uppladdningar" };
   var first = function () { for (var i = 0; i < arguments.length; i++) if (arguments[i] !== undefined && arguments[i] !== null) return arguments[i]; return null; };
   function genericRow(ctx, id, d) {

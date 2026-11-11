@@ -46,6 +46,10 @@ span.delbtn{cursor:default;opacity:.85}
 .kup{margin:10px 0 0;display:flex;gap:6px 10px;flex-wrap:wrap;align-items:baseline}
 .pill.lage.kund{border-color:var(--ok,#2c7a46);color:var(--ok,#2c7a46)}.pill.lage.demo{border-color:var(--button,#2d5f8f);color:var(--button,#7fb0de)}
 @media (max-width:820px){.kk{grid-template-columns:1fr}}
+.xg h4{margin:14px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#bcc0bf)}
+.xval{display:flex;gap:6px 18px;flex-wrap:wrap;margin:0}.xval label{display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.xtxt{display:grid;grid-template-columns:minmax(220px,1fr) minmax(260px,2fr);gap:0 14px;margin-top:10px}
+@media (max-width:820px){.xtxt{grid-template-columns:1fr}}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -646,7 +650,7 @@ body{font-size:15px}
 <div class="app">
   <header class="topbar">
     <div class="brand" title="Huvudregistret, bara Filip. Partnervyn heter ATS Tomas.">ATS Filip <small id="counts" hidden>laddar …</small></div>
-    <nav class="nav" id="view-toggle" aria-label="Huvudvyer"><button type="button" data-v="oversikt" aria-pressed="false">Översikt</button><button type="button" data-v="pipeline" aria-pressed="true">Uppdrag</button><button type="button" data-v="kandidater" aria-pressed="false">Kandidater</button><button type="button" data-v="kunder" aria-pressed="false">Kunder</button><button type="button" data-v="ko" aria-pressed="false">Kö <span id="ko-count"></span></button></nav>
+    <nav class="nav" id="view-toggle" aria-label="Huvudvyer"><button type="button" data-v="oversikt" aria-pressed="false">Översikt</button><button type="button" data-v="pipeline" aria-pressed="true">Uppdrag</button><button type="button" data-v="kandidater" aria-pressed="false">Kandidater</button><button type="button" data-v="kunder" aria-pressed="false">Kunder</button><button type="button" data-v="granskare" aria-pressed="false">Granskare</button><button type="button" data-v="ko" aria-pressed="false">Kö <span id="ko-count"></span></button></nav>
     <div class="bizseg" id="bizseg" role="group" aria-label="Affär"><button type="button" data-biz="recruitment">Rekrytering</button><button type="button" data-biz="consulting">Konsult</button><button type="button" data-biz="all">Alla affärer</button></div>
     <div class="spacer"></div>
     <button class="tbtn" type="button" id="btn-roles-toggle" aria-pressed="true" title="Visa eller dölj uppdragslistan">☰ Lista</button>
@@ -682,7 +686,7 @@ body{font-size:15px}
 <div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">ATS Filip</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=eb7f8eb8"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=f7dc5705"></script> <!-- supabase -->
 <script>
 const STAGES=[["matchad","Matchad"],["ansokt","Ansökt"],["kontaktad","Kontaktad"],["intresserad","Intresserad"],["presenterad","Presenterad"],["intervju","Intervju"],["erbjudande","Erbjudande"],["avslutad","Avslutad"]];
 const ROLE_STATUS=[["ny","Ny"],["pagar","Pågår"],["presenterad","Presenterad"],["vunnen","Vunnen"],["tillsatt","Tillsatt"],["forlorad","Förlorad"],["stoppad","Stoppad"],["utgangen","Utgången"]];
@@ -1301,6 +1305,7 @@ function renderDetail(){
   if(view==="matchning"){({}).disabled=true;detail.innerHTML=matchingHTML();wireMatching(detail);
     if(scrollToSelected&&selected){detail.querySelector(`.mrole[data-role="${CSS.escape(selected)}"]`)?.scrollIntoView({block:"start",behavior:"smooth"});scrollToSelected=false;}
     return;}
+  if(view==="granskare"){detail.classList.add("scrolly");detail.innerHTML=xgranskareHTML();wireX(detail);return;}
   if(view==="kunder"){
     const aq=document.activeElement;if(aq&&aq.id==="kund-q"&&detail.querySelector("#kund-lista")){detail.querySelector("#kund-lista").innerHTML=kundListaHTML();return;}
     detail.classList.add("scrolly");detail.innerHTML=kunderHTML();wireKunder(detail);return;}
@@ -1471,7 +1476,7 @@ function focusListFor(roleId){
 }
 const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
 const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
-const PM_STOP=new Set("och eller samt som till från för med utan inom under över mellan efter innan sedan också även bara inte denna detta dessa den det här där när vilket vilken vilka vara blir blev varit vill kunna kommer skall ska måste finns finnas gärna mycket många flera andra annan annat alla allt varje både genom enligt kring hos via per cirka minst högst goda god bra stor stort stora lång långt länge erfarenhet erfarenheter arbete arbeta arbetar arbetat uppdrag uppdraget uppdragets konsult konsulten konsulter kandidat kandidaten roll rollen tjänst tjänsten team teamet kund kunden kundens företag företaget bolag bolaget start starta månader månad veckor timmar heltid deltid plats platsen placering distans krav kraven meriterande ansvar ansvara uppgifter arbetsuppgifter söker sökes behöver behov sista dagar förlängning möjlighet option exempel även dessutom samt därför eftersom därefter idag manager senior junior lead specialist expert coach head chef ansvarig today year years with that this from have will your they their about into more than over also been being both each other some such only very just like well make made work working works experience experienced role roles position company team teams strong good great skills skill ability able based within across using used use need needs needed looking look join want wanted include including includes".split(" "));
+const PM_STOP=new Set("eget egen egna tidigare nuvarande idag sedan senior junior januari februari mars april maj juni juli augusti september oktober november december stockholm göteborg malmö sverige svenska engelska ledig tillgänglig timme kronor arvode profil profilen uppgift bland annat olika flertal senaste just och eller samt som till från för med utan inom under över mellan efter innan sedan också även bara inte denna detta dessa den det här där när vilket vilken vilka vara blir blev varit vill kunna kommer skall ska måste finns finnas gärna mycket många flera andra annan annat alla allt varje både genom enligt kring hos via per cirka minst högst goda god bra stor stort stora lång långt länge erfarenhet erfarenheter arbete arbeta arbetar arbetat uppdrag uppdraget uppdragets konsult konsulten konsulter kandidat kandidaten roll rollen tjänst tjänsten team teamet kund kunden kundens företag företaget bolag bolaget start starta månader månad veckor timmar heltid deltid plats platsen placering distans krav kraven meriterande ansvar ansvara uppgifter arbetsuppgifter söker sökes behöver behov sista dagar förlängning möjlighet option exempel även dessutom samt därför eftersom därefter idag manager senior junior lead specialist expert coach head chef ansvarig today year years with that this from have will your they their about into more than over also been being both each other some such only very just like well make made work working works experience experienced role roles position company team teams strong good great skills skill ability able based within across using used use need needs needed looking look join want wanted include including includes".split(" "));
 const pmTok=str=>{const out=new Set();for(const w of String(str||"").toLowerCase().replace(/[^a-zåäöéü0-9+#.]+/g," ").split(" ")){const x=w.replace(/^[.]+|[.]+$/g,"");if(x.length<4||PM_STOP.has(x)||/^\d+$/.test(x))continue;out.add(x);}return out;};
 const partnerRole=r=>!!r&&(r.source==="tomas"||r.source==="delad"||(Array.isArray(r.delad)&&r.delad.length>0));
 // Vilka personer partnern ser, och på vilka uppdrag. Räknas om högst en gång i sekunden.
@@ -1645,6 +1650,77 @@ function wireKunder(el){
     const or=e.target.closest("[data-openr]");if(or){e.preventDefault();openRoleProcess(or.dataset.openr);}
   };
 }
+
+// ===== ATS-X: granskare. Samma avskalade vy för alla, finjusteras per person. Bara ägaren ser och ändrar.
+let xsl=new Map(),xgr=new Map(),xbe=new Map(),xOpen=new Set();
+const X_LANK="https://thurneco.se/ats/x/";
+const XVISA=[["visaProfil","Profiltext"],["visaPoang","Matchpoäng"],["visaBelagg","Stöd mot kraven"],["visaVerifiera","Att stämma av"],["visaCv","CV"],["visaTillganglig","Tillgänglighet"]];
+const XKNAPP=[["intervju","Boka intervju"],["underlag","Be om mer underlag"]];
+function xNamn(e){const g=xgr.get(e);if(g&&g.namn)return g.namn;const s=[...xsl.values()].find(x=>x.granskare===e&&x.granskareNamn);return s?s.granskareNamn:e;}
+function xInst(e){const g=xgr.get(e);return(g&&g.installningar)||{};}
+function xgranskareHTML(){
+  const ids=[...new Set([...xgr.keys(),...[...xsl.values()].map(s=>s.granskare).filter(Boolean)])].sort((a,b)=>xNamn(a).localeCompare(xNamn(b),"sv"));
+  const kort=ids.map((e,n)=>{
+    const i=xInst(e),har=xgr.has(e),kn=Array.isArray(i.knappar)?i.knappar:XKNAPP.map(k=>k[0]),lasbar=har&&canWrite?"":"disabled";
+    const sl=[...xsl.values()].filter(s=>s.granskare===e&&s.status!=="aterkallad");
+    const be=[...xbe.values()].filter(b=>b.granskare===e&&b.status==="ny");
+    const perRoll=new Map();for(const s of sl){if(!perRoll.has(s.roleId))perRoll.set(s.roleId,[]);perRoll.get(s.roleId).push(s);}
+    return`<details class="kf xg" data-x="${esc(e)}" ${xOpen.has(e)||ids.length===1?"open":""}><summary><b>${esc(xNamn(e))}</b><span class="fmeta">${esc(e)}</span><span class="pill">${sl.length} ${sl.length===1?"släppt profil":"släppta profiler"}</span>${be.length?`<span class="pill lage kund">${be.length} väntar på dig</span>`:""}</summary>
+      ${be.length?`<h4>Beställningar som väntar på dig</h4>`+be.map(b=>{const c=cands.get(b.candId);return`<div class="prow"><span>${b.typ==="intervju"?"Vill boka intervju med":"Ber om mer underlag om"} <b>${esc(c?c.name:b.candId)}</b>${b.text?": "+esc(b.text):""}</span><button type="button" class="tbtn" data-xklar="${esc(b.id)}" ${canWrite?"":"disabled"}>Markera klar</button></div>`;}).join(""):""}
+      <h4>Släppta profiler</h4>${sl.length?[...perRoll].map(([rid,arr])=>{const r=roles.get(rid);return`<div class="prow"><a href="#" data-openr="${esc(rid)}">${esc(r?(r.ref?r.ref+" · ":"")+(r.title||""):rid)}</a>${arr.map(s=>{const c=cands.get(s.candId);return`<span class="pill">${esc(c?c.name:s.candId)}</span><button type="button" class="tbtn" data-xater="${esc(s.id)}" ${canWrite?"":"disabled"}>Återkalla</button>`;}).join("")}</div>`;}).join(""):`<p class="fempty">Inget är släppt just nu. Släpp en profil från personens kort i ett uppdrag.</p>`}
+      <h4>Det här visas</h4><p class="xval">${XVISA.map(([k,l])=>`<label><input type="checkbox" data-xi="${k}" ${i[k]===false?"":"checked"} ${lasbar}> ${l}</label>`).join("")}</p>
+      <h4>Knappar</h4><p class="xval">${XKNAPP.map(([k,l])=>`<label><input type="checkbox" data-xk="${k}" ${kn.includes(k)?"checked":""} ${lasbar}> ${l}</label>`).join("")}</p>
+      <div class="xtxt">${F("xr-"+n,"Rubrik på sidan",`<input id="xr-${n}" data-xt="rubrik" value="${esc(i.rubrik||"")}" placeholder="Thurneco · profiler för granskning" autocomplete="off" ${lasbar}>`)}${F("xh-"+n,"Hälsning överst",`<textarea id="xh-${n}" data-xt="halsning" rows="2" ${lasbar}>${esc(i.halsning||"")}</textarea>`)}</div>
+      <p class="fmeta">Namnet visas alltid. Det du stänger av lämnar aldrig databasen till den här personen.${har?"":" Inställningarna tänds inom någon minut."}</p>
+    </details>`;}).join("");
+  return`<div class="matching kunder xgv"><div><h1>Granskare</h1>
+    <p class="fmeta" style="margin:6px 0 0">Utomstående som granskar profiler i ATS-X. Alla får samma avskalade vy och loggar in med mejllänk. Du släpper en profil från personens kort i ett uppdrag, raden Granskare.</p>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0"><a href="${X_LANK}" target="_blank" rel="noopener">${X_LANK}</a><button class="btn light small" type="button" data-xkopiera>Kopiera länken</button></p></div>
+    <section>${kort||`<p class="fempty">Ingen granskare än. Öppna ett uppdrag, välj en person och klicka Släpp till granskare.</p>`}</section></div>`;
+}
+function xSlappDrawer(cid,rid){
+  const c=cands.get(cid),r=roles.get(rid);if(!c||!r)return;
+  const kanda=[...xgr.values()].sort((a,b)=>String(a.namn||a.id).localeCompare(String(b.namn||b.id),"sv"));
+  drawer("Släpp till granskare",`<p class="fmeta">${esc(c.name||"Personen")} på ${esc(r.title||"uppdraget")}. Granskaren loggar in med mejllänk på ${X_LANK} och ser namn, profiltext, bedömning och CV. Inga kontaktuppgifter, inget timpris, ingen dialog.</p>`+F("xs-mejl","Granskarens mejladress",`<input id="xs-mejl" name="mejl" type="email" required list="xs-lista" autocomplete="off"><datalist id="xs-lista">${kanda.map(g=>`<option value="${esc(g.id)}">${esc(g.namn||"")}</option>`).join("")}</datalist>`)+F("xs-namn","Namn (behövs bara första gången)",`<input id="xs-namn" name="namn" autocomplete="off">`),async fd=>{
+    const mejl=String(fd.get("mejl")||"").trim().toLowerCase(),namn=String(fd.get("namn")||"").trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mejl)){toast("Mejladressen ser inte rätt ut.");return false;}
+    const id=rid+"__"+cid+"__"+mejl.replace(/[^a-z0-9]+/g,"_");
+    const f={granskare:mejl,roleId:rid,candId:cid,status:"slappt",slapptAt:nowIso(),slapptAv:"Filip"};if(namn)f.granskareNamn=namn;
+    try{
+      if(xsl.has(id))await db.doc("xslapp/"+id).update(f);else await db.doc("xslapp/"+id).set(f);
+      xOpen.add(mejl);toast((c.name||"Personen")+" är släppt till "+(namn||xNamn(mejl))+". Skicka länken "+X_LANK);render();return true;
+    }catch(err){toast("Kunde inte släppa: "+(err&&err.message||err));return false;}
+  });
+}
+document.addEventListener("click",async e=>{
+  const t=e.target&&e.target.closest?e.target:null;if(!t)return;
+  const a=t.closest("button[data-xater]");
+  if(a){const s=xsl.get(a.dataset.xater);if(!s)return;
+    if(a.dataset.armed!=="1"){a.dataset.armed="1";a.textContent="Klicka igen för att återkalla";return;}
+    try{await db.doc("xslapp/"+s.id).update({status:"aterkallad",aterkalladAt:nowIso()});toast("Återkallat. "+xNamn(s.granskare)+" ser inte längre personen.");render();}catch(err){toast("Kunde inte återkalla: "+(err&&err.message||err));}
+    return;}
+  const b=t.closest("button[data-xslapp]");if(b){xSlappDrawer(b.dataset.xslapp,b.dataset.xroll);}
+});
+function wireX(el){
+  el.addEventListener("toggle",e=>{const d=e.target;if(d&&d.matches&&d.matches("details.xg")){if(d.open)xOpen.add(d.dataset.x);else xOpen.delete(d.dataset.x);}},true);
+  el.onchange=async e=>{
+    const d=e.target.closest&&e.target.closest("details.xg");if(!d)return;const id=d.dataset.x;if(!xgr.has(id))return;
+    const i={...xInst(id)};
+    d.querySelectorAll("[data-xi]").forEach(c=>{i[c.dataset.xi]=c.checked;});
+    i.knappar=[...d.querySelectorAll("[data-xk]")].filter(c=>c.checked).map(c=>c.dataset.xk);
+    d.querySelectorAll("[data-xt]").forEach(x=>{i[x.dataset.xt]=x.value.trim();});
+    try{await db.doc("xgranskare/"+id).update({installningar:i,andradAt:nowIso()});toast("Sparat för "+xNamn(id));}catch(err){toast("Kunde inte spara: "+(err&&err.message||err));}
+  };
+  el.onclick=async e=>{
+    if(!e.target.closest(".xgv"))return;
+    if(e.target.closest("[data-xkopiera]")){try{await navigator.clipboard.writeText(X_LANK);toast("Länken är kopierad.");}catch(_){toast(X_LANK);}return;}
+    const kl=e.target.closest("[data-xklar]");
+    if(kl){const b=xbe.get(kl.dataset.xklar);if(!b)return;kl.disabled=true;
+      try{await db.doc("xbestallningar/"+b.id).update({status:"klar",klarAt:nowIso()});if(atgarder.has("x-"+b.id))await db.doc("atgarder/x-"+b.id).update({status:"klar",klarAt:nowIso(),klarAv:userId||"ägaren"});toast("Markerad som klar.");render();}catch(err){kl.disabled=false;toast("Kunde inte spara: "+(err&&err.message||err));}
+      return;}
+    const or=e.target.closest("[data-openr]");if(or){e.preventDefault();openRoleProcess(or.dataset.openr);}
+  };
+}
 function focusRowHTML(m,i,active){
   const c=cands.get(m.candId);const st=stageOf(m);
   return `<button class="frow ${baraMin(m.candId)?"minp":""} ${st==="avslutad"?"done":""} ${dlg30(c)?"dlg":""}" ${dlg30(c)?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(m.id)}" aria-current="${active}">
@@ -1722,6 +1798,8 @@ function focusProfileHTML(m,idx,n){
   const villkorRow=`<div class="frow2 fvillkor"><span class="fl">Villkor</span><span class="ftags"><label class="vl">Tillgänglig från <input class="cq" type="date" data-cq="tillgangligFran" data-cand="${esc(c.id)}" value="${esc(tf)}" ${canWrite?"":"disabled"}></label>${tf?`<span class="ftxt"><b>${esc(bevDatum(tf))}</b> · ${esc(bevNar(bevDagar(tf)))}</span>`:c.tillganglig?`<span class="ftxt">${esc(c.tillganglig)}</span>`:""}<label class="vl">Timpris <input class="cq" type="text" data-cq="timpris" data-cand="${esc(c.id)}" value="${esc(c.timpris||"")}" size="14" placeholder="kr per timme" autocomplete="off" ${canWrite?"":"disabled"}></label></span></div>`;
   const synsT=tomasMap().has(c.id);const dialT=[...matches.values()].some(x=>x.candId===c.id&&!x.dismissed&&partnerRole(roles.get(x.roleId))&&!["matchad","ansokt","avslutad"].includes(stageOf(x)));
   const delRow=`<div class="frow2 fdela"><span class="fl">Delning</span><span class="ftags">${lasInfort&&canWrite?`<button type="button" class="delbtn ${synsT?"on":""}" data-dela="${esc(c.id)}" data-till="${synsT?"0":"1"}" data-dial="${dialT?"1":"0"}" aria-pressed="${synsT}" title="${synsT?"Klicka för att dölja personen för andra":"Klicka för att dela personkortet"}">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</button>`:`<span class="delbtn ${synsT?"on":""}" aria-disabled="true">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</span>`}<span class="ftxt">${synsT?"Tomas ser personkortet: profiltext, CV, kontakt och villkor. Aldrig din dialog, dina uppdrag eller den interna anteckningen.":"Tomas ser ingenting om personen."}${lasInfort?"":" Knappen tänds när låset är infört i databasen."}</span></span></div>`;
+  const xl=m&&m.roleId?[...xsl.values()].filter(s=>s.candId===c.id&&s.roleId===m.roleId&&s.status!=="aterkallad"):[];
+  const xRow=m&&m.roleId?`<div class="frow2 fx"><span class="fl">Granskare</span><span class="ftags">${xl.map(s=>`<span class="pill">${esc(xNamn(s.granskare))}</span>${canWrite?`<button type="button" class="tbtn" data-xater="${esc(s.id)}">Återkalla</button>`:""}`).join("")}${canWrite?`<button type="button" class="tbtn" data-xslapp="${esc(c.id)}" data-xroll="${esc(m.roleId)}">Släpp till granskare</button>`:""}<span class="ftxt">${xl.length?"Ser personen i ATS-X på det här uppdraget. Aldrig kontaktuppgifter, timpris eller dialog.":"Ingen utomstående ser personen på det här uppdraget."}</span></span></div>`:"";
   const sug=suggestMove(m,c);
   const sugBox=sug?`<div class="fnext fsug"><span class="fl">Förslag</span><span class="fnt">${esc(sug.text)}</span><button class="btn small primary" type="button" data-sugmove="${esc(m.id)}" data-stage="${sug.stage}" data-result="${esc(sug.result||"")}" ${canWrite?"":"disabled"} title="Flyttar först när du klickar. Loggas med vem som klickade.">${esc(sug.label)}</button></div>`:"";
   const hasNext=!!(m.nextStep||m.nextAt);
@@ -1787,6 +1865,7 @@ function focusProfileHTML(m,idx,n){
       <div class="flinks">${kontaktHTML}${cvUpHTML}${orig}${tpl}${cv}${rec}${li}${orderHTML(m)}${pingHTML("kandidat",m,null)}</div>
       ${villkorRow}
       ${delRow}
+      ${xRow}
       ${partnerRow}
       ${nextBox2}
       ${sugBox}
@@ -2571,6 +2650,11 @@ window.addEventListener("hashchange",()=>{deepLinkHandled="";applyDeepLink();});
   db.collection("kontaktbestallningar").onSnapshot(snap=>{orders=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,d.data()]));updOkPill();if(gotRoles&&gotCands)render();},()=>{});
   db.collection("ko").onSnapshot(snap=>{koPosts=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));updateKoCount();refreshFingerprints();renderTodo();},()=>{});
   // Att göra nu: åtgärdsposter från chattarna och rolldrivaren, samt partnerns förslag (synkas hit från ATS-Tomas)
+  const xSig=m=>[...m.values()].map(x=>x.id+":"+(x.status||"")+":"+(x.andradAt||"")+":"+(x.namn||"")).sort().join("|");
+  const xNy=(gammal,ny,baraVy)=>{if(xSig(gammal)===xSig(ny))return;if(baraVy&&view!=="granskare")return;const a=document.activeElement;if(a&&(a.tagName==="TEXTAREA"||(a.tagName==="INPUT"&&a.type!=="checkbox")))return;render();};
+  db.collection("xslapp").onSnapshot(snap=>{const g=xsl;xsl=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));xNy(g,xsl);},()=>{});
+  db.collection("xgranskare").onSnapshot(snap=>{const g=xgr;xgr=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));xNy(g,xgr);},()=>{});
+  db.collection("xbestallningar").onSnapshot(snap=>{const g=xbe;xbe=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));xNy(g,xbe,true);},()=>{});
   db.collection("foretag").onSnapshot(snap=>{foretag=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="kunder")render();},()=>{});
   db.collection("foretagskontakter").onSnapshot(snap=>{fkont=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="kunder")render();},()=>{});
   db.collection("atgarder").onSnapshot(snap=>{atgarder=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));renderTodo();},()=>{});
