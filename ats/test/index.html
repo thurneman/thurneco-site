@@ -20,6 +20,13 @@
 .fdlg .dw{font-size:13px;color:var(--muted,#bcc0bf)}
 .cq{font:inherit;font-size:14px;padding:3px 8px;border-radius:6px;border:1px dashed var(--line,#ffffff44);background:transparent;color:inherit}
 textarea.intern{width:100%;max-width:85ch;font:inherit;font-size:15px;padding:8px 10px;border-radius:6px;border:1px solid var(--line,#ffffff33);background:transparent;color:inherit}
+:root{--min:#7d4f96;--min-soft:#7d4f9614}:root[data-theme="dark"]{--min:#c9a3db;--min-soft:#c9a3db1f}
+.pill.minp{border-color:var(--min);color:var(--min)}.pill.tomp{border-color:var(--ok,#2c7a46);color:var(--ok,#2c7a46)}
+.frow.minp,.frow.minp[aria-current="true"]{border-left-color:var(--min)}
+.mrow.minp{box-shadow:inset 3px 0 0 var(--min)}
+.pfirst.minp{border-left:4px solid var(--min);padding-left:14px;background:linear-gradient(90deg,var(--min-soft),transparent 55%)}
+.pfirst .fname{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tpl{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-width:100ch}.tpl li{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:baseline}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -1433,9 +1440,28 @@ function focusListFor(roleId){
 }
 const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
 const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
+const PM_STOP=new Set("och eller samt som till från för med utan inom under över mellan efter innan sedan också även bara inte denna detta dessa den det här där när vilket vilken vilka vara blir blev varit vill kunna kommer skall ska måste finns finnas gärna mycket många flera andra annan annat alla allt varje både genom enligt kring hos via per cirka minst högst goda god bra stor stort stora lång långt länge erfarenhet erfarenheter arbete arbeta arbetar arbetat uppdrag uppdraget uppdragets konsult konsulten konsulter kandidat kandidaten roll rollen tjänst tjänsten team teamet kund kunden kundens företag företaget bolag bolaget start starta månader månad veckor timmar heltid deltid plats platsen placering distans krav kraven meriterande ansvar ansvara uppgifter arbetsuppgifter söker sökes behöver behov sista dagar förlängning möjlighet option exempel även dessutom samt därför eftersom därefter idag manager senior junior lead specialist expert coach head chef ansvarig today year years with that this from have will your they their about into more than over also been being both each other some such only very just like well make made work working works experience experienced role roles position company team teams strong good great skills skill ability able based within across using used use need needs needed looking look join want wanted include including includes".split(" "));
+const pmTok=str=>{const out=new Set();for(const w of String(str||"").toLowerCase().replace(/[^a-zåäöéü0-9+#.]+/g," ").split(" ")){const x=w.replace(/^[.]+|[.]+$/g,"");if(x.length<4||PM_STOP.has(x)||/^\d+$/.test(x))continue;out.add(x);}return out;};
+const partnerRole=r=>!!r&&(r.source==="tomas"||r.source==="delad"||(Array.isArray(r.delad)&&r.delad.length>0));
+// Vilka personer partnern ser, och på vilka uppdrag. Räknas om högst en gång i sekunden.
+let pmCache=null,pmAt=0;
+function tomasMap(){const now=Date.now();if(pmCache&&now-pmAt<1000)return pmCache;const mp=new Map();for(const m of matches.values()){if(m.dismissed)continue;const r=roles.get(m.roleId);if(!partnerRole(r))continue;const c=cands.get(m.candId);if(c&&c.baraMin===true&&m.slapptTillPartner!==true)continue;if(!mp.has(m.candId))mp.set(m.candId,[]);mp.get(m.candId).push(r.ref||r.id);}pmCache=mp;pmAt=now;return mp;}
+const baraMin=cid=>!tomasMap().has(cid);
+function mineTagHTML(cid){const refs=tomasMap().get(cid)||[];return refs.length?`<span class="pill tomp" title="Personen ligger på uppdrag i Tomas vy och syns där">Syns hos Tomas · ${esc(refs.slice(0,3).join(", "))}${refs.length>3?" med flera":""}</span>`:`<span class="pill minp" title="Personen ligger inte på något uppdrag i Tomas vy. Han ser varken personen, dialogen eller CV:t.">Bara min</span>`;}
+const pmRT=new Map();
+function pmRoleTok(r){const key=r.id+"|"+(r.updatedAt||r.version||"");let v=pmRT.get(r.id);if(v&&v.key===key)return v;v={key,title:pmTok([r.title,r.category].join(" ")),body:pmTok([r.brief,...Object.values(r.facts||{}).map(x=>typeof x==="string"?x:""),r.location].join(" "))};pmRT.set(r.id,v);return v;}
+function pmRoleOpen(r){if(["utgangen","forlorad","stoppad","tillsatt","vunnen"].includes(r.status))return false;const d=deadlineDate(r);return!(d&&workdaysLeft(d)<0);}
+function tomasPot(c){
+  const parts=[c.note,c.tillganglig];const linked=new Set();
+  for(const m of matches.values()){if(m.candId!==c.id)continue;linked.add(m.roleId);parts.push(...(Array.isArray(m.belagt)?m.belagt:[]));parts.push(m.rekommendation);}
+  const ct=pmTok(parts.join(" "));if(!ct.size)return[];const out=[];
+  for(const r of roles.values()){if(!partnerRole(r)||linked.has(r.id)||!pmRoleOpen(r))continue;const rt=pmRoleTok(r);let sc=0,th=false;const hits=[];for(const w of ct){if(rt.title.has(w)){sc+=2;th=true;hits.unshift(w);}else if(rt.body.has(w)){sc+=1;hits.push(w);}}if(sc>=4||(sc>=3&&th))out.push({r,sc,hits});}
+  return out.sort((a,b)=>b.sc-a.sc).slice(0,6);
+}
+function tomasPotHTML(c){const list=tomasPot(c);return`<section class="fsec tpot"><h3>Möjliga uppdrag hos Tomas${list.length?` · ${list.length}`:""}</h3><p class="fmeta">Ordlikhet mellan profilen och uppdragens kravtext, ingen bedömning. Inget skapas här och Tomas ser inget.</p>${list.length?`<ul class="tpl">${list.map(x=>`<li><a href="#role=${esc(x.r.id)}">${esc([x.r.ref,x.r.title].filter(Boolean).join(" "))}</a><span class="fmeta">${esc(x.r.location||"")}</span>${daysHTML(x.r)}<span class="ftags">${x.hits.slice(0,5).map(h=>`<span class="pill">${esc(h)}</span>`).join("")}</span></li>`).join("")}</ul>`:`<p class="fempty">Inget öppet uppdrag hos Tomas liknar profilen just nu.</p>`}</section>`;}
 function focusRowHTML(m,i,active){
   const c=cands.get(m.candId);const st=stageOf(m);
-  return `<button class="frow ${st==="avslutad"?"done":""} ${dlg30(c)?"dlg":""}" ${dlg30(c)?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(m.id)}" aria-current="${active}">
+  return `<button class="frow ${baraMin(m.candId)?"minp":""} ${st==="avslutad"?"done":""} ${dlg30(c)?"dlg":""}" ${dlg30(c)?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(m.id)}" aria-current="${active}">
     <span class="fi">${i+1}</span>
     <span class="fn">${esc(c?.name||m.candName||"Namnlös")}${m.spets?`<span class="fstar" title="Spets">★</span>`:""}</span>
     <span class="fs">${m.score!=null?`<span class="score ${scoreClass(m.score)}" title="${esc(scoreTitle(m))}">${m.score} %</span>`:""}</span>
@@ -1563,9 +1589,9 @@ function focusProfileHTML(m,idx,n){
   const panels={profil:pProfil,bedomning:pBed,historik:pHist,anteckning:pNote};
   return `<div class="fnav"><button class="btn light small" type="button" data-nav="-1" ${idx<=0?"disabled":""}>‹ Föregående</button><span class="fcount">Kandidat ${idx+1} av ${n}</span><button class="btn light small" type="button" data-nav="1" ${idx>=n-1?"disabled":""}>Nästa ›</button><span class="fhint">Piltangenter byter kandidat</span></div>
   <article class="fcard" data-id="${esc(m.id)}">
-    <header class="pfirst">
+    <header class="pfirst ${baraMin(m.candId)?"minp":""}">
       <button class="tbtn pcrumb" type="button" data-pmode="0">‹ Tillbaka till ${esc([rr.ref,rr.title].filter(Boolean).join(" ")||"uppdraget")}</button>
-      <div class="fname"><h2><button type="button" class="namebtn" data-pmode="1" title="Visa bara personen">${esc(c.name||m.candName||"Namnlös")}</button></h2></div>
+      <div class="fname"><h2><button type="button" class="namebtn" data-pmode="1" title="Visa bara personen">${esc(c.name||m.candName||"Namnlös")}</button></h2>${mineTagHTML(m.candId)}</div>
       ${roleLine?`<p class="froleline">${esc(roleLine)}</p>`:""}
       ${intBox}
       <div class="flinks">${kontaktHTML}${cvUpHTML}${orig}${tpl}${cv}${rec}${li}${orderHTML(m)}${pingHTML("kandidat",m,null)}</div>
@@ -1576,6 +1602,7 @@ function focusProfileHTML(m,idx,n){
       ${orderBoxHTML(m)}
     </header>
     ${dialogHTML}
+    ${tomasPotHTML(c)}
     <div class="ftabs" role="tablist" aria-label="Kandidatens uppgifter">${FTABS.map(([k,l])=>`<button type="button" role="tab" id="ftab-${k}" aria-controls="fpanel-${k}" aria-selected="${tab===k}" tabindex="${tab===k?0:-1}" data-tab="${k}">${l}</button>`).join("")}</div>
     ${FTABS.map(([k,l])=>`<div class="fpanel" role="tabpanel" id="fpanel-${k}" aria-labelledby="ftab-${k}" tabindex="0" ${tab===k?"":"hidden"}>${panels[k]}</div>`).join("")}
     <div class="card-actions"><select aria-label="Flytta till stadie" data-move="${esc(m.id)}" ${canWrite?"":"disabled"}>${STAGES.map(([v,l])=>`<option value="${v}" ${v===st?"selected":""}>${l}</option>`).join("")}</select><button class="iconbtn" type="button" data-edit="${esc(c.id)}" ${canWrite?"":"disabled"}>Person</button><button class="iconbtn" type="button" data-link="${esc(m.id)}" ${canWrite?"":"disabled"}>Uppdrag och nästa steg</button>${["matchad","ansokt"].includes(st)?`<button class="iconbtn" type="button" data-sent="${esc(m.id)}" ${canWrite?"":"disabled"} title="Loggar bara, skickar ingenting">Registrera manuellt skickat InMail</button>`:""}${st!=="avslutad"?`<button class="iconbtn" type="button" data-bin="${esc(m.id)}" title="Avslutad för det här uppdraget" ${canWrite?"":"disabled"}>Slaska</button>`:""}</div>
@@ -1713,7 +1740,7 @@ function candResultsHTML(){
     const nameEl=bl.length===1?`<a href="#" data-openm="${esc(bl[0].id)}" title="Öppna kandidatkortet på uppdraget">${esc(c.name||c.id)}</a>`:bl.length>1?`<a href="#" data-pickrole="${esc(c.id)}" title="Välj uppdrag">${esc(c.name||c.id)} ▾</a>`:`<span>${esc(c.name||c.id)}</span>`;
     const chooser=bl.length>1?`<div class="d" data-chooser="${esc(c.id)}" hidden><span><b>Välj uppdrag:</b></span>${bl.map(m=>{const r=roles.get(m.roleId);return`<button class="btn light small" type="button" data-openm="${esc(m.id)}">${esc([r.ref,r.title].filter(Boolean).join(" "))} · ${esc(STAGE_LABEL[stageOf(m)]||stageOf(m))}</button>`;}).join("")}</div>`:"";
     const snippet=[c.note,c.tillganglig?`Tillgänglig: ${c.tillganglig}`:"",c.timpris?`Timpris: ${c.timpris}`:""].filter(Boolean).join(" · ");
-    return`<div class="mrow"><span></span><div><div class="name">${nameEl}${liLink(c.linkedin)}${recLink(c)}<button class="iconbtn" type="button" data-cand="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></div>${chooser}
+    return`<div class="mrow ${baraMin(c.id)?"minp":""}"><span></span><div><div class="name">${nameEl} ${mineTagHTML(c.id)}${liLink(c.linkedin)}${recLink(c)}<button class="iconbtn" type="button" data-cand="${esc(c.id)}" ${canWrite?"":"disabled"}>Redigera person</button></div>${chooser}
       ${snippet?`<div class="d"><span>${esc(snippet)}</span></div>`:""}${links?`<div class="d">${links}</div>`:`<div class="d"><span>Ingen koppling till något uppdrag.</span></div>`}</div></div>`;
   };
   return`<div class="meta" style="margin:0 0 6px"><span><b>${list.length}</b> av ${bizPersonIds().size} unika personer${biz==="all"?"":` i ${BIZ_LABEL[biz].toLowerCase()}`}${candQuery.trim()?` matchar "${esc(candQuery.trim())}"`:""}</span></div>
