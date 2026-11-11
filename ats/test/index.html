@@ -33,6 +33,9 @@ textarea.intern{width:100%;max-width:85ch;font:inherit;font-size:15px;padding:8p
 .bvrow{display:grid;grid-template-columns:minmax(180px,1.2fr) minmax(200px,1fr) 2fr;gap:6px 14px;align-items:baseline;padding:8px 0 8px 10px;border-top:1px solid var(--line,#ffffff22);border-left:3px solid transparent}
 .bvrow.minp{border-left-color:var(--min)}
 @media (max-width:820px){.bvrow{grid-template-columns:1fr}}
+.delbtn{font:inherit;font-size:13px;border-radius:999px;padding:4px 14px;border:1px solid var(--min);color:var(--min);background:transparent;cursor:pointer}
+.delbtn.on{border-color:var(--ok,#2c7a46);color:#fff;background:var(--ok,#2c7a46)}
+span.delbtn{cursor:default;opacity:.85}
 </style></head><body>
 <title>TEST ATS Filip</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
@@ -1457,7 +1460,7 @@ const pmTok=str=>{const out=new Set();for(const w of String(str||"").toLowerCase
 const partnerRole=r=>!!r&&(r.source==="tomas"||r.source==="delad"||(Array.isArray(r.delad)&&r.delad.length>0));
 // Vilka personer partnern ser, och på vilka uppdrag. Räknas om högst en gång i sekunden.
 let pmCache=null,pmAt=0;
-function tomasMap(){const now=Date.now();if(pmCache&&now-pmAt<1000)return pmCache;const mp=new Map();for(const m of matches.values()){if(m.dismissed)continue;const r=roles.get(m.roleId);if(!partnerRole(r))continue;const c=cands.get(m.candId);if(c&&c.baraMin===true&&m.slapptTillPartner!==true)continue;if(!mp.has(m.candId))mp.set(m.candId,[]);mp.get(m.candId).push(r.ref||r.id);}pmCache=mp;pmAt=now;return mp;}
+function tomasMap(){const now=Date.now();if(pmCache&&now-pmAt<1000)return pmCache;const mp=new Map();for(const m of matches.values()){if(m.dismissed)continue;const r=roles.get(m.roleId);if(!partnerRole(r))continue;const c=cands.get(m.candId);if(c&&c.baraMin===true&&m.slapptTillPartner!==true)continue;if(!mp.has(m.candId))mp.set(m.candId,[]);mp.get(m.candId).push(r.ref||r.id);}for(const c of cands.values())if(c.delaMedPartner===true&&c.baraMin!==true&&!mp.has(c.id))mp.set(c.id,["delad"]);pmCache=mp;pmAt=now;return mp;}
 const baraMin=cid=>!tomasMap().has(cid);
 function mineTagHTML(cid){const refs=tomasMap().get(cid)||[];return refs.length?`<span class="pill tomp" title="Personen ligger på uppdrag i Tomas vy och syns där">Syns hos Tomas · ${esc(refs.slice(0,3).join(", "))}${refs.length>3?" med flera":""}</span>`:`<span class="pill minp" title="Personen ligger inte på något uppdrag i Tomas vy. Han ser varken personen, dialogen eller CV:t.">Bara min</span>`;}
 const pmRT=new Map();
@@ -1472,7 +1475,13 @@ function rollPot(c,filt){
 }
 function tomasPotHTML(c){const list=tomasPot(c);return`<section class="fsec tpot"><h3>Möjliga uppdrag hos Tomas${list.length?` · ${list.length}`:""}</h3><p class="fmeta">Ordlikhet mellan profilen och uppdragens kravtext, ingen bedömning. Inget skapas här och Tomas ser inget.</p>${list.length?`<ul class="tpl">${list.map(x=>`<li><a href="#role=${esc(x.r.id)}">${esc([x.r.ref,x.r.title].filter(Boolean).join(" "))}</a><span class="fmeta">${esc(x.r.location||"")}</span>${daysHTML(x.r)}<span class="ftags">${x.hits.slice(0,5).map(h=>`<span class="pill">${esc(h)}</span>`).join("")}</span></li>`).join("")}</ul>`:`<p class="fempty">Inget öppet uppdrag hos Tomas liknar profilen just nu.</p>`}</section>`;}
 const tomasPot=c=>rollPot(c,partnerRole),konsultPot=c=>rollPot(c,r=>r.type==="consulting");
-const BEV_DAGAR=70;
+const BEV_DAGAR=70;let lasInfort=false;
+document.addEventListener("click",async e=>{
+  const b=e.target&&e.target.closest&&e.target.closest("button[data-dela]");if(!b)return;const c=cands.get(b.dataset.dela);if(!c)return;const till=b.dataset.till==="1";
+  if(!till&&b.dataset.dial==="1"&&b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Tomas har dialog med personen. Klicka igen för att dölja";return;}
+  const ok=await writeDoc("candidates",{...c,baraMin:!till,delaMedPartner:till,delningAt:nowIso(),delningAv:"Filip"},true);
+  if(ok){pmCache=null;toast(till?(c.name||"Personen")+" är delad. Tomas ser personkortet, inget annat.":(c.name||"Personen")+" är dold för andra.");render();}
+});
 const bevDatum=iso=>new Date(iso+"T12:00:00").toLocaleDateString("sv-SE",{day:"numeric",month:"long",year:"numeric"});
 const bevDagar=iso=>Math.round((new Date(iso+"T00:00:00")-new Date(new Date().toDateString()))/86400000);
 const bevNar=d=>d<0?"tillgänglig nu":d===0?"i dag":"om "+d+" dagar";
@@ -1553,9 +1562,11 @@ function focusProfileHTML(m,idx,n){
   })();
   const rr=roles.get(m.roleId)||{};const tomasSer=rr.source==="tomas"||rr.source==="delad"||(Array.isArray(rr.delad)&&rr.delad.includes("tomas"));
   const pb=m.partnerBedomning&&typeof m.partnerBedomning==="object"?m.partnerBedomning:null;
-  const partnerRow=`<div class="frow2"><span class="fl">Partner</span><span class="ftags">${tomasSer?`<span class="pill vunnen" title="Uppdraget ligger i hans vy, och personen syns där så länge matchningen inte är struken">Tillgänglig för Tomas</span>${m.dismissed?`<span class="ftxt warn">men matchningen är struken, då syns den inte</span>`:pb&&pb.bedomning?`<span class="ftxt">Hans bedömning: ${pb.bedomning==="ja"?"Ja":"Nej"}${pb.at?" · "+esc(fmtDate(pb.at)):""}</span>`:`<span class="ftxt warn">Har inte bedömt</span>`}`:`<span class="pill" title="Uppdraget hör inte till partnern och är inte delat">Inte tillgänglig för Tomas</span>`}</span></div>`;
+  const partnerRow=`<div class="frow2"><span class="fl">Partner</span><span class="ftags">${tomasSer?`<span class="pill vunnen" title="Uppdraget ligger i hans vy, och personen syns där så länge matchningen inte är struken">Tillgänglig för Tomas</span>${m.dismissed?`<span class="ftxt warn">men matchningen är struken, då syns den inte</span>`:pb&&pb.bedomning?`<span class="ftxt">Hans bedömning: ${pb.bedomning==="ja"?"Ja":"Nej"}${pb.at?" · "+esc(fmtDate(pb.at)):""}</span>`:`<span class="ftxt warn">Har inte bedömt</span>`}`:`<span class="pill" title="Uppdraget hör inte till partnern och är inte delat">Uppdraget ligger inte hos Tomas</span>`}</span></div>`;
   const tf=/^\d{4}-\d{2}-\d{2}$/.test(c.tillgangligFran||"")?c.tillgangligFran:"";
-  const villkorRow=`<div class="frow2 fvillkor"><span class="fl">Villkor</span><span class="ftags"><label class="vl">Tillgänglig från <input class="cq" type="date" data-cq="tillgangligFran" data-cand="${esc(c.id)}" value="${esc(tf)}" ${canWrite?"":"disabled"}></label>${tf?`<span class="ftxt">${esc(bevNar(bevDagar(tf)))}</span>`:c.tillganglig?`<span class="ftxt">${esc(c.tillganglig)}</span>`:""}<label class="vl">Timpris <input class="cq" type="text" data-cq="timpris" data-cand="${esc(c.id)}" value="${esc(c.timpris||"")}" size="14" placeholder="kr per timme" autocomplete="off" ${canWrite?"":"disabled"}></label></span></div>`;
+  const villkorRow=`<div class="frow2 fvillkor"><span class="fl">Villkor</span><span class="ftags"><label class="vl">Tillgänglig från <input class="cq" type="date" data-cq="tillgangligFran" data-cand="${esc(c.id)}" value="${esc(tf)}" ${canWrite?"":"disabled"}></label>${tf?`<span class="ftxt"><b>${esc(bevDatum(tf))}</b> · ${esc(bevNar(bevDagar(tf)))}</span>`:c.tillganglig?`<span class="ftxt">${esc(c.tillganglig)}</span>`:""}<label class="vl">Timpris <input class="cq" type="text" data-cq="timpris" data-cand="${esc(c.id)}" value="${esc(c.timpris||"")}" size="14" placeholder="kr per timme" autocomplete="off" ${canWrite?"":"disabled"}></label></span></div>`;
+  const synsT=!baraMin(c.id);const dialT=[...matches.values()].some(x=>x.candId===c.id&&!x.dismissed&&partnerRole(roles.get(x.roleId))&&!["matchad","ansokt","avslutad"].includes(stageOf(x)));
+  const delRow=`<div class="frow2 fdela"><span class="fl">Delning</span><span class="ftags">${lasInfort&&canWrite?`<button type="button" class="delbtn ${synsT?"on":""}" data-dela="${esc(c.id)}" data-till="${synsT?"0":"1"}" data-dial="${dialT?"1":"0"}" aria-pressed="${synsT}" title="${synsT?"Klicka för att dölja personen för andra":"Klicka för att dela personkortet"}">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</button>`:`<span class="delbtn ${synsT?"on":""}" aria-disabled="true">${synsT?"Tillgänglig för andra":"Ej tillgänglig för andra"}</span>`}<span class="ftxt">${synsT?"Tomas ser personkortet: profiltext, CV, kontakt och villkor. Aldrig din dialog, dina uppdrag eller den interna anteckningen.":"Tomas ser ingenting om personen."}${lasInfort?"":" Knappen tänds när låset är infört i databasen."}</span></span></div>`;
   const sug=suggestMove(m,c);
   const sugBox=sug?`<div class="fnext fsug"><span class="fl">Förslag</span><span class="fnt">${esc(sug.text)}</span><button class="btn small primary" type="button" data-sugmove="${esc(m.id)}" data-stage="${sug.stage}" data-result="${esc(sug.result||"")}" ${canWrite?"":"disabled"} title="Flyttar först när du klickar. Loggas med vem som klickade.">${esc(sug.label)}</button></div>`:"";
   const hasNext=!!(m.nextStep||m.nextAt);
@@ -1620,6 +1631,7 @@ function focusProfileHTML(m,idx,n){
       ${intBox}
       <div class="flinks">${kontaktHTML}${cvUpHTML}${orig}${tpl}${cv}${rec}${li}${orderHTML(m)}${pingHTML("kandidat",m,null)}</div>
       ${villkorRow}
+      ${delRow}
       ${partnerRow}
       ${nextBox2}
       ${sugBox}
@@ -2399,7 +2411,7 @@ window.addEventListener("hashchange",()=>{deepLinkHandled="";applyDeepLink();});
   db.collection("roles").onSnapshot(snap=>{cached.roles=fc(snap);roles=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));gotRoles=true;if(selected&&!roles.has(selected))selected=null;fixSelected();render();done();maybeLink();},e=>setSync("Fel vid läsning av roller: "+e.code,true));
   db.collection("candidates").onSnapshot(snap=>{cached.candidates=fc(snap);cands=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));gotCands=true;render();done();maybeLink();},e=>setSync("Fel vid läsning av kandidater: "+e.code,true));
   db.collection("matches").onSnapshot(snap=>{cached.matches=fc(snap);matches=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));gotMatches=true;render();done();maybeLink();},e=>setSync("Fel vid läsning av matchningar: "+e.code,true));
-  db.collection("log").onSnapshot(snap=>{const pz=snap.docs.find(x=>x.id==="puls-genomsokaren");puls=pz&&pz.exists?pz.data():null;const d=snap.docs.find(x=>x.id==="matchrun");matchRun=d&&d.exists?d.data():null;if(view==="matchning")render();},()=>{});
+  db.collection("log").onSnapshot(snap=>{lasInfort=snap.docs.some(x=>x.id==="las-infort");const pz=snap.docs.find(x=>x.id==="puls-genomsokaren");puls=pz&&pz.exists?pz.data():null;const d=snap.docs.find(x=>x.id==="matchrun");matchRun=d&&d.exists?d.data():null;if(view==="matchning")render();},()=>{});
   // kontaktbeställningar: ägaren ser alla beställare, andra ser bara sitt eget dokument (databasregler, inte filtrering i sidan)
   db.collection("kontaktbestallningar").onSnapshot(snap=>{orders=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,d.data()]));updOkPill();if(gotRoles&&gotCands)render();},()=>{});
   db.collection("ko").onSnapshot(snap=>{koPosts=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));updateKoCount();refreshFingerprints();renderTodo();},()=>{});
