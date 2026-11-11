@@ -395,7 +395,7 @@ const OPEN=new Set(["bestalld","utkast","vantar-godkannande","vantar_godkannande
 const key=m=>m.roleId+"__"+m.candId;
 function findOrder(m){let best=null;for(const[uid,doc]of Object.entries(orders)){const p=doc&&doc.poster&&doc.poster[key(m)];if(p&&(!best||(p.at||"")>(best.at||"")))best={...p,uid};}return best;}
 // Svar: strukturerat fält på matchningen (svar.tolkning) går först, sedan beställningens svarTolkning.
-function replyOf(m,o){const s=m.svar&&typeof m.svar==="object"?m.svar:null;if(s&&s.tolkning)return{tolkning:(m.stage==="intresserad"&&!["positiv","negativ","fraga"].includes(s.tolkning))?"positiv":s.tolkning,at:s.at,text:s.text||""};if(o&&(o.svarAt||o.status==="svar"))return{tolkning:o.svarTolkning||"okand",at:o.svarAt,text:o.svarText||""};return null;}
+function replyOf(m,o){const s=m.svar&&typeof m.svar==="object"?m.svar:null;if(s&&s.tolkning)return{tolkning:(s.forstaJaAt&&["timing","annat"].includes(s.tolkning))?"positiv":s.tolkning,at:s.at,text:s.text||""};if(o&&(o.svarAt||o.status==="svar"))return{tolkning:o.svarTolkning||"okand",at:o.svarAt,text:o.svarText||""};return null;}
 const TOLK={positiv:["Svar positivt","ok"],negativ:["Svar negativt","bad"],fraga:["Svar, fråga","warn"],okand:["Svar mottaget","ok"]};
 function orderStatus(o,m){
   if(!o)return null;
