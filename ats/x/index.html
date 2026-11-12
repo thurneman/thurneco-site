@@ -70,7 +70,7 @@ function rita(){
   yta.innerHTML=(hals?`<p>${esc(hals).replace(/\n/g,"<br>")}</p>`:"")+uppdrag.map(u=>{const ps=profiler.filter(p=>p.role_id===u.id);return`<section><h2>${esc(u.title||"Uppdrag")}</h2><p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(kort).join("")}</section>`;}).join("")+`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
 }
 yta.addEventListener("click",async e=>{
-  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut();inst={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
+  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut({scope:"local"});inst={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
   const k=t.closest("article[data-id]");if(!k)return;const p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
   if(t.closest("[data-avbryt]")){oppen=null;rita();return;}
   const b=t.closest("[data-b]");if(b){oppen={id:p.id,typ:b.dataset.b};rita();const ta=document.getElementById("t-"+p.id);if(ta)ta.focus();return;}
