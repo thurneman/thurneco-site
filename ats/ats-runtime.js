@@ -346,7 +346,10 @@
         if (r.error) throw r.error;
         info.textContent = "Klart. En inloggningslänk är skickad till " + adr + ". Öppna den på den här enheten. Länken gäller en gång.";
       } catch (err) {
-        info.textContent = "Det gick inte att skicka länken (" + ((err && err.message) || "fel") + "). Bara befintliga användare kan logga in.";
+        var kod = (err && (err.code || err.error_code)) || "", txt = (err && err.message) || "fel";
+        if (kod === "otp_disabled" || /signups not allowed/i.test(txt)) info.textContent = "Adressen " + adr + " har inget konto här. Använd exakt den adress du fick din inbjudan på. Har du bytt adress behöver Filip lägga upp den nya.";
+        else if (/rate limit|too many|security purposes/i.test(txt)) info.textContent = "För många försök just nu. Vänta en minut och prova igen, ett klick räcker.";
+        else info.textContent = "Det gick inte att skicka länken (" + txt + "). Bara befintliga användare kan logga in.";
       } finally { if (btn) btn.disabled = false; }
     });
     if (out) out.addEventListener("click", function (e) { e.preventDefault(); logout(); });
@@ -354,7 +357,7 @@
     if (lo) lo.addEventListener("click", function (e) { e.preventDefault(); logout(); });
   }
   async function logout() {
-    try { await sb.auth.signOut(); } catch (e) { /* lokal session rensas ändå */ }
+    try { await sb.auth.signOut({ scope: "local" }); } catch (e) { /* lokal session rensas ändå */ }   // bara den här enheten, övriga inloggningar ligger kvar
     location.replace(location.origin + location.pathname);
   }
 
