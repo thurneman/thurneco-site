@@ -19,7 +19,7 @@ ul{margin:6px 0 0;padding-left:20px}li{margin:2px 0}h4{margin:14px 0 2px;font-si
 button,.knapp{font:inherit;border-radius:8px;border:1px solid var(--knapp);background:var(--knapp);color:var(--knapptext);padding:8px 14px;cursor:pointer;text-decoration:none;display:inline-block}
 button.ljus{background:transparent;color:var(--knapp)}button:disabled{opacity:.55;cursor:default}
 input,textarea{font:inherit;width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--linje);background:var(--kort);color:var(--text)}
-.atg{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.form{margin-top:10px;display:grid;gap:8px}.fel{color:var(--varn)}
+.atg{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.val{display:flex;gap:8px;margin:14px 0 8px}.flikar{display:flex;gap:8px;margin:0 0 16px}.steg{display:flex;flex-wrap:wrap;gap:6px 0;list-style:none;margin:12px 0 0;padding:0;font-size:13px}.steg li{padding:3px 12px;border:1px solid var(--linje);margin:0 -1px 0 0;color:var(--dov)}.steg li:first-child{border-radius:999px 0 0 999px}.steg li:last-child{border-radius:0 999px 999px 0}.steg li.klar{color:var(--ok);border-color:var(--ok);z-index:1}.steg li.nu{background:var(--knapp);color:var(--knapptext);border-color:var(--knapp);z-index:2}.krad[data-roll]{cursor:pointer}.vprof{display:grid;gap:6px;margin:4px 0 10px}.vprof label{font-size:16px;color:var(--text);display:flex;gap:8px;align-items:center}.vprof input{width:auto}.val button{min-width:84px}label{font-size:14px;color:var(--dov)}details{margin-top:14px}summary{cursor:pointer;color:var(--knapp)}.form{margin-top:10px;display:grid;gap:8px}.fel{color:var(--varn)}
 a{color:var(--knapp)}
 </style>
 </head>
@@ -35,9 +35,14 @@ const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_K
 const yta=document.getElementById("yta"),vem=document.getElementById("vem");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dag=iso=>{try{return new Date(iso).toLocaleDateString("sv-SE",{day:"numeric",month:"long"});}catch(e){return"";}};
-let uppdrag=[],profiler=[],best=[],oppen=null,inst={};
+let uppdrag=[],profiler=[],best=[],order=[],oppen=null,inst={},utkast={},visaOrder=false,flik="roller",oppenRoll=null;
+const kund=()=>inst.bestallSearch===true;
 const rub=document.getElementById("rub"),RUB0=rub.textContent;
 const knappPa=t=>!Array.isArray(inst.knappar)||inst.knappar.includes(t);
+const FRAGOR0=["Vad saknar du hos de här profilerna?","Vad skulle göra en profil till ett självklart ja?"];
+const fragor=()=>{const f=Array.isArray(inst.fragor)?inst.fragor.map(x=>String(x||"").trim()).filter(Boolean):[];return f.length?f.slice(0,4):FRAGOR0;};
+const SVAR={ja:"Ja",kanske:"Kanske",nej:"Nej"};
+const fel=e=>String(e&&e.message||e||"Det gick inte att skicka.").replace(/^.*?:\s*(?=[A-ZÅÄÖ])/,"");
 
 function inloggning(msg){
   vem.textContent="";
@@ -47,44 +52,126 @@ function inloggning(msg){
     b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.":"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
 }
 async function las(){
-  const[u,p,b,j]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("xbestallningar").select("id,role_id,cand_id,typ,status,at"),sb.from("v_x_jag").select("*")]);
+  const[u,p,b,j,o]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("v_x_bestallningar").select("*"),sb.from("v_x_jag").select("*"),sb.from("v_x_order").select("*")]);
   if(u.error||p.error){yta.innerHTML=`<div class="kort"><p class="fel">Det gick inte att läsa profilerna. Försök igen om en stund eller hör av dig till Filip.</p></div>`;return;}
-  uppdrag=u.data||[];profiler=p.data||[];best=(b.data||[]);const jag=(j&&j.data&&j.data[0])||null;inst=(jag&&jag.installningar)||{};rub.textContent=String(inst.rubrik||"").trim()||RUB0;rita();
+  uppdrag=u.data||[];profiler=(p.data||[]).sort((a,b)=>String(a.name).localeCompare(String(b.name),"sv"));best=b.data||[];order=(o.data||[]).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+  const jag=(j&&j.data&&j.data[0])||null;inst=(jag&&jag.installningar)||{};rub.textContent=String(inst.rubrik||"").trim()||(kund()?"Thurneco · RekBot2000":RUB0);rita();
 }
-function bestRad(p){return best.filter(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id).map(x=>`<span class="pill ${x.status==="ny"?"ok":""}">${x.typ==="intervju"?(x.status==="ny"?"Intervju beställd":"Intervju hanterad"):(x.status==="ny"?"Mer underlag begärt":"Underlag hanterat")} ${esc(dag(x.at))}</span>`).join("");}
-function kort(p){
-  const har=t=>best.some(x=>x.role_id===p.role_id&&x.cand_id===p.cand_id&&x.typ===t&&x.status==="ny");
+function bestRad(p){return best.filter(x=>x.kod===p.id).map(x=>`<span class="pill ${x.status==="ny"?"ok":""}">${x.typ==="intervju"?(x.status==="ny"?"Intervju beställd":"Intervju hanterad"):(x.status==="ny"?"Mer underlag begärt":"Underlag hanterat")} ${esc(dag(x.at))}</span>`).join("");}
+function kort(p,svara){
+  const har=t=>best.some(x=>x.kod===p.id&&x.typ===t&&x.status==="ny");
   const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
-  const f=oppen&&oppen.id===p.id?oppen.typ:null;
-  return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Namn saknas")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${bestRad(p)}</div>
+  const f=oppen&&oppen.id===p.id?oppen.typ:null,d=utkast[p.id]||{};
+  return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Profil")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">Ditt svar: ${SVAR[p.mitt_svar]||esc(p.mitt_svar)}</span>`:""}${bestRad(p)}</div>
     ${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
     ${lista("Stöd mot kraven",p.belagt)}${lista("Att stämma av",p.verifiera)}
-    <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:(inst.visaCv===false?"":`<span class="dov">CV är inte inlagt än</span>`)}
-      ${knappPa("intervju")?`<button type="button" data-b="intervju" ${har("intervju")?"disabled":""}>Boka intervju</button>`:""}${knappPa("underlag")?`<button class="ljus" type="button" data-b="underlag" ${har("underlag")?"disabled":""}>Be om mer underlag</button>`:""}</div>
+    ${svara?`<div class="val" role="group" aria-label="Ditt svar på ${esc(p.name)}">${Object.entries(SVAR).map(([k,l])=>`<button type="button" class="${d.svar===k?"":"ljus"}" data-svar="${k}" aria-pressed="${d.svar===k}">${l}</button>`).join("")}</div><textarea data-kom rows="2" maxlength="1000" placeholder="Kommentar (valfritt)" aria-label="Kommentar till ${esc(p.name)}">${esc(d.text||"")}</textarea>`:""}
+    <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:(p.namn_dolt||inst.visaCv===false?"":`<span class="dov">CV är inte inlagt än</span>`)}
+      ${knappPa("intervju")?`<button type="button" class="${svara?"ljus":""}" data-b="intervju" ${har("intervju")?"disabled":""}>Boka intervju</button>`:""}${knappPa("underlag")?`<button class="ljus" type="button" data-b="underlag" ${har("underlag")?"disabled":""}>Be om mer underlag</button>`:""}</div>
     ${f?`<form class="form" data-f="${f}"><label class="dov" for="t-${esc(p.id)}">${f==="intervju"?"Förslag på tider eller annat vi bör veta (valfritt)":"Vad vill du veta mer om?"}</label><textarea id="t-${esc(p.id)}" rows="3" maxlength="1000" ${f==="underlag"?"required":""}></textarea><div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-avbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`:""}
   </article>`;
 }
-function rita(){
-  if(!profiler.length){yta.innerHTML=`<div class="kort"><p>Det finns inga profiler att granska just nu.</p><p class="dov">När en profil läggs fram till dig syns den här. Hör av dig till Filip om du väntar på något.</p></div><p><button class="ljus" type="button" data-ut>Logga ut</button></p>`;return;}
-  const hals=String(inst.halsning||"").trim();
-  yta.innerHTML=(hals?`<p>${esc(hals).replace(/\n/g,"<br>")}</p>`:"")+uppdrag.map(u=>{const ps=profiler.filter(p=>p.role_id===u.id);return`<section><h2>${esc(u.title||"Uppdrag")}</h2><p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(kort).join("")}</section>`;}).join("")+`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
+function uppdragHTML(u,utanRubrik){
+  const ps=profiler.filter(p=>p.role_id===u.id),rubrik=utanRubrik?"":`<h2>${esc(u.title||"Uppdrag")}</h2>`;
+  if(!u.pool)return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(p=>kort(p,false)).join("")}</section>`;
+  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&!u.val&&nu.length>0,d=utkast["u:"+u.id]||{};
+  const fr=fragor();
+  return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}Omgång ${u.omgang} av 3 · ${ps.length} av högst 9 profiler</p>
+    ${nu.map(p=>kort(p,svara)).join("")}
+    ${svara?`<form class="kort form" data-svara="${esc(u.id)}"><h3>Dina svar på omgång ${u.omgang}</h3><p class="dov">Svara Ja, Kanske eller Nej på varje profil ovan. Svaren styr vilka profiler du får härnäst.</p>
+      ${fr.map((q,i)=>`<label for="q-${esc(u.id)}-${i}">${esc(q)}</label><textarea id="q-${esc(u.id)}-${i}" data-q="${i}" rows="2" maxlength="1500">${esc((d.q||[])[i]||"")}</textarea>`).join("")}
+      <label for="x-${esc(u.id)}">Något annat vi bör veta? (valfritt)</label><textarea id="x-${esc(u.id)}" data-x rows="2" maxlength="1500">${esc(d.x||"")}</textarea>
+      <div class="rad"><button type="submit">Skicka svar</button><span class="fel" data-fm></span></div></form>`
+    :u.besvarad&&!u.val?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl med länk.":"Tack, dina svar är inskickade. Det här var den sista omgången."}</p></div>`:""}
+    ${forr.length?`<details><summary>Tidigare omgångar (${forr.length} profiler)</summary>${forr.map(p=>kort(p,false)).join("")}</details>`:""}</section>`;
 }
+const STEG=["Begärd","Search pågår","Profiler","Ditt val","Klart"];
+function rollposter(){
+  const tagna=new Set(),ut=order.filter(o=>o.status!=="avslutad"||o.uppdrag).map(o=>{const u=o.uppdrag?uppdrag.find(x=>x.id===o.uppdrag):null;if(u)tagna.add(u.id);return{key:"o:"+o.id,titel:o.titel,ort:o.ort,krav:o.krav||[],start:o.start,at:o.at,u,status:o.status};});
+  for(const u of uppdrag)if(!tagna.has(u.id))ut.push({key:"u:"+u.id,titel:u.title,ort:u.location,krav:[],u,status:"pagar"});
+  return ut;
+}
+function stegNu(r){return!r.u?1:r.u.val?4:2;}
+function stegHTML(r){const n=stegNu(r),sist=r.u&&r.u.val?(r.u.val==="las_upp"?"Upplåsning":"Screening hos oss"):STEG[4];
+  return`<ol class="steg">${STEG.map((s,i)=>`<li class="${i<n?"klar":i===n?"nu":""}">${i===4?sist:s}</li>`).join("")}</ol>`;}
+function valHTML(u){
+  const ps=profiler.filter(p=>p.role_id===u.id);if(!ps.length)return"";
+  if(u.val){const v=ps.filter(p=>p.vald).map(p=>p.name).join(", ");return`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(v||"de valda profilerna")}. Vi hör av oss.</p><p class="dov">Vill du ha nya kandidater eller välja en annan väg begär du kandidater på nytt.</p></div>`;}
+  const d=utkast["v:"+u.id]||{};
+  return`<form class="kort form" data-val="${esc(u.id)}"><h3>Gå vidare</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Du väljer en väg per roll. Vill du ha nya kandidater eller välja om begär du kandidater på nytt.</p>
+    <div class="vprof">${ps.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}</div>
+    <div class="rad"><button type="button" data-v="las_upp">Lås upp kandidaterna</button><button type="button" data-v="screening">Lämna över screening till oss</button><span class="fel" data-fm></span></div></form>`;
+}
+function orderFormHTML(){
+  const d=utkast.order||{};
+  return`<form class="kort form" data-order><h3>Begär kandidater</h3><p class="dov">Skriv rollen och de krav som måste vara uppfyllda. Vi startar sökningen direkt och du får ett mejl med länk när de tre första profilerna finns.</p>
+      <label for="o-t">Roll</label><input id="o-t" data-o="titel" required maxlength="150" value="${esc(d.titel||"")}" placeholder="Till exempel Account Executive">
+      <label for="o-o">Ort eller land</label><input id="o-o" data-o="ort" maxlength="100" value="${esc(d.ort||"")}">
+      ${[0,1,2,3].map(i=>`<label for="o-k${i}">Skallkrav ${i+1}${i?" (valfritt)":""}</label><input id="o-k${i}" data-o="k${i}" maxlength="200" ${i?"":"required"} value="${esc(d["k"+i]||"")}">`).join("")}
+      <label for="o-s">Önskad start</label><input id="o-s" data-o="start" maxlength="60" value="${esc(d.start||"")}">
+      <label for="o-x">Övrigt (valfritt)</label><textarea id="o-x" data-o="text" rows="3" maxlength="1500">${esc(d.text||"")}</textarea>
+      <div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-oavbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`;
+}
+function kundHTML(){
+  const rs=rollposter(),r=oppenRoll?rs.find(x=>x.key===oppenRoll):null;
+  const nav=`<nav class="flikar"><button type="button" class="${flik==="roller"?"":"ljus"}" data-flik="roller" aria-pressed="${flik==="roller"}">Roller</button><button type="button" class="${flik==="kandidater"?"":"ljus"}" data-flik="kandidater" aria-pressed="${flik==="kandidater"}">Kandidater</button></nav>`;
+  if(r){return nav+`<p><button class="ljus" type="button" data-tillbaka>Tillbaka till roller</button></p><section><h2>${esc(r.titel||"Roll")}</h2><p class="dov">${esc(r.ort||"")}</p>${stegHTML(r)}
+      ${r.krav.length?`<div class="kort"><h4 style="margin-top:0">Dina skallkrav</h4><ul>${r.krav.map(k=>`<li>${esc(k)}</li>`).join("")}</ul>${r.start?`<p class="dov">Önskad start: ${esc(r.start)}</p>`:""}</div>`:""}
+      ${r.u?uppdragHTML(r.u,true)+valHTML(r.u):`<div class="kort"><p>Sökningen är igång. Du får ett mejl med länk när de tre första profilerna finns här.</p></div>`}</section>`;}
+  if(flik==="kandidater"){
+    return nav+(profiler.length?`<section>${profiler.map(p=>{const u=uppdrag.find(x=>x.id===p.role_id),rr=rs.find(x=>x.u&&x.u.id===p.role_id);return`<div class="kort krad" ${rr?`data-roll="${esc(rr.key)}"`:""}><div class="rad"><b>${esc(p.name)}</b><span class="dov">${esc(u?u.title:"")}</span>${p.score!=null?`<span class="pill">${esc(p.score)} %</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">${SVAR[p.mitt_svar]}</span>`:`<span class="pill">Väntar på ditt svar</span>`}${p.vald?`<span class="pill ok">${u&&u.val==="las_upp"?"Upplåsning begärd":"Screening hos oss"}</span>`:""}${p.namn_dolt?"":`<span class="pill ok">Upplåst</span>`}</div></div>`;}).join("")}</section>`:`<div class="kort"><p>Du har inga kandidater än.</p><p class="dov">Begär kandidater under Roller, så syns de här när de första profilerna är klara.</p></div>`);}
+  return nav+(visaOrder?orderFormHTML():`<p><button type="button" data-ony>Begär kandidater</button></p>`)
+    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.val&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
+}
+function rita(){
+  const hals=String(inst.halsning||"").trim(),ut=`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
+  if(kund()){yta.innerHTML=(hals?`<p>${esc(hals).replace(/\n/g,"<br>")}</p>`:"")+kundHTML()+ut;return;}
+  yta.innerHTML=(hals?`<p>${esc(hals).replace(/\n/g,"<br>")}</p>`:"")
+    +(profiler.length?uppdrag.map(u=>uppdragHTML(u)).join(""):`<div class="kort"><p>Det finns inga profiler att granska just nu.</p><p class="dov">När en profil läggs fram till dig syns den här. Hör av dig till Filip om du väntar på något.</p></div>`)+ut;
+}
+yta.addEventListener("input",e=>{
+  const t=e.target,k=t.closest("article[data-id]"),u=t.closest("form[data-svara]"),o=t.closest("form[data-order]");
+  if(k&&t.matches("[data-kom]")){(utkast[k.dataset.id]=utkast[k.dataset.id]||{}).text=t.value;}
+  else if(u){const d=utkast["u:"+u.dataset.svara]=utkast["u:"+u.dataset.svara]||{q:[]};if(t.dataset.q!=null)d.q[+t.dataset.q]=t.value;else if(t.matches("[data-x]"))d.x=t.value;}
+  else if(o&&t.dataset.o){(utkast.order=utkast.order||{})[t.dataset.o]=t.value;}
+  else if(t.dataset.vp){const f=t.closest("form[data-val]");if(f)(utkast["v:"+f.dataset.val]=utkast["v:"+f.dataset.val]||{})[t.dataset.vp]=t.checked;}
+});
 yta.addEventListener("click",async e=>{
-  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut({scope:"local"});inst={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
+  const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut({scope:"local"});inst={};utkast={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
+  if(t.closest("[data-ony]")){visaOrder=true;rita();const f=document.getElementById("o-t");if(f)f.focus();return;}
+  const fl=t.closest("[data-flik]");if(fl){flik=fl.dataset.flik;oppenRoll=null;rita();return;}
+  if(t.closest("[data-tillbaka]")){oppenRoll=null;rita();return;}
+  const vv=t.closest("[data-v]");
+  if(vv){const f=vv.closest("form[data-val]"),fm=f.querySelector("[data-fm]"),koder=[...f.querySelectorAll("[data-vp]")].filter(c=>c.checked).map(c=>c.dataset.vp);
+    if(!koder.length){fm.textContent="Välj minst en profil.";return;}
+    if(vv.dataset.armed!=="1"){f.querySelectorAll("[data-v]").forEach(b=>{b.dataset.armed="";b.textContent=b.dataset.v==="las_upp"?"Lås upp kandidaterna":"Lämna över screening till oss";});vv.dataset.armed="1";vv.textContent="Klicka igen för att bekräfta";fm.textContent="Valet gäller för rollen och går inte att ändra.";return;}
+    vv.disabled=true;const{error}=await sb.rpc("ats_x_valj",{p_uppdrag:f.dataset.val,p_val:vv.dataset.v,p_koder:koder});
+    if(error){vv.disabled=false;fm.textContent=fel(error);return;}delete utkast["v:"+f.dataset.val];await las();return;}
+  const rr=t.closest("[data-roll]");if(rr&&!t.closest("button,a,input,textarea,label")){oppenRoll=rr.dataset.roll;flik="roller";rita();window.scrollTo({top:0});return;}
+  if(t.closest("[data-oavbryt]")){visaOrder=false;rita();return;}
   const k=t.closest("article[data-id]");if(!k)return;const p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
+  const sv=t.closest("[data-svar]");if(sv){(utkast[p.id]=utkast[p.id]||{}).svar=sv.dataset.svar;k.querySelectorAll("[data-svar]").forEach(b=>{const pa=b===sv;b.classList.toggle("ljus",!pa);b.setAttribute("aria-pressed",pa);});return;}
   if(t.closest("[data-avbryt]")){oppen=null;rita();return;}
   const b=t.closest("[data-b]");if(b){oppen={id:p.id,typ:b.dataset.b};rita();const ta=document.getElementById("t-"+p.id);if(ta)ta.focus();return;}
   const cv=t.closest("[data-cv]");if(cv){cv.disabled=true;const{data,error}=await sb.storage.from("cv").createSignedUrl(cv.dataset.cv,600);cv.disabled=false;if(error||!data){cv.textContent="CV gick inte att öppna";return;}window.open(data.signedUrl,"_blank","noopener");}
 });
 yta.addEventListener("submit",async e=>{
-  const f=e.target.closest("form[data-f]");if(!f)return;e.preventDefault();const k=f.closest("article[data-id]"),p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;
-  const knapp=f.querySelector("button[type=submit]"),fm=f.querySelector("[data-fm]");knapp.disabled=true;fm.textContent="";
-  const id=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2));
-  const{error}=await sb.from("xbestallningar").insert({id,data:{typ:f.dataset.f,roleId:p.role_id,candId:p.cand_id,text:f.querySelector("textarea").value.trim()}});
-  if(error){knapp.disabled=false;fm.textContent=error.message||"Det gick inte att skicka.";return;}
-  oppen=null;await las();
+  const f=e.target;const knapp=f.querySelector("button[type=submit]"),fm=f.querySelector("[data-fm]");
+  if(f.matches("form[data-f]")){e.preventDefault();const k=f.closest("article[data-id]"),p=profiler.find(x=>x.id===k.dataset.id);if(!p)return;knapp.disabled=true;fm.textContent="";
+    const{error}=await sb.rpc("ats_x_bestall",{p_kod:p.id,p_typ:f.dataset.f,p_text:f.querySelector("textarea").value.trim()});
+    if(error){knapp.disabled=false;fm.textContent=fel(error);return;}oppen=null;await las();return;}
+  if(f.matches("form[data-svara]")){e.preventDefault();const uid=f.dataset.svara,u=uppdrag.find(x=>x.id===uid);if(!u)return;
+    const nu=profiler.filter(p=>p.role_id===uid&&p.omgang===u.omgang),saknas=nu.filter(p=>!(utkast[p.id]||{}).svar);
+    if(saknas.length){fm.textContent="Svara Ja, Kanske eller Nej på "+saknas.map(p=>p.name).join(", ")+".";return;}
+    knapp.disabled=true;fm.textContent="";const d=utkast["u:"+uid]||{q:[]},fr=fragor();
+    const{error}=await sb.rpc("ats_x_svara",{p_uppdrag:uid,p:{profiler:nu.map(p=>({kod:p.id,svar:utkast[p.id].svar,text:(utkast[p.id].text||"").trim()})),fragor:fr.map((q,i)=>({fraga:q,svar:((d.q||[])[i]||"").trim()})),text:(d.x||"").trim()}});
+    if(error){knapp.disabled=false;fm.textContent=fel(error);return;}
+    nu.forEach(p=>delete utkast[p.id]);delete utkast["u:"+uid];await las();return;}
+  if(f.matches("form[data-order]")){e.preventDefault();const d=utkast.order||{};knapp.disabled=true;fm.textContent="";
+    const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||""}});
+    if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
 });
-sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){vem.textContent=s.user.email;las();}else if(h==="SIGNED_OUT"){inloggning();}});
+sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
 sb.auth.getSession().then(({data})=>{if(data&&data.session){vem.textContent=data.session.user.email;las();}else inloggning();});
 </script>
 </body>
