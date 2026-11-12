@@ -108,6 +108,7 @@ function orderFormHTML(){
       <label for="o-t">Roll</label><input id="o-t" data-o="titel" required maxlength="150" value="${esc(d.titel||"")}" placeholder="Till exempel Account Executive">
       <label for="o-o">Ort eller land</label><input id="o-o" data-o="ort" maxlength="100" value="${esc(d.ort||"")}">
       ${[0,1,2,3].map(i=>`<label for="o-k${i}">Skallkrav ${i+1}${i?" (valfritt)":""}</label><input id="o-k${i}" data-o="k${i}" maxlength="200" ${i?"":"required"} value="${esc(d["k"+i]||"")}">`).join("")}
+      <label for="o-a">Annons eller rollbeskrivning (valfritt, klistra in hela texten)</label><textarea id="o-a" data-o="annons" rows="8" maxlength="12000" placeholder="Har du en annons eller kravprofil, klistra in den här. Då träffar sökningen bättre från start.">${esc(d.annons||"")}</textarea>
       <label for="o-s">Önskad start</label><input id="o-s" data-o="start" maxlength="60" value="${esc(d.start||"")}">
       <label for="o-x">Övrigt (valfritt)</label><textarea id="o-x" data-o="text" rows="3" maxlength="1500">${esc(d.text||"")}</textarea>
       <div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-oavbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`;
@@ -168,7 +169,7 @@ yta.addEventListener("submit",async e=>{
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}
     nu.forEach(p=>delete utkast[p.id]);delete utkast["u:"+uid];await las();return;}
   if(f.matches("form[data-order]")){e.preventDefault();const d=utkast.order||{};knapp.disabled=true;fm.textContent="";
-    const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||""}});
+    const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||"",annons:d.annons||""}});
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
 });
 sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
