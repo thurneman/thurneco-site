@@ -1787,6 +1787,9 @@ function xSlappDrawer(cid,rid){
       xOpen.add(mejl);toast((c.name||"Personen")+(hur==="pool"?" ligger i poolen för ":" är släppt till ")+(namn||xNamn(mejl))+"."+(konto||(hur==="pool"?" Släpp tre i taget i vyn Granskare.":" Skicka länken "+X_LANK)));render();return true;
     }catch(err){toast("Kunde inte släppa: "+(err&&err.message||err));return false;}
   });
+  // Standardval: poolen när granskaren är kund i RekBot2000. Ett eget val i listan rörs inte.
+  const xm=document.getElementById("xs-mejl"),xh=document.getElementById("xs-hur");
+  if(xm&&xh){xh.addEventListener("change",()=>{xh.dataset.vald="1";});const xf=()=>{if(xh.dataset.vald)return;const e=xm.value.trim().toLowerCase();xh.value=xgr.has(e)&&xInst(e).bestallSearch===true?"pool":"slappt";};xm.addEventListener("input",xf);xm.addEventListener("change",xf);}
 }
 function xPoolDrawer(e,rid){
   const r=roles.get(rid);if(!r)return;
