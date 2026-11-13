@@ -8,7 +8,7 @@
  const ENDPOINT='https://api.web3forms.com/submit';
  const FALLBACK_TO='filip@thurneco.se';
  const MAX_FILE=5*1024*1024;   /* Web3Forms standarduppladdare tar högst 5 MB per fil */
- const ATS='https://claude.ai/artifact/YCy2hY1E7L5Azix1sCDDux';
+ const ATS='https://thurneco.se/ats/';
  const candidateId=name=>{
   const s=String(name||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()
    .replace(/ø/g,'o').replace(/æ/g,'ae').replace(/ß/g,'ss').replace(/[-'’.]/g,'').replace(/[^a-z0-9\s]/g,'')

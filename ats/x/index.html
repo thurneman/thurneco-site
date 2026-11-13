@@ -48,7 +48,7 @@ function inloggning(msg){
   vem.textContent="";
   yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka länk</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form></div>`;
   document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
-    const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname}});
+    const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
     b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.":"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
 }
 async function las(){
@@ -63,7 +63,7 @@ function kort(p,svara){
   const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
   const f=oppen&&oppen.id===p.id?oppen.typ:null,d=utkast[p.id]||{};
   return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Profil")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">Ditt svar: ${SVAR[p.mitt_svar]||esc(p.mitt_svar)}</span>`:""}${bestRad(p)}</div>
-    ${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
+    ${p.titel||p.ort?`<p class="dov">${esc([p.titel,p.ort].filter(Boolean).join(" · "))}</p>`:""}${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
     ${lista("Stöd mot kraven",p.belagt)}${lista("Att stämma av",p.verifiera)}
     ${svara?`<div class="val" role="group" aria-label="Ditt svar på ${esc(p.name)}">${Object.entries(SVAR).map(([k,l])=>`<button type="button" class="${d.svar===k?"":"ljus"}" data-svar="${k}" aria-pressed="${d.svar===k}">${l}</button>`).join("")}</div><textarea data-kom rows="2" maxlength="1000" placeholder="Kommentar (valfritt)" aria-label="Kommentar till ${esc(p.name)}">${esc(d.text||"")}</textarea>`:""}
     <div class="atg">${p.cv_fil?`<button class="ljus" type="button" data-cv="${esc(p.cv_fil)}">Öppna CV</button>`:(p.namn_dolt||inst.visaCv===false?"":`<span class="dov">CV är inte inlagt än</span>`)}

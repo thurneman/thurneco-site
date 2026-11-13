@@ -1683,7 +1683,7 @@ function xRollHTML(e,rid){
   const svar=new Map();for(const a of aks)for(const p of a.profiler||[])svar.set(p.candId,p);
   const besvarad=omg>0&&aks.some(a=>+a.omgang===omg),harPool=rows.some(s=>s.avid);
   const rad=s=>{const c=cands.get(s.candId),sv=svar.get(s.candId),visas=s.avid?s.visaNamn===true:true,po=xPoang(s);
-    return`<div class="prow xp"><span><b>${esc(c?c.name:s.candId)}</b>${s.etikett?` <span class="fmeta">${esc(s.etikett)}${s.omgang?" · omgång "+esc(s.omgang):""}</span>`:""}</span>${po>=0?`<span class="pill">${po} %</span>`:""}${sv?`<span class="pill ${sv.svar==="ja"?"lage kund":""}">${XSVAR[sv.svar]||esc(sv.svar)}</span>${sv.text?`<span class="ftxt">${esc(sv.text)}</span>`:""}`:""}${valda.has(s.candId)?`<span class="pill lage kund">${val.val==="las_upp"?"Vill låsa upp":"Screening till oss"}</span>`:""}${s.status==="slappt"&&s.avid?`<button type="button" class="tbtn" data-xvisa="${esc(s.id)}" data-till="${visas?"0":"1"}" ${canWrite?"":"disabled"}>${visas?"Dölj namn och CV":"Visa namn och CV"}</button>`:""}<button type="button" class="tbtn" data-xater="${esc(s.id)}" ${canWrite?"":"disabled"}>${s.status==="pool"?"Ta ur poolen":"Återkalla"}</button></div>`;};
+    return`<div class="prow xp"><span><b>${esc(c?c.name:s.candId)}</b>${s.etikett?` <span class="fmeta">${esc(s.etikett)}${s.omgang?" · omgång "+esc(s.omgang):""}</span>`:""}</span>${po>=0?`<span class="pill">${po} %</span>`:""}${sv?`<span class="pill ${sv.svar==="ja"?"lage kund":""}">${XSVAR[sv.svar]||esc(sv.svar)}</span>${sv.text?`<span class="ftxt">${esc(sv.text)}</span>`:""}`:""}${valda.has(s.candId)?`<span class="pill lage kund">${val.val==="las_upp"?"Vill låsa upp":"Screening till oss"}</span>`:""}${s.avid?`<span class="pill ${xDoltKlar(s)?"lage kund":""}">${xDoltKlar(s)?"Text godkänd":"Text saknas"}</span><button type="button" class="tbtn" data-xdolt="${esc(s.id)}" ${canWrite?"":"disabled"}>Godkänd text</button>`:""}${s.status==="slappt"&&s.avid?`<button type="button" class="tbtn" data-xvisa="${esc(s.id)}" data-till="${visas?"0":"1"}" ${canWrite?"":"disabled"}>${visas?"Dölj namn och CV":"Visa namn och CV"}</button>`:""}<button type="button" class="tbtn" data-xater="${esc(s.id)}" ${canWrite?"":"disabled"}>${s.status==="pool"?"Ta ur poolen":"Återkalla"}</button></div>`;};
   const n3=Math.min(3,pool.length);
   return`<div class="xroll" data-xr="${esc(rid)}"><p class="xrh"><a href="#" data-openr="${esc(rid)}">${esc(r?(r.ref?r.ref+" · ":"")+(r.title||""):rid)}</a>${harPool?`<span class="pill">Omgång ${omg} av 3</span>`:""}${omg>0&&harPool?`<span class="pill ${besvarad?"lage kund":""}">${besvarad?"Besvarad":"Väntar på svar"}</span>`:""}</p>
     ${val?`<div class="pbed xsv"><b>${val.val==="las_upp"?"Kunden vill låsa upp kandidaterna":"Kunden lämnar över screeningen till oss"}</b><p>Gäller ${esc((val.profiler||[]).map(p=>{const c=cands.get(p.candId);return(c?c.name:p.candId)+(p.etikett?" ("+p.etikett+")":"");}).join(", "))}.${val.val==="las_upp"?" Klicka Visa namn och CV på dem du låser upp.":""} Valet gäller rollen, en ny väg kräver en ny begäran.</p></div>`:""}
@@ -1698,6 +1698,41 @@ function xOrderHTML(o){
     ${(o.krav||[]).length?`<ul>${o.krav.map(k=>`<li>${esc(k)}</li>`).join("")}</ul>`:""}${o.start?`<p class="fmeta">Önskad start: ${esc(o.start)}</p>`:""}${o.text?`<p>${esc(o.text)}</p>`:""}
     <p class="fsec-act">${kopplad?`<a href="#" data-openr="${esc(o.roleId)}">Öppna uppdraget</a>`:`<button type="button" class="btn small" data-xoskapa="${esc(o.id)}" ${canWrite?"":"disabled"}>Skapa uppdrag av beställningen</button><select data-xokopp="${esc(o.id)}" aria-label="Koppla till befintligt uppdrag" ${canWrite?"":"disabled"}><option value="">eller koppla till befintligt uppdrag …</option>${rs.map(r=>`<option value="${esc(r.id)}">${esc((r.ref?r.ref+" · ":"")+(r.title||r.id))}</option>`).join("")}</select>`}<button type="button" class="tbtn" data-xoslut="${esc(o.id)}" ${canWrite?"":"disabled"}>Avsluta beställningen</button></p></div>`;
 }
+function xDoltKlar(s){const d=s&&s.dolt;return !!(d&&typeof d==="object"&&String(d.text||"").trim());}
+// Vad i den godkända texten som skulle peka ut personen. Bara en varning, ägaren avgör.
+function xRojer(c,allt){
+  const ut=[];if(!c)return ut;
+  const delar=String(c.name||"").toLowerCase().split(/[\s-]+/).filter(x=>x.length>=3);
+  if(delar.some(n=>new RegExp("(^|[^a-zåäöéèüø])"+n.replace(/[^a-zåäöéèüø]/g,".")+"($|[^a-zåäöéèüø])").test(allt)))ut.push("personens namn");
+  if(c.email&&allt.includes(String(c.email).toLowerCase()))ut.push("mejladressen");
+  const tel=String(c.phone||"").replace(/\D/g,"");if(tel.length>=7&&allt.replace(/\D/g,"").includes(tel.slice(-7)))ut.push("telefonnumret");
+  if(/linkedin\.com|https?:\/\/|[a-z0-9._-]+@[a-z0-9-]+\.[a-z]{2,}/.test(allt))ut.push("en länk eller mejladress");
+  return ut;
+}
+function xDoltDrawer(sid){
+  const s=xsl.get(sid);if(!s)return;
+  const c=cands.get(s.candId),r=roles.get(s.roleId),m=matches.get(s.roleId+"__"+s.candId),d=(s.dolt&&typeof s.dolt==="object")?s.dolt:{};
+  const rader=a=>(Array.isArray(a)?a:[]).join("\n");
+  const ul=a=>Array.isArray(a)&&a.length?`<ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<p class="fmeta">Inget.</p>`;
+  const underlag=`<details class="kf"><summary>Underlag ur ATS:et, visas inte för kunden</summary><p><b>${esc(c?c.name:s.candId)}</b>${c&&c.note?"<br>"+esc(c.note):""}</p><h4>Belagt</h4>${ul(m&&m.belagt)}<h4>Att stämma av</h4>${ul(m&&m.verifiera)}${c&&c.tillganglig?`<p class="fmeta">Tillgänglig: ${esc(c.tillganglig)}</p>`:""}</details>`;
+  let varnad="";
+  drawer("Godkänd text, "+esc(s.etikett||"profil"),
+    `<p class="fmeta">${esc(r&&r.title||"")} · ${esc(xNamn(s.granskare))}. Det här är allt kunden får läsa om profilen så länge namnet är dolt. Skriv utan namn, arbetsgivare, kontaktuppgifter och annat som pekar ut personen. Ett tomt fält visas inte.</p>`+underlag+
+    F("xd-titel","Titel",`<input id="xd-titel" name="titel" value="${esc(d.titel||"")}" maxlength="120" autocomplete="off">`)+
+    F("xd-ort","Ort eller område",`<input id="xd-ort" name="ort" value="${esc(d.ort||"")}" maxlength="80" autocomplete="off">`)+
+    F("xd-text","Profiltext",`<textarea id="xd-text" name="text" rows="6" maxlength="2000">${esc(d.text||"")}</textarea>`)+
+    F("xd-vet","Stöd mot kraven, en punkt per rad",`<textarea id="xd-vet" name="vet" rows="4" maxlength="2000">${esc(rader(d.vet))}</textarea>`)+
+    F("xd-kollar","Att stämma av, en punkt per rad",`<textarea id="xd-kollar" name="kollar" rows="3" maxlength="2000">${esc(rader(d.kollar))}</textarea>`)+
+    F("xd-till","Tillgänglighet",`<input id="xd-till" name="tillganglig" value="${esc(d.tillganglig||"")}" maxlength="160" autocomplete="off">`),
+    async fd=>{
+      const t=k=>String(fd.get(k)||"").trim(),l=k=>t(k).split("\n").map(x=>x.trim()).filter(Boolean);
+      const ny={titel:t("titel"),ort:t("ort"),text:t("text"),vet:l("vet"),kollar:l("kollar"),tillganglig:t("tillganglig")};
+      const allt=[ny.titel,ny.ort,ny.text,ny.tillganglig,...ny.vet,...ny.kollar].join(" ").toLowerCase(),rojer=xRojer(c,allt);
+      if(rojer.length&&varnad!==allt){varnad=allt;toast("Texten innehåller "+rojer.join(", ")+". Ändra texten, eller klicka Spara en gång till för att spara ändå.");return false;}
+      try{await db.doc("xslapp/"+s.id).update({dolt:ny,doltAt:nowIso(),doltAv:"Filip"});toast(ny.text?"Texten är sparad. Det är den kunden läser tills du visar namnet.":"Sparat utan profiltext. Kunden ser bara etikett och poäng.");render();return true;}
+      catch(err){toast("Kunde inte spara: "+(err&&err.message||err));return false;}
+    });
+}
 function xgranskareHTML(){
   const ids=[...new Set([...xgr.keys(),...[...xsl.values()].map(s=>s.granskare).filter(Boolean)])].sort((a,b)=>xNamn(a).localeCompare(xNamn(b),"sv"));
   const kort=ids.map((e,n)=>{
@@ -1711,10 +1746,11 @@ function xgranskareHTML(){
       ${os.length?`<h4>Beställd search</h4>${os.map(xOrderHTML).join("")}`:""}
       ${be.length?`<h4>Beställningar på profiler som väntar på dig</h4>`+be.map(b=>{const c=cands.get(b.candId);return`<div class="prow"><span>${b.typ==="intervju"?"Vill boka intervju med":"Ber om mer underlag om"} <b>${esc(c?c.name:b.candId)}</b>${b.text?": "+esc(b.text):""}</span><button type="button" class="tbtn" data-xklar="${esc(b.id)}" ${canWrite?"":"disabled"}>Markera klar</button></div>`;}).join(""):""}
       <h4>Uppdrag och profiler</h4>${rids.length?rids.map(rid=>xRollHTML(e,rid)).join(""):`<p class="fempty">Inget är släppt eller lagt i pool. Släpp en profil från personens kort i ett uppdrag, eller koppla en beställning till ett uppdrag.</p>`}
+      <p class="fsec-act"><button type="button" class="tbtn" data-xkonto="${esc(e)}" ${har&&canWrite?"":"disabled"}>Skapa inloggningskonto</button><span class="fmeta">Behövs en gång per person, annars kommer ingen inloggningslänk. Inget händer om kontot redan finns.</span></p>
       <h4>Det här visas</h4><p class="xval">${XVISA.map(([k,l])=>`<label><input type="checkbox" data-xi="${k}" ${i[k]===false?"":"checked"} ${lasbar}> ${l}</label>`).join("")}</p>
       <h4>Knappar och rättigheter</h4><p class="xval">${XKNAPP.map(([k,l])=>`<label><input type="checkbox" data-xk="${k}" ${kn.includes(k)?"checked":""} ${lasbar}> ${l}</label>`).join("")}<label><input type="checkbox" data-xb ${i.bestallSearch===true?"checked":""} ${lasbar}> Kund i RekBot2000 (får begära kandidater)</label></p>
       <div class="xtxt">${F("xr-"+n,"Rubrik på sidan",`<input id="xr-${n}" data-xt="rubrik" value="${esc(i.rubrik||"")}" placeholder="Thurneco · profiler för granskning" autocomplete="off" ${lasbar}>`)}${F("xh-"+n,"Hälsning överst",`<textarea id="xh-${n}" data-xt="halsning" rows="2" ${lasbar}>${esc(i.halsning||"")}</textarea>`)}${F("xf0-"+n,"Följdfråga 1",`<input id="xf0-${n}" data-xf="0" value="${esc(fr[0]||"")}" placeholder="${esc(XFRAGOR[0])}" autocomplete="off" ${lasbar}>`)}${F("xf1-"+n,"Följdfråga 2",`<input id="xf1-${n}" data-xf="1" value="${esc(fr[1]||"")}" placeholder="${esc(XFRAGOR[1])}" autocomplete="off" ${lasbar}>`)}</div>
-      <p class="fmeta">Profiler ur poolen visas alltid som Profil A, B, C utan namn och CV tills du klickar Visa namn och CV på en enskild profil. Det du stänger av lämnar aldrig databasen till den här personen.${har?"":" Inställningarna tänds inom någon minut."}</p>
+      <p class="fmeta">Profiler ur poolen visas alltid som Profil A, B, C utan namn och CV tills du klickar Visa namn och CV på en enskild profil. Till dess läser kunden bara det du skriver under Godkänd text. Det du stänger av lämnar aldrig databasen till den här personen.${har?"":" Inställningarna tänds inom någon minut."}</p>
     </details>`;}).join("");
   return`<div class="matching kunder xgv"><div><h1>Granskare</h1>
     <p class="fmeta" style="margin:6px 0 0">Utomstående som granskar profiler i ATS-X. Alla får samma avskalade vy och loggar in med mejllänk. Den som får beställa search skriver sina krav där, du godkänner en pool och släpper tre i taget.</p>
@@ -1786,6 +1822,10 @@ function wireX(el){
     if(!e.target.closest(".xgv"))return;
     if(e.target.closest("[data-xkopiera]")){try{await navigator.clipboard.writeText(X_LANK);toast("Länken är kopierad.");}catch(_){toast(X_LANK);}return;}
     if(e.target.closest("[data-xny]")){xNyDrawer();return;}
+    const dl=e.target.closest("[data-xdolt]");if(dl){xDoltDrawer(dl.dataset.xdolt);return;}
+    const ko=e.target.closest("[data-xkonto]");
+    if(ko){ko.disabled=true;const fel=await xKonto(ko.dataset.xkonto);ko.disabled=false;
+      toast(fel?"Inloggningskontot kunde inte skapas"+fel.replace(" Men inloggningskontot kunde inte skapas",""):"Inloggningskontot finns. "+xNamn(ko.dataset.xkonto)+" kan logga in på "+X_LANK);return;}
     const d=e.target.closest("details.xg"),gid=d&&d.dataset.x;
     const kl=e.target.closest("[data-xklar]");
     if(kl){const b=xbe.get(kl.dataset.xklar);if(!b)return;kl.disabled=true;
@@ -1797,6 +1837,8 @@ function wireX(el){
       if(tr.dataset.obesv==="1"&&tr.dataset.armed!=="1"){tr.dataset.armed="1";tr.textContent="Förra omgången är inte besvarad. Klicka igen för att släppa ändå";return;}
       const omg=xOmg(gid,rid);if(omg>=3){toast("Tre omgångar är redan släppta.");return;}
       const tre=[...xsl.values()].filter(s=>s.granskare===gid&&s.roleId===rid&&s.status==="pool").sort((a,b)=>xPoang(b)-xPoang(a)).slice(0,3);if(!tre.length)return;
+      const utanText=tre.filter(s=>!xDoltKlar(s)).length;
+      if(utanText&&tr.dataset.armedtext!=="1"){tr.dataset.armedtext="1";tr.textContent=utanText+" av "+tre.length+" saknar godkänd text och visas då bara med etikett och poäng. Klicka igen för att släppa ändå";return;}
       tr.disabled=true;
       try{for(const s of tre)await db.doc("xslapp/"+s.id).update({status:"slappt",omgang:omg+1,slapptAt:nowIso()});
         let kop="";try{await navigator.clipboard.writeText(xMejltext(gid,rid,omg+1));kop=" Mejltexten ligger i urklipp, skicka den till "+xNamn(gid)+".";}catch(_){kop=" Klicka Kopiera mejltext och skicka den till "+xNamn(gid)+".";}
