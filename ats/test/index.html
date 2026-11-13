@@ -184,7 +184,7 @@ a{color:var(--copper)}
 .col.tom h2{border-bottom:0;padding:7px 12px;opacity:.7}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,620px),1fr));gap:10px;padding:10px;flex:1}
 .col.tom .cards{display:none}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:grab;display:grid;gap:6px;align-content:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;cursor:grab;display:grid;grid-template-columns:minmax(0,1fr);min-width:0;gap:6px;align-content:start}
 .card:active{cursor:grabbing}
 .card .n{font-weight:500;font-size:14px;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .card .n time{font-size:11px;color:var(--faint);font-weight:400;white-space:nowrap}
@@ -237,9 +237,14 @@ html.nofa .ilink .ifb{display:inline-flex}
 .board.kolumner .col.tom h2{border-bottom:1px solid var(--line);padding:10px 12px;opacity:1}
 .board.kolumner .col.tom .cards{display:flex}
 .board.kolumner .cards{display:flex;flex-direction:column;gap:8px;padding:8px}
-.board.kolumner .card{padding:10px 12px;gap:4px}
+.board.kolumner .card{padding:10px 12px;gap:4px;overflow-wrap:anywhere}
 .board.kolumner .card .n{font-size:13px}
 .board.kolumner .card .det{display:none}
+/* Kolumnvyn: kortet får aldrig bli bredare än kolumnen. Knappraden bryter rad, stadieväljaren får en egen rad. */
+.board.kolumner .card-actions{flex-wrap:wrap}
+.board.kolumner .card-actions select{flex:1 1 100%}
+.board.kolumner .card-actions [data-sent]{order:9;flex:1 1 100%}
+.board.kolumner .card .n>span:first-child{min-width:0}
 .board.bred .card .note,.board.bred .card .lc{display:none}
 .board.bred .card-actions{margin-top:8px}
 .card-actions{display:flex;gap:6px;align-items:center;margin-top:4px}
