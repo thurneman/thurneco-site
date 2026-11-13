@@ -39,6 +39,13 @@
    linkedin:get('linkedin'),
    botcheck:get('website')?'1':''
   };
+  /* Bevakning (bevaka.js): ingen roll, eget ämne så att ATS-jobbet inte läser den som en ansökan. */
+  const isWatch=data.job_id==='bevakning';
+  if(isWatch){
+   data.type='bevakning';data.job_id='';data.job_title='';data.job_type='';
+   data.intresse=window.ThurneWatch?.intresse||'';
+   data.samtycke=`Bevakning startad på thurneco.se ${new Date().toISOString()}. Personen vill bli kontaktad om uppdrag som passar.`;
+  }
   const isApplication=data.type==='application';
   if(isApplication){
    /* Djuplänkar till ATS:et i mailet. Kandidat-id:t räknas fram på samma sätt som ATS-jobbet gör
@@ -47,7 +54,7 @@
    data.ats_kandidat=cid?`${ATS}#cand=${cid}`:'';
    data.ats_roll=data.job_id?`${ATS}#role=${data.job_id}`:'';
   }
-  const subject=isApplication?`Ansökan: ${data.job_title} [${data.job_id}]`:`Kontakt via thurneco.se: ${data.name}`;
+  const subject=isWatch?`Bevakning av jobb: ${data.name||data.email}`:isApplication?`Ansökan: ${data.job_title} [${data.job_id}]`:`Kontakt via thurneco.se: ${data.name}`;
   if(!KEY){
    /* Ingen nyckel ännu: öppna ett mejl med samma innehåll så att inget går förlorat. */
    const body=`${data.message}\n\nNamn: ${data.name}\nE-post: ${data.email}${isApplication?`\nLinkedIn: ${data.linkedin||'-'}\nRoll: ${data.job_title} [${data.job_id}]`:''}\n`;
