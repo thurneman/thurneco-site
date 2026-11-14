@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Rekbot2000, demo av kundens arbetsyta</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Demomiljö för kundens arbetsyta i Rekbot2000. Fristående sida: ingen databas, ingen inloggning, inget skickas.
+   Rollen och profilerna är påhittade. Läget sparas bara i besökarens egen webbläsare. */
+:root{--bg:#f7f7f5;--card:#fff;--line:#dde3e8;--navy:#17384f;--text:#3d5567;--muted:#66788a;--blue:#2563eb;--blue-ink:#1d4fd7;--blue-tint:#e9f0ff;--blue-line:#93b3f8;
+ --green:#2f6b4f;--green-tint:#eef5f0;--green-line:#d3e5d9;--sand:#7a5a1e;--sand-tint:#faf6ee;--sand-line:#ece3cd;--pill:#eef1f4}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:17px/1.55 "Noto Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 90px}
+h1,h2,h3,p{margin:0}
+h1{font-size:44px;line-height:1.1;font-weight:800;color:var(--navy);letter-spacing:-.01em}
+h2{font-size:30px;line-height:1.2;font-weight:700;color:var(--navy)}
+h3{font-size:22px;line-height:1.25;font-weight:700;color:var(--navy)}
+.lead{font-size:19px;color:var(--muted);margin-top:14px}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--blue);margin-bottom:10px}
+.eyebrow.grey{color:var(--muted)}
+.muted{color:var(--muted)}
+.small{font-size:15px}
+
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:16px;text-decoration:none}
+.logo{width:52px;height:52px;border-radius:14px;background:var(--navy);color:#fff;display:grid;place-items:center;font-weight:800;font-size:27px;line-height:1;padding-bottom:3px}
+.brand small{display:block;font-size:12px;font-weight:600;letter-spacing:.3em;color:var(--muted)}
+.brand b{display:block;font-size:24px;line-height:1.15;color:var(--navy)}
+.where{color:var(--muted);font-size:16px;text-align:right}
+
+.tabs{display:flex;align-items:center;gap:8px;margin:18px 0 44px;flex-wrap:wrap}
+.tab{font:inherit;font-weight:600;color:var(--muted);background:transparent;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;display:inline-flex;align-items:center;gap:10px}
+.tab.on{background:var(--navy);color:#fff}
+.tab .n{background:var(--pill);color:var(--muted);border-radius:999px;font-size:14px;padding:2px 11px}
+.tab.on .n{background:rgba(255,255,255,.18);color:#fff}
+.tab.new{margin-left:auto}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:30px}
+.card + .card{margin-top:18px}
+.grid2 > .card{margin-top:0}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;margin-top:38px}
+.sok{display:block;width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;position:relative;transition:border-color .15s,box-shadow .15s}
+.sok:hover{border-color:#b9c6d1;box-shadow:0 6px 18px rgba(23,56,79,.07)}
+.sok h3{margin-bottom:4px}
+.sok .arrow{position:absolute;right:24px;bottom:22px;color:var(--navy);font-size:22px}
+.sok .pill{margin-top:14px}
+
+.pill{display:inline-block;background:var(--pill);color:var(--muted);border-radius:999px;font-size:14px;font-weight:600;padding:5px 13px}
+.pill.ok{background:#e8f3ec;color:var(--green)}
+.pill.ja{background:#e8f3ec;color:var(--green)}
+.pill.blue{background:var(--blue-tint);color:var(--blue-ink)}
+
+.btn{font:inherit;font-weight:600;border-radius:12px;border:1px solid var(--blue);background:var(--blue);color:#fff;padding:13px 22px;cursor:pointer;display:inline-flex;align-items:center;gap:10px;text-decoration:none}
+.btn:hover{background:#1d54d4}
+.btn.ghost{background:#fff;border-color:var(--line);color:var(--navy)}
+.btn.ghost:hover{border-color:#b9c6d1;background:#fff}
+.btn.text{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.text:hover{color:var(--navy);background:transparent}
+.btn.valt{outline:3px solid rgba(37,99,235,.28);outline-offset:2px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid rgba(37,99,235,.45);outline-offset:2px}
+
+label.f{display:block;font-weight:600;color:var(--navy);margin-bottom:8px}
+label.f span{font-weight:400;color:var(--muted)}
+input[type=text],textarea{width:100%;font:inherit;color:var(--navy);background:#fff;border:1px solid #cfd8df;border-radius:12px;padding:13px 15px}
+textarea{min-height:104px;resize:vertical}
+input::placeholder,textarea::placeholder{color:#8a99a6}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.krav{display:grid;grid-template-columns:40px 1fr;gap:12px;align-items:center;margin-top:12px}
+.krav i{font-style:normal;width:40px;height:40px;border-radius:50%;background:var(--blue-tint);color:var(--blue-ink);font-weight:700;display:grid;place-items:center}
+.kravhead{display:flex;justify-content:space-between;align-items:baseline;margin-top:30px}
+details.mer{margin-top:26px}
+details.mer summary{cursor:pointer;font-weight:600;color:var(--navy)}
+details.mer .in{margin-top:16px;display:grid;gap:18px}
+.fel{color:#b3261e;font-size:15px;margin-top:12px}
+
+.side dl{margin:0}
+.side{padding:28px 26px}
+.side .rad{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:13px 0;font-size:16px}
+.side .rad dt{color:var(--muted);white-space:nowrap}
+.side .rad dd{margin:0;font-weight:700;color:var(--navy);text-align:right}
+.side hr{border:0;border-top:1px solid var(--line);margin:18px 0 6px}
+.checks{list-style:none;margin:6px 0 0;padding:0}
+.checks li{display:grid;grid-template-columns:28px 1fr;gap:6px;padding:7px 0;color:var(--navy)}
+.checks li::before{content:"✓";color:var(--green);font-weight:700}
+.checks li.tom{color:#9aa7b2}
+.checks li.tom::before{content:"·";color:#9aa7b2}
+
+.steps{list-style:none;display:flex;gap:0;margin:26px 0 30px;padding:0;max-width:640px}
+.steps li{flex:1;position:relative;padding-top:30px;font-size:15px;font-weight:600;color:#93a1ad}
+.steps li::before{content:"";position:absolute;top:8px;left:0;right:0;height:2px;background:var(--line)}
+.steps li:last-child::before{display:none}
+.steps li::after{content:"";position:absolute;top:0;left:0;width:18px;height:18px;border-radius:50%;background:var(--bg);border:2px solid #b7c3cd}
+.steps li.done{color:var(--green)}
+.steps li.done::before{background:#8fc3a5}
+.steps li.done::after{background:#3f8f68;border-color:#3f8f68}
+.steps li.now{color:var(--blue-ink)}
+.steps li.now::after{border-color:var(--blue);box-shadow:inset 0 0 0 4px var(--bg);background:var(--blue)}
+
+.hero{text-align:center;padding:54px 24px}
+.hero .ring{width:74px;height:74px;border-radius:50%;margin:0 auto 22px;border:6px solid var(--blue-tint);border-top-color:var(--blue);animation:snurr 1.4s linear infinite}
+@keyframes snurr{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.hero .ring{animation:none}}
+.hero p{max-width:520px;margin:12px auto 0}
+
+.prof-head{display:flex;gap:20px;align-items:flex-start}
+.avatar{flex:none;width:66px;height:66px;border-radius:16px;background:var(--green-tint);border:1px solid var(--green-line);display:grid;place-items:center}
+.avatar svg{width:40px;height:40px;stroke:var(--green);fill:none;stroke-width:2;stroke-linecap:round}
+.prof-head h2{font-size:36px;font-weight:800}
+.prof-text{font-size:20px;line-height:1.55;margin-top:22px}
+.boxes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.box{border-radius:16px;padding:22px 24px;border:1px solid var(--line)}
+.box h4{margin:0 0 12px;font-size:14px;letter-spacing:.03em;text-transform:uppercase}
+.box ul{margin:0;padding-left:18px}
+.box li{margin:7px 0}
+.box.green{background:var(--green-tint);border-color:var(--green-line);color:var(--green)}
+.box.sand{background:var(--sand-tint);border-color:var(--sand-line);color:var(--sand)}
+details.om{margin-top:22px}
+details.om summary{list-style:none;cursor:pointer;display:inline-flex;gap:12px;font-weight:700;color:var(--navy);border:1px solid var(--line);border-radius:12px;padding:13px 20px}
+details.om summary::-webkit-details-marker{display:none}
+details.om summary::after{content:"+"}
+details.om[open] summary::after{content:"−"}
+details.om dl{margin:16px 0 0;display:grid;grid-template-columns:170px 1fr;gap:8px 16px}
+details.om dt{color:var(--muted)}
+details.om dd{margin:0;color:var(--navy)}
+.fraga{margin-top:30px;padding-top:0}
+.fraga .eyebrow{border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:18px}
+.val{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.fin{font-size:15px;color:var(--muted);margin-top:16px}
+.framsteg{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;color:var(--muted);font-weight:600;font-size:15px}
+
+.panel{background:#f5f8ff;border:1px solid #dbe5fb;border-radius:18px;padding:30px}
+.panel.green{background:var(--green-tint);border-color:var(--green-line)}
+.panel.green h2{color:#245a41;font-size:38px;font-weight:800}
+.panel-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin:20px 0 26px}
+.chip{font:inherit;color:var(--text);background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 16px;cursor:pointer}
+.chip.on{background:#e3ecff;border-color:var(--blue-line);color:var(--blue-ink)}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-top:22px}
+.rader{margin:22px 0 26px}
+.rader .r{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 0;border-bottom:1px solid rgba(23,56,79,.12);color:var(--navy);font-size:19px}
+.rader label.r{cursor:pointer}
+.rader .l{display:flex;align-items:center;gap:16px}
+.rader input[type=checkbox]{width:22px;height:22px;accent-color:var(--blue)}
+.vagar{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:8px}
+.vag{border:1px solid var(--line);border-radius:16px;padding:24px;display:flex;flex-direction:column;align-items:flex-start}
+.vag p{margin:10px 0 20px}
+.vag .btn{margin-top:auto}
+.bekrafta{margin-top:20px;border:1px solid var(--blue-line);background:var(--blue-tint);border-radius:16px;padding:22px 24px;color:var(--navy)}
+.bekrafta .val{margin-top:16px}
+
+.demo{margin-top:22px;border:1px dashed #b9c6d1;border-radius:14px;padding:14px 18px;display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;color:var(--muted);font-size:15px}
+.demo b{color:var(--navy)}
+.botten{margin-top:56px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:14px}
+.botten button{font:inherit;color:var(--blue-ink);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.tillbaka{font:inherit;font-weight:600;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;margin-bottom:18px}
+.tillbaka:hover{color:var(--navy)}
+
+@media (max-width:860px){
+ .grid2,.boxes,.vagar,.row2{grid-template-columns:1fr}
+ h1{font-size:34px}h2{font-size:25px}.prof-head h2{font-size:29px}.panel.green h2{font-size:29px}
+ .prof-text{font-size:18px}
+ .card,.panel{padding:22px}
+ .wrap{padding:20px 16px 70px}
+ .where{display:none}
+ .tabs{margin-bottom:30px}
+ .steps li{font-size:13px}
+ details.om dl{grid-template-columns:1fr}
+ details.om dt{margin-top:8px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <header class="top">
+  <a class="brand" href="./" data-a="ga-lista" aria-label="Rekbot2000, till dina sökningar">
+   <span class="logo" aria-hidden="true">t.</span>
+   <span><small>THURNECO</small><b>Rekbot2000</b></span>
+  </a>
+  <div class="where">Din arbetsyta · Demo</div>
+ </header>
+ <nav class="tabs" id="tabs" aria-label="Arbetsyta"></nav>
+ <main id="app"></main>
+ <div class="botten">
+  <span>Demomiljö. Rollen och profilerna är påhittade, och inget skickas.</span>
+  <button type="button" data-a="borja-om">Börja om demon</button>
+ </div>
+</div>
+<script>
+(()=>{
+ const KEY='rekbot-demo-v1';
+ const TILLG='Inte kontaktad än. Intresse och möjlig start stäms av vid första kontakt.';
+ const P=(omgang,nr,titel,text,belagt,kollar,omrade,erfarenhet)=>({omgang,nr,titel,text,belagt,kollar,omrade,erfarenhet});
+ /* Påhittade profiler. Inga verkliga personer. */
+ const DEMO=[
+  P(1,'01','Underhållsledare','Underhållsledare med erfarenhet av att utveckla team och förbättra driftsäkerhet i processindustri. Har lett ett team på åtta personer och arbetat med planerat underhåll.',
+   ['Personalansvar för ett underhållsteam','Erfarenhet från processindustri','Planering av förebyggande underhåll'],['Självständig användning av SAP PM'],'Västmanland','Mer än tio år i underhåll'),
+  P(1,'02','Underhållsingenjör','Underhållsingenjör med lång erfarenhet av tillståndsbaserat underhåll och rotorsaksanalyser i massa- och pappersindustri. Har lett förbättringsprojekt men inte haft formellt personalansvar.',
+   ['Erfarenhet från processindustri','Planering av förebyggande underhåll','Dagligt arbete i SAP PM'],['Erfarenhet av att leda ett team med personalansvar'],'Mälardalen','Mer än tio år i underhåll'),
+  P(1,'03','Produktionsledare','Produktionsledare i livsmedelsindustri som har ansvarat för både drift och underhåll på en mindre anläggning. Van vid skiftlag och budgetansvar.',
+   ['Personalansvar för skiftlag','Erfarenhet från processindustri','Budgetansvar för underhåll'],['Djup i förebyggande underhåll','Erfarenhet av SAP PM, använder ett annat underhållssystem i dag'],'Västmanland','Fem till tio år som ledare'),
+  P(2,'04','Underhållschef','Underhållschef på ett kraftvärmeverk med ansvar för mekaniskt underhåll och revisionsplanering. Leder en grupp tekniker och samordnar entreprenörer under stopp.',
+   ['Personalansvar för en underhållsgrupp','Planering av revisioner och förebyggande underhåll','Erfarenhet från energi och process'],['Vilket underhållssystem som används i dag'],'Västmanland','Mer än tio år i underhåll'),
+  P(2,'05','Driftchef','Driftchef med bakgrund som underhållstekniker i stålindustri. Har byggt upp ett arbetssätt för förebyggande underhåll och infört nyckeltal för driftsäkerhet.',
+   ['Leder drift och underhåll','Erfarenhet från processindustri','Har infört förebyggande underhåll'],['Självständigt arbete i SAP PM','Hur stor del av dagens roll som är underhåll'],'Bergslagen','Mer än tio år i industri'),
+  P(2,'06','Underhållsplanerare','Underhållsplanerare som arbetar dagligen i SAP PM med arbetsorder, reservdelar och stopplanering på en kemisk anläggning. Vikarierar som gruppledare.',
+   ['Arbetar självständigt i SAP PM','Planering av förebyggande underhåll','Erfarenhet från processindustri'],['Erfarenhet av eget personalansvar'],'Mälardalen','Fem till tio år i underhåll'),
+  P(3,'07','Teknisk chef','Teknisk chef på ett sågverk med ansvar för underhåll, investeringar och elsäkerhet. Leder underhållsledare och tekniker.',
+   ['Personalansvar för underhållsorganisationen','Ansvar för förebyggande underhåll'],['Erfarenhet av SAP PM','Erfarenhet av kontinuerlig process'],'Västmanland','Mer än tio år som ledare'),
+  P(3,'08','Underhållsledare','Underhållsledare i läkemedelstillverkning med vana av validerade miljöer och höga dokumentationskrav. Leder ett team och planerar underhållsstopp.',
+   ['Leder ett underhållsteam','Planering av förebyggande underhåll','SAP PM som huvudsystem'],['Erfarenhet av tyngre processindustri'],'Mälardalen','Fem till tio år i underhåll'),
+  P(3,'09','Driftsäkerhetsingenjör','Driftsäkerhetsingenjör i gruvindustri som tar fram underhållsstrategier och följer upp tillgänglighet. Arbetar nära planering och produktion.',
+   ['Erfarenhet från processindustri','Strategier för förebyggande underhåll','Arbetar i SAP PM'],['Erfarenhet av personalansvar'],'Bergslagen','Fem till tio år i underhåll')
+ ];
+ const KRAV0=['Leda ett underhållsteam','Erfarenhet av processindustri','Arbeta självständigt i SAP PM','Planera förebyggande underhåll'];
+ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const pil='<span aria-hidden="true">→</span>';
+ const ny=()=>({vy:'lista',aktiv:null,utkast:null,sokningar:[
+  {id:'s1',roll:'Underhållschef',ort:'Västerås',krav:KRAV0.slice(),start:'',annons:'',lage:'profiler',omgang:1,pos:0,steg:'profil',profiler:DEMO,svar:{},kommentar:{},skickat:[],valda:[],bekrafta:null,val:null}
+ ]});
+ let S=(()=>{try{const r=JSON.parse(localStorage.getItem(KEY));if(r&&Array.isArray(r.sokningar))return r;}catch(e){}return ny();})();
+ const spara=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+ const app=document.getElementById('app'),tabs=document.getElementById('tabs');
+ const aktiv=()=>S.sokningar.find(s=>s.id===S.aktiv);
+ const runda=s=>s.profiler.filter(p=>p.omgang===s.omgang);
+ const granskade=s=>s.profiler.filter(p=>s.skickat.includes(p.omgang));
+ const kvar=s=>s.lage==='profiler'?runda(s).filter(p=>!s.svar[p.nr]).length:0;
+ const SVAR={ja:'Ja',nej:'Nej',kanske:'Kanske'};
+ const svarPill=v=>`<span class="pill ${v==='ja'?'ja':''}">${SVAR[v]||''}</span>`;
+
+ /* Profiler till en sökning som besökaren själv skapat: byggs av de krav som skrevs in. */
+ function bygg(s){
+  const k=s.krav,titlar=['Erfaren specialist','Teamledare','Senior profil','Gruppchef','Specialist','Koordinator','Chef','Projektledare','Senior specialist'];
+  return Array.from({length:9},(_,i)=>{
+   const saknas=k.length>1?[k[i%k.length]]:[];
+   const belagt=k.filter(x=>!saknas.includes(x));
+   return P(Math.floor(i/3)+1,String(i+1).padStart(2,'0'),titlar[i],
+    `Profil med bakgrund nära rollen ${s.roll}${s.ort?' i '+s.ort:''}. Underlaget visar erfarenhet som stöder ${belagt.length>1?'flera av kraven':'kravet'}.`,
+    belagt.length?belagt:k,saknas.length?saknas:['Hur djup erfarenheten är'],s.ort||'Inte angivet','Framgår av underlaget');
+  });
+ }
+
+ function ritaTabs(){
+  const n=S.sokningar.reduce((a,s)=>a+kvar(s),0);
+  const lista=S.vy==='lista'||(S.vy==='sokning'&&aktiv()&&aktiv().lage!=='profiler');
+  const prof=S.vy==='tom'||(S.vy==='sokning'&&aktiv()&&aktiv().lage==='profiler');
+  tabs.innerHTML=`<button type="button" class="tab ${lista?'on':''}" data-a="ga-lista">Dina sökningar</button>
+   <button type="button" class="tab ${prof?'on':''}" data-a="ga-profiler">Profiler <span class="n">${n}</span></button>
+   <button type="button" class="tab new ${S.vy==='ny'?'on':''}" data-a="ga-ny">+ Ny sökning</button>`;
+ }
+
+ function vyLista(){
+  const kort=S.sokningar.map(s=>{
+   let etikett='',pill='';
+   if(s.lage==='soker'){etikett='Sökning pågår';pill='<span class="pill blue">Startad</span>';}
+   else if(s.lage==='profiler'){etikett='Redo att granskas';const k=kvar(s);pill=`<span class="pill ok">${k} ${k===1?'profil':'profiler'}</span>`;}
+   else if(s.lage==='vantar'){etikett=s.omgang<3?'Nästa urval förbereds':'Alla omgångar granskade';pill=`<span class="pill">${granskade(s).length} av 9 granskade</span>`;}
+   else if(s.lage==='val'){etikett='Dags att välja';pill=`<span class="pill blue">${granskade(s).length} profiler</span>`;}
+   else{etikett='Klart';pill='<span class="pill ok">Begäran skickad</span>';}
+   return `<button type="button" class="sok" data-a="oppna" data-id="${esc(s.id)}"><div class="eyebrow">${etikett}</div><h3>${esc(s.roll)}</h3><div class="muted">${esc(s.ort||'Ort inte angiven')}</div>${pill}<span class="arrow" aria-hidden="true">→</span></button>`;
+  }).join('');
+  return `<div class="eyebrow">Din rekryteringsöversikt</div><h1>Dina sökningar</h1><p class="lead">Från första underlag till nästa kollega. Här följer du dina urval.</p><div class="list">${kort}</div>`;
+ }
+
+ function sidopanel(d){
+  const krav=d.krav.filter(k=>k.trim());
+  const li=krav.length?krav.map(k=>`<li>${esc(k)}</li>`).join(''):'<li class="tom">Inga krav än</li>';
+  return `<div class="eyebrow">Din sökning</div><h2>${esc(d.roll.trim()||'Roll')}</h2><p class="muted" style="margin-top:8px;font-size:19px">${esc(d.ort.trim()||'Ort eller land')}</p><hr>
+   <dl><div class="rad"><dt>Måstekrav</dt><dd>${krav.length} av högst 4</dd></div></dl><ul class="checks">${li}</ul><hr>
+   <dl><div class="rad"><dt>Önskad start</dt><dd>${esc(d.start.trim()||'Enligt överenskommelse')}</dd></div><div class="rad"><dt>Annonsunderlag</dt><dd>${d.annons.trim()?'Tillagt':'Inte tillagt'}</dd></div></dl>`;
+ }
+
+ function vyNy(){
+  const d=S.utkast||(S.utkast={roll:'',ort:'',krav:['','','',''],start:'',annons:'',fel:''});
+  return `<div class="grid2"><form class="card" id="nyform" novalidate>
+    <div class="eyebrow">Det viktigaste</div><h2>Ge sökningen rätt riktning</h2>
+    <div class="row2" style="margin-top:26px">
+     <div><label class="f" for="f-roll">Roll *</label><input type="text" id="f-roll" data-f="roll" value="${esc(d.roll)}" maxlength="80" placeholder="Till exempel Underhållschef" autocomplete="off"></div>
+     <div><label class="f" for="f-ort">Ort eller land</label><input type="text" id="f-ort" data-f="ort" value="${esc(d.ort)}" maxlength="60" placeholder="Till exempel Västerås" autocomplete="off"></div>
+    </div>
+    <div class="kravhead"><h3>Måstekrav</h3><span class="muted small">Minst ett, högst fyra</span></div>
+    ${d.krav.map((k,i)=>`<div class="krav"><i aria-hidden="true">${i+1}</i><input type="text" data-k="${i}" value="${esc(k)}" maxlength="120" aria-label="Måstekrav ${i+1}" placeholder="${['Det personen måste kunna','Till exempel erfarenhet av en bransch','Till exempel ett system eller en metod','Till exempel ett ansvar'][i]}" autocomplete="off"></div>`).join('')}
+    <details class="mer"${d.start||d.annons?' open':''}><summary>Lägg till start och annonsunderlag (valfritt)</summary><div class="in">
+     <div><label class="f" for="f-start">Önskad start</label><input type="text" id="f-start" data-f="start" value="${esc(d.start)}" maxlength="60" placeholder="Enligt överenskommelse" autocomplete="off"></div>
+     <div><label class="f" for="f-annons">Annons eller rollbeskrivning <span>(klistra in hela texten)</span></label><textarea id="f-annons" data-f="annons" maxlength="8000">${esc(d.annons)}</textarea></div>
+    </div></details>
+    <p class="fel" id="fel" role="alert"${d.fel?'':' hidden'}>${esc(d.fel)}</p>
+    <div class="foot"><span class="muted small">Sökningen startar direkt. Du får ett mejl när de första profilerna är redo.</span><button type="submit" class="btn">Starta sökning ${pil}</button></div>
+   </form><aside class="card side" id="sida" aria-live="polite">${sidopanel(d)}</aside></div>`;
+ }
+
+ function steg(s){
+  const nu=s.lage==='soker'?1:(s.lage==='profiler'||s.lage==='vantar')?2:3;
+  const klar=s.lage==='klart';
+  return `<ol class="steps">${['Kravprofil','Sökning','Profiler','Nästa steg'].map((t,i)=>`<li class="${klar||i<nu?'done':i===nu?'now':''}"${i===nu&&!klar?' aria-current="step"':''}>${t}</li>`).join('')}</ol>`;
+ }
+ const kravpanel=s=>`<aside class="card side">${sidopanel(s)}</aside>`;
+
+ function profilkort(s,p){
+  const v=s.svar[p.nr]&&s.svar[p.nr].svar;
+  return `<article class="card">
+    <div class="prof-head"><div class="avatar" aria-hidden="true"><svg viewBox="0 0 40 40"><circle cx="20" cy="13" r="6.5"/><path d="M6 34c1.8-7 7.4-10.5 14-10.5S32.200 27 34 34"/></svg></div>
+     <div><div class="eyebrow" style="margin-bottom:4px">Anonymiserad profil</div><h2>Profil ${p.nr}</h2><div class="muted" style="font-size:19px;margin-top:4px">${esc(p.titel)}</div></div></div>
+    <p class="prof-text">${esc(p.text)}</p>
+    <div class="boxes"><div class="box green"><h4>✓ Belagt i underlaget</h4><ul>${p.belagt.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+     <div class="box sand"><h4>ⓘ Att stämma av</h4><ul>${p.kollar.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div></div>
+    <details class="om"><summary>Mer om profilen</summary><dl><dt>Område</dt><dd>${esc(p.omrade)}</dd><dt>Erfarenhet</dt><dd>${esc(p.erfarenhet)}</dd><dt>Tillgänglighet</dt><dd>${TILLG}</dd></dl></details>
+    <div class="fraga"><div class="eyebrow grey">Är profilen relevant för rollen?</div>
+     <div class="val"><button type="button" class="btn ${v==='ja'?'valt':''}" data-a="svar" data-v="ja">✓ Ja, intressant</button>
+      <button type="button" class="btn ghost ${v==='nej'?'valt':''}" data-a="svar" data-v="nej">× Nej tack</button>
+      <button type="button" class="btn text ${v==='kanske'?'valt':''}" data-a="svar" data-v="kanske">Kanske</button></div>
+     <p class="fin">Din bedömning gäller matchningen. Den är ingen beställning och säger inget om kandidatens eget intresse.</p></div>
+   </article>`;
+ }
+
+ function varfor(s,p){
+  const a=s.svar[p.nr],nej=a.svar==='nej';
+  /* Snabbvalen kommer ur profilens egna punkter, så att kunden kan svara med ett klick. */
+  const val=[...new Set(nej?[...p.kollar,'Fel nivå för rollen','Fel bransch']:p.belagt)].filter(Boolean);
+  return `<section class="panel"><div class="panel-top"><h2>${nej?'Vad saknas?':'Vad gör profilen relevant?'}</h2><span class="muted">Valfritt</span></div>
+    <p class="muted" style="margin-top:8px">Profil ${p.nr} · ditt svar: ${svarPill(a.svar)}</p>
+    <div class="chips">${val.map((t,i)=>`<button type="button" class="chip ${a.skal.includes(t)?'on':''}" data-a="chip" data-i="${i}" aria-pressed="${a.skal.includes(t)}">${esc(t)}</button>`).join('')}</div>
+    <label class="f" for="f-mer">Något mer? <span>(valfritt)</span></label><textarea id="f-mer" data-mer placeholder="Skriv det som hjälper oss att förstå ditt val...">${esc(a.text)}</textarea>
+    <div class="foot"><span class="muted">Välj flera eller gå direkt vidare.</span><div class="val"><button type="button" class="btn text" data-a="bakat">Ändra svar</button><button type="button" class="btn" data-a="nasta">${pil} Nästa</button></div></div>
+   </section>`;
+ }
+
+ function summering(s){
+  const r=runda(s),ja=r.filter(p=>s.svar[p.nr].svar==='ja').length;
+  return `<section class="panel green"><div class="eyebrow">Omgång ${s.omgang} granskad</div><h2>${r.length} profiler. ${ja} ${ja===1?'intressant':'intressanta'}.</h2>
+    <p style="margin-top:12px;font-size:19px">Skicka dina svar så hjälper de oss att förbereda nästa urval.</p>
+    <div class="rader">${r.map(p=>`<div class="r"><span>Profil ${p.nr}</span>${svarPill(s.svar[p.nr].svar)}</div>`).join('')}</div>
+    <label class="f" for="f-kom">Något att ta med till nästa steg? <span>(valfritt)</span></label><textarea id="f-kom" data-kom placeholder="Till exempel något du vill prioritera mer...">${esc(s.kommentar[s.omgang]||'')}</textarea>
+    <div class="foot"><button type="button" class="btn ghost" data-a="andra">Ändra mina val</button><button type="button" class="btn" data-a="skicka">Skicka mina svar ${pil}</button></div>
+   </section>`;
+ }
+
+ function vyVal(s){
+  const g=granskade(s),n=s.valda.length;
+  const namn=s.valda.map(x=>'Profil '+x).join(', ');
+  const bek=s.bekrafta?`<div class="bekrafta" role="alertdialog" aria-label="Bekräfta ditt val"><b>${s.bekrafta==='upplasning'?'Du begär namn och CV':'Du begär screening med Thurneco'} för ${esc(namn)}.</b><br>Pris och leverans stäms av med Thurneco innan något görs.
+    <div class="val"><button type="button" class="btn" data-a="bekrafta-ja">Ja, skicka begäran</button><button type="button" class="btn ghost" data-a="bekrafta-nej">Ändra</button></div></div>`:'';
+  return `<section class="card"><div class="eyebrow">Från urval till nästa steg</div><h2>Vilka vill du gå vidare med?</h2>
+    <p class="lead" style="font-size:18px;margin-top:10px">Markera profiler och välj hur vi hjälper dig vidare. Pris och leverans stäms av med Thurneco.</p>
+    <div style="margin-top:22px"><button type="button" class="btn ghost" data-a="alla">${n===g.length?'Avmarkera alla':'Markera alla'}</button></div>
+    <div class="rader">${g.map(p=>`<label class="r"><span class="l"><input type="checkbox" data-valj="${p.nr}" ${s.valda.includes(p.nr)?'checked':''}> Profil ${p.nr} <span class="muted small">${esc(p.titel)}</span></span>${svarPill(s.svar[p.nr].svar)}</label>`).join('')}</div>
+    <div class="vagar"><div class="vag"><div class="eyebrow grey">Namn och CV</div><p>Begär tillgång till identitet och CV för valda profiler.</p><button type="button" class="btn" data-a="begar" data-v="upplasning" ${n?'':'disabled'}>Begär upplåsning</button></div>
+     <div class="vag"><div class="eyebrow grey">Screening med Thurneco</div><p>Låt oss ta samtalet och stämma av det som behöver verifieras.</p><button type="button" class="btn" data-a="begar" data-v="screening" ${n?'':'disabled'}>Begär screening</button></div></div>
+    ${bek}<p class="fin">${n?'Du kan välja en väg per roll. Du får bekräfta valet innan det skickas.':'Markera minst en profil för att gå vidare.'}</p>
+   </section>`;
+ }
+
+ function vySokning(){
+  const s=aktiv();if(!s){S.vy='lista';return vyLista();}
+  const huvud=`<button type="button" class="tillbaka" data-a="ga-lista">← Dina sökningar</button><h1 style="font-size:38px">${esc(s.roll)}</h1><p class="muted" style="font-size:19px;margin-top:6px">${esc([s.ort,s.start?'Start '+s.start:''].filter(Boolean).join(' · ')||'Ort inte angiven')}</p>${steg(s)}`;
+  if(s.lage==='soker')return huvud+`<div class="grid2"><div><section class="card hero"><div class="ring" aria-hidden="true"></div><span class="pill blue">Sökning pågår</span><h2 style="margin-top:16px">Vi söker efter din nästa kollega.</h2><p class="lead">Du får ett mejl när profilerna är redo. De första tre kommer avidentifierade.</p></section>
+    <div class="demo"><span><b>Demo.</b> I skarpt läge kommer profilerna när sökningen levererat.</span><button type="button" class="btn ghost" data-a="demo-klara">Hoppa fram: profilerna är klara</button></div></div>${kravpanel(s)}</div>`;
+  if(s.lage==='profiler'){
+   const r=runda(s),p=r[Math.min(s.pos,r.length-1)];
+   const rad=`<div class="framsteg"><span>Omgång ${s.omgang} av 3</span><span>${s.steg==='summering'?'Alla tre granskade':'Profil '+(s.pos+1)+' av '+r.length}</span></div>`;
+   return huvud+rad+(s.steg==='summering'?summering(s):s.steg==='varfor'?varfor(s,p):profilkort(s,p));
+  }
+  if(s.lage==='vantar'){
+   const sista=s.omgang>=3;
+   return huvud+`<section class="panel green"><div class="eyebrow">Omgång ${s.omgang} skickad</div><h2>${sista?'Du har sett alla nio profiler.':'Tack. Nästa urval förbereds.'}</h2>
+    <p style="margin-top:12px;font-size:19px">${sista?'Välj vilka du vill gå vidare med.':'Dina svar styr vilka tre profiler du får härnäst. Du får ett mejl när de är redo.'}</p>
+    <div class="foot" style="justify-content:flex-start"><button type="button" class="btn" data-a="till-val">Gå vidare med dem jag har sett ${pil}</button></div></section>
+    ${sista?'':`<div class="demo"><span><b>Demo.</b> I skarpt läge kommer nästa tre när sökningen skärpts efter dina svar.</span><button type="button" class="btn ghost" data-a="demo-nasta">Hoppa fram: nästa tre är klara</button></div>`}`;
+  }
+  if(s.lage==='val')return huvud+vyVal(s);
+  const v=s.val||{vag:'upplasning',profiler:[]};
+  return huvud+`<section class="panel green"><div class="eyebrow">Klart</div><h2>Din begäran är skickad.</h2>
+   <p style="margin-top:12px;font-size:19px">${v.vag==='upplasning'?'Du har begärt namn och CV':'Du har begärt screening med Thurneco'} för ${esc(v.profiler.map(x=>'Profil '+x).join(', '))}. Thurneco återkommer med pris och leverans.</p>
+   <div class="foot" style="justify-content:flex-start"><button type="button" class="btn ghost" data-a="ga-lista">Till dina sökningar</button></div></section>`;
+ }
+
+ const vyTom=()=>`<div class="eyebrow">Profiler</div><h1>Inga profiler väntar</h1><p class="lead">När en sökning har levererat ser du profilerna här. Du får också ett mejl.</p><div style="margin-top:28px"><button type="button" class="btn" data-a="ga-ny">+ Ny sökning</button></div>`;
+
+ function rita(fokus){
+  ritaTabs();
+  app.innerHTML=S.vy==='ny'?vyNy():S.vy==='sokning'?vySokning():S.vy==='tom'?vyTom():vyLista();
+  ritaTabs();spara();
+  if(fokus){window.scrollTo(0,0);const h=app.querySelector('h1,h2');if(h){h.setAttribute('tabindex','-1');h.focus({preventScroll:true});}}
+ }
+
+ document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-a]');if(!t)return;
+  const a=t.dataset.a,s=aktiv();
+  if(t.tagName==='A')e.preventDefault();
+  if(a==='ga-lista'){S.vy='lista';return rita(true);}
+  if(a==='ga-ny'){S.vy='ny';return rita(true);}
+  if(a==='ga-profiler'){const m=S.sokningar.find(x=>x.lage==='profiler');if(m){S.aktiv=m.id;S.vy='sokning';}else S.vy='tom';return rita(true);}
+  if(a==='oppna'){S.aktiv=t.dataset.id;S.vy='sokning';return rita(true);}
+  if(a==='borja-om'){S=ny();return rita(true);}
+  if(!s)return;
+  const r=runda(s),p=r[Math.min(s.pos,r.length-1)];
+  if(a==='demo-klara'){if(!s.profiler.length)s.profiler=bygg(s);s.lage='profiler';s.omgang=1;s.pos=0;s.steg='profil';return rita(true);}
+  if(a==='svar'){const f=s.svar[p.nr];s.svar[p.nr]=f&&f.svar===t.dataset.v?f:{svar:t.dataset.v,skal:[],text:''};s.steg='varfor';return rita(true);}
+  if(a==='chip'){const x=t.textContent,l=s.svar[p.nr].skal,i=l.indexOf(x);if(i<0)l.push(x);else l.splice(i,1);t.classList.toggle('on',i<0);t.setAttribute('aria-pressed',String(i<0));return spara();}
+  if(a==='bakat'){s.steg='profil';return rita(true);}
+  if(a==='nasta'){if(s.pos<r.length-1){s.pos++;s.steg='profil';}else s.steg='summering';return rita(true);}
+  if(a==='andra'){s.pos=0;s.steg='profil';return rita(true);}
+  if(a==='skicka'){if(!s.skickat.includes(s.omgang))s.skickat.push(s.omgang);s.lage='vantar';return rita(true);}
+  if(a==='demo-nasta'){s.omgang++;s.pos=0;s.steg='profil';s.lage='profiler';return rita(true);}
+  if(a==='till-val'){s.lage='val';s.bekrafta=null;if(!s.valda.length)s.valda=granskade(s).filter(x=>s.svar[x.nr].svar==='ja').map(x=>x.nr);return rita(true);}
+  if(a==='alla'){const g=granskade(s);s.valda=s.valda.length===g.length?[]:g.map(x=>x.nr);s.bekrafta=null;return rita();}
+  if(a==='begar'){if(!s.valda.length)return;s.bekrafta=t.dataset.v;rita();const b=app.querySelector('.bekrafta .btn');if(b)b.focus();return;}
+  if(a==='bekrafta-nej'){s.bekrafta=null;return rita();}
+  if(a==='bekrafta-ja'){s.val={vag:s.bekrafta,profiler:s.valda.slice().sort()};s.bekrafta=null;s.lage='klart';return rita(true);}
+ });
+
+ document.addEventListener('change',e=>{
+  const s=aktiv(),nr=e.target.dataset&&e.target.dataset.valj;if(!s||!nr)return;
+  if(e.target.checked){if(!s.valda.includes(nr))s.valda.push(nr);}else s.valda=s.valda.filter(x=>x!==nr);
+  s.bekrafta=null;rita();
+ });
+
+ document.addEventListener('input',e=>{
+  const t=e.target,s=aktiv();
+  if(S.vy==='ny'&&S.utkast){
+   if(t.dataset.f)S.utkast[t.dataset.f]=t.value;else if(t.dataset.k!==undefined)S.utkast.krav[+t.dataset.k]=t.value;else return;
+   S.utkast.fel='';const f=document.getElementById('fel');if(f)f.hidden=true;
+   document.getElementById('sida').innerHTML=sidopanel(S.utkast);return spara();
+  }
+  if(!s)return;
+  if(t.dataset.mer!==undefined){const r=runda(s),p=r[Math.min(s.pos,r.length-1)];if(s.svar[p.nr])s.svar[p.nr].text=t.value;return spara();}
+  if(t.dataset.kom!==undefined){s.kommentar[s.omgang]=t.value;return spara();}
+ });
+
+ document.addEventListener('submit',e=>{
+  if(e.target.id!=='nyform')return;e.preventDefault();
+  const d=S.utkast,krav=d.krav.map(k=>k.trim()).filter(Boolean);
+  if(!d.roll.trim()||!krav.length){d.fel=!d.roll.trim()?'Skriv vilken roll sökningen gäller.':'Skriv minst ett måstekrav.';rita();const f=document.getElementById(!d.roll.trim()?'f-roll':'nyform').querySelector?document.querySelector(!d.roll.trim()?'#f-roll':'[data-k="0"]'):null;if(f)f.focus();return;}
+  const id='s'+Date.now().toString(36);
+  S.sokningar.unshift({id,roll:d.roll.trim(),ort:d.ort.trim(),krav,start:d.start.trim(),annons:d.annons.trim(),lage:'soker',omgang:1,pos:0,steg:'profil',profiler:[],svar:{},kommentar:{},skickat:[],valda:[],bekrafta:null,val:null});
+  S.utkast=null;S.aktiv=id;S.vy='sokning';rita(true);
+ });
+
+ rita();
+})();
+</script>
+</body>
+</html>
