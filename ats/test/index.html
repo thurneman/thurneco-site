@@ -933,10 +933,10 @@ function renderRoles(){
   const sel=$("#mobile-role");
   sel.innerHTML=`<option value="">Välj roll …</option>`+list.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?"selected":""}>${esc(r.title)}${r.location?" · "+esc(r.location):""}</option>`).join("");
   const openR=r=>inBiz(r)&&!viewHidden(r);
-  const worked=[...roles.values()].filter(r=>openR(r)&&["1","2","3"].includes(r.prio)).length;
-  const active=[...roles.values()].filter(openR).length;
-  const passed=[...roles.values()].filter(r=>inBiz(r)&&ACTIVE.has(r.status||"ny")&&isPassed(r)).length;
-  const bizRoles=[...roles.values()].filter(inBiz);const bizPeople=bizPersonIds().size;
+  const worked=[...roles.values()].filter(r=>!r.demo&&openR(r)&&["1","2","3"].includes(r.prio)).length;
+  const active=[...roles.values()].filter(r=>!r.demo&&openR(r)).length;
+  const passed=[...roles.values()].filter(r=>!r.demo&&inBiz(r)&&ACTIVE.has(r.status||"ny")&&isPassed(r)).length;
+  const bizRoles=[...roles.values()].filter(r=>!r.demo&&inBiz(r));const bizPeople=[...bizPersonIds()].filter(id=>!(cands.get(id)||{}).demo).length;
   countsLine=`${worked} arbetas med · ${active} öppna${passed?` · ${passed} passerade`:""} · ${bizRoles.length} registrerade · ${bizPeople} personer`;
   $("#counts").textContent=countsLine;
   const bh=$("#bizh");if(bh)bh.textContent=BIZ_LABEL[biz];
@@ -1754,6 +1754,7 @@ function xgranskareHTML(){
       <p class="fsec-act"><button type="button" class="tbtn" data-xkonto="${esc(e)}" ${har&&canWrite?"":"disabled"}>Skapa inloggningskonto</button><span class="fmeta">Behövs en gång per person, annars kommer ingen inloggningslänk. Inget händer om kontot redan finns.</span></p>
       <h4>Det här visas</h4><p class="xval">${XVISA.map(([k,l])=>`<label><input type="checkbox" data-xi="${k}" ${i[k]===false?"":"checked"} ${lasbar}> ${l}</label>`).join("")}</p>
       <h4>Knappar och rättigheter</h4><p class="xval">${XKNAPP.map(([k,l])=>`<label><input type="checkbox" data-xk="${k}" ${kn.includes(k)?"checked":""} ${lasbar}> ${l}</label>`).join("")}<label><input type="checkbox" data-xb ${i.bestallSearch===true?"checked":""} ${lasbar}> Kund i RekBot2000 (får begära kandidater)</label></p>
+      <h4>Kundens bolag</h4><p class="xval"><select data-xforetag ${lasbar}><option value="">Inget valt</option>${[...foretag.values()].filter(f=>f.typ==="kund"||f.id===(xgr.get(e)||{}).foretagId).sort((a,b)=>String(a.namn||"").localeCompare(String(b.namn||""),"sv")).map(f=>`<option value="${esc(f.id)}" ${(xgr.get(e)||{}).foretagId===f.id?"selected":""}>${esc(f.namn||f.id)}</option>`).join("")}</select> <span class="fmeta">Ur kundregistret, bolag med typen kund. Den som arbetar hos bolaget läses inte in till den här kunden. Namnet visas aldrig för kunden.</span></p>
       <div class="xtxt">${F("xr-"+n,"Rubrik på sidan",`<input id="xr-${n}" data-xt="rubrik" value="${esc(i.rubrik||"")}" placeholder="Thurneco · profiler för granskning" autocomplete="off" ${lasbar}>`)}${F("xh-"+n,"Hälsning överst",`<textarea id="xh-${n}" data-xt="halsning" rows="2" ${lasbar}>${esc(i.halsning||"")}</textarea>`)}${F("xf0-"+n,"Följdfråga 1",`<input id="xf0-${n}" data-xf="0" value="${esc(fr[0]||"")}" placeholder="${esc(XFRAGOR[0])}" autocomplete="off" ${lasbar}>`)}${F("xf1-"+n,"Följdfråga 2",`<input id="xf1-${n}" data-xf="1" value="${esc(fr[1]||"")}" placeholder="${esc(XFRAGOR[1])}" autocomplete="off" ${lasbar}>`)}</div>
       <p class="fmeta">Profiler ur poolen visas alltid som Profil A, B, C utan namn och CV tills du klickar Visa namn och CV på en enskild profil. Till dess läser kunden bara det du skriver under Godkänd text. Det du stänger av lämnar aldrig databasen till den här personen.${har?"":" Inställningarna tänds inom någon minut."}</p>
     </details>`;}).join("");
@@ -1796,7 +1797,7 @@ function xPoolDrawer(e,rid){
   const tagna=new Set([...xsl.values()].filter(s=>s.granskare===e&&s.roleId===rid&&s.status!=="aterkallad").map(s=>s.candId));
   const ms=[...matches.values()].filter(m=>m.roleId===rid&&!m.dismissed&&cands.has(m.candId)&&!tagna.has(m.candId)).sort((a,b)=>(+b.score||0)-(+a.score||0));
   if(!ms.length){toast("Det finns inga fler personer på uppdraget att lägga i poolen.");return;}
-  drawer("Lägg till i poolen",`<p class="fmeta">${esc(r.title||"")} · ${esc(xNamn(e))}. Bocka för dem du godkänner. De visas inte förrän du släpper en omgång, och då utan namn och CV.</p><div class="xpl">${ms.map(m=>{const c=cands.get(m.candId);return`<label><input type="checkbox" name="c" value="${esc(m.candId)}"> <b>${esc(c.name||m.candId)}</b>${typeof m.score==="number"?` <span class="pill">${m.score} %</span>`:""}</label>`;}).join("")}</div>`,async fd=>{
+  drawer("Lägg till i poolen",`<p class="fmeta">${esc(r.title||"")} · ${esc(xNamn(e))}. Bocka för dem du godkänner. De visas inte förrän du släpper en omgång, och då utan namn och CV.</p><div class="xpl">${ms.map(m=>{const c=cands.get(m.candId);return`<label><input type="checkbox" name="c" value="${esc(m.candId)}"> <b>${esc(c.name||m.candId)}</b>${typeof m.score==="number"?` <span class="pill">${m.score} %</span>`:""}${Array.isArray(m.markningar)&&m.markningar.length?`<span class="fmeta" style="display:block;margin:2px 0 8px 24px">${m.markningar.map(x=>esc(x)).join(" · ")}</span>`:""}</label>`;}).join("")}</div>`,async fd=>{
     const val=fd.getAll("c");if(!val.length){toast("Bocka för minst en person.");return false;}
     try{
       for(const cid of val){const id=rid+"__"+cid+"__"+xSlug(e);if(xsl.has(id))await db.doc("xslapp/"+id).update({status:"pool",poolAt:nowIso()});else await db.doc("xslapp/"+id).set({granskare:e,roleId:rid,candId:cid,status:"pool",poolAt:nowIso(),slapptAv:"Filip"});}
@@ -1817,6 +1818,7 @@ function wireX(el){
   el.addEventListener("toggle",e=>{const d=e.target;if(d&&d.matches&&d.matches("details.xg")){if(d.open)xOpen.add(d.dataset.x);else xOpen.delete(d.dataset.x);}},true);
   el.onchange=async e=>{
     const d=e.target.closest&&e.target.closest("details.xg");if(!d)return;const id=d.dataset.x;
+    if(e.target.matches("[data-xforetag]")){if(!xgr.has(id))return;try{await db.doc("xgranskare/"+id).update({foretagId:e.target.value,andradAt:nowIso()});toast("Bolaget är sparat för "+xNamn(id));}catch(err){toast("Kunde inte spara: "+(err&&err.message||err));}return;}
     if(!e.target.matches("[data-xi],[data-xk],[data-xt],[data-xb],[data-xf]"))return;if(!xgr.has(id))return;
     const i={...xInst(id)};
     d.querySelectorAll("[data-xi]").forEach(c=>{i[c.dataset.xi]=c.checked;});
@@ -1846,7 +1848,7 @@ function wireX(el){
       const omg=xOmg(gid,rid);if(omg>=3){toast("Tre omgångar är redan släppta.");return;}
       const tre=[...xsl.values()].filter(s=>s.granskare===gid&&s.roleId===rid&&s.status==="pool").sort((a,b)=>xPoang(b)-xPoang(a)).slice(0,3);if(!tre.length)return;
       const utanText=tre.filter(s=>!xDoltKlar(s)).length;
-      if(utanText&&tr.dataset.armedtext!=="1"){tr.dataset.armedtext="1";tr.textContent=utanText+" av "+tre.length+" saknar godkänd text och visas då bara med etikett och poäng. Klicka igen för att släppa ändå";return;}
+      if(utanText){toast(utanText+" av "+tre.length+" saknar godkänd text. Godkänn texten först, sedan går det att släppa.");return;}
       tr.disabled=true;
       try{for(const s of tre)await db.doc("xslapp/"+s.id).update({status:"slappt",omgang:omg+1,slapptAt:nowIso()});
         let kop="";try{await navigator.clipboard.writeText(xMejltext(gid,rid,omg+1));kop=" Mejltexten ligger i urklipp, skicka den till "+xNamn(gid)+".";}catch(_){kop=" Klicka Kopiera mejltext och skicka den till "+xNamn(gid)+".";}
@@ -1860,8 +1862,8 @@ function wireX(el){
     const sk=e.target.closest("[data-xoskapa]");
     if(sk){const o=xor.get(sk.dataset.xoskapa);if(!o)return;let id=slug((o.titel||"")+"-"+(o.ort||""));if(!id){toast("Beställningen saknar titel.");return;}while(roles.has(id))id+="-2";
       sk.disabled=true;
-      const brief="Beställd i ATS-X av "+xNamn(o.granskare)+".\n\nSkallkrav:\n"+(o.krav||[]).map(k=>"- "+k).join("\n")+(o.start?"\n\nÖnskad start: "+o.start:"")+(o.text?"\n\n"+o.text:"");
-      const ok=await writeDoc("roles",{id,title:o.titel,type:"recruitment",status:"ny",published:false,source:"manual",location:o.ort||"",brief,createdAt:nowIso(),updatedAt:nowIso()});
+      const brief="Beställd i ATS-X av "+xNamn(o.granskare)+".\n\nSkallkrav:\n"+(o.krav||[]).map(k=>"- "+k).join("\n")+(o.start?"\n\nÖnskad start: "+o.start:"");
+      const ok=await writeDoc("roles",{id,title:o.titel,type:"recruitment",status:"ny",published:false,source:"manual",location:o.ort||"",brief,...(o.talendaryJobId?{talendaryProjectId:String(o.talendaryJobId)}:{}),createdAt:nowIso(),updatedAt:nowIso()});
       if(!ok){sk.disabled=false;return;}
       try{await db.doc("xorder/"+o.id).update({roleId:id,status:"pagar",koppladAt:nowIso()});toast("Uppdraget är skapat och kopplat. Lägg in kund och övrigt på uppdraget.");render();}catch(err){toast("Uppdraget skapades men kopplingen gick inte: "+(err&&err.message||err));}
       return;}
