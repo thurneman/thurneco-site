@@ -54,7 +54,7 @@ function inloggFel(e){
 }
 function inloggning(msg){
   vem.textContent="";
-  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en sexsiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form"><p class="dov">Har du fått en kod i mejlet? Skriv din e-postadress ovan och koden här.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="123456"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en åttasiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form"><p class="dov">Har du fått en kod i mejlet? Skriv din e-postadress ovan och koden här.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,10}" maxlength="10" placeholder="12345678"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
   const lf=document.getElementById("lf"),kf=document.getElementById("kf");
   lf.onsubmit=async e=>{e.preventDefault();const b=lf.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
     const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
@@ -95,7 +95,7 @@ function kort(p,svara){
 function uppdragHTML(u,utanRubrik){
   const ps=profiler.filter(p=>p.role_id===u.id),rubrik=utanRubrik?"":`<h2>${esc(u.title||"Uppdrag")}</h2>`;
   if(!u.pool)return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(p=>kort(p,false)).join("")}</section>`;
-  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&!u.val&&nu.length>0,d=utkast["u:"+u.id]||{};
+  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&nu.length>0,d=utkast["u:"+u.id]||{};
   const fr=fragor();
   return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}Omgång ${u.omgang} av 3 · ${ps.length} av högst 9 profiler</p>
     ${nu.map(p=>kort(p,svara)).join("")}
@@ -143,7 +143,7 @@ function kundHTML(){
   if(flik==="kandidater"){
     return nav+(profiler.length?`<section>${profiler.map(p=>{const u=uppdrag.find(x=>x.id===p.role_id),rr=rs.find(x=>x.u&&x.u.id===p.role_id);return`<div class="kort krad" ${rr?`data-roll="${esc(rr.key)}"`:""}><div class="rad"><b>${esc(p.name)}</b><span class="dov">${esc(u?u.title:"")}</span>${p.score!=null?`<span class="pill">${esc(p.score)} %</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">${SVAR[p.mitt_svar]}</span>`:`<span class="pill">Väntar på ditt svar</span>`}${p.vald?`<span class="pill ok">${u&&u.val==="las_upp"?"Upplåsning begärd":"Screening hos oss"}</span>`:""}${p.namn_dolt?"":`<span class="pill ok">Upplåst</span>`}</div></div>`;}).join("")}</section>`:`<div class="kort"><p>Du har inga kandidater än.</p><p class="dov">Begär kandidater under Roller, så syns de här när de första profilerna är klara.</p></div>`);}
   return nav+(visaOrder?orderFormHTML():`<p><button type="button" data-ony>Begär kandidater</button></p>`)
-    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.val&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
+    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
 }
 function rita(){
   const hals=String(inst.halsning||"").trim(),ut=`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
