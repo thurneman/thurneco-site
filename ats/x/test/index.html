@@ -37,7 +37,8 @@ const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_K
 const yta=document.getElementById("yta"),vem=document.getElementById("vem");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dag=iso=>{try{return new Date(iso).toLocaleDateString("sv-SE",{day:"numeric",month:"long"});}catch(e){return"";}};
-let uppdrag=[],profiler=[],best=[],order=[],oppen=null,inst={},utkast={},visaOrder=false,flik="roller",oppenRoll=null;
+let uppdrag=[],profiler=[],best=[],order=[],oppen=null,inst={},utkast={},visaOrder=false,flik="roller",oppenRoll=null,andra={},kravForm=null;
+const maxOmg=u=>u&&u.max_omgang||3;
 const kund=()=>inst.bestallSearch===true;
 const rub=document.getElementById("rub"),RUB0=rub.textContent;
 const knappPa=t=>!Array.isArray(inst.knappar)||inst.knappar.includes(t);
@@ -92,7 +93,7 @@ function kort(p,svara){
   const har=t=>best.some(x=>x.kod===p.id&&x.typ===t&&x.status==="ny");
   const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
   const f=oppen&&oppen.id===p.id?oppen.typ:null,d=utkast[p.id]||{};
-  return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Profil")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">Ditt svar: ${SVAR[p.mitt_svar]||esc(p.mitt_svar)}</span>`:""}${bestRad(p)}</div>
+  return`<article class="kort" data-id="${esc(p.id)}"><div class="rad"><h3>${esc(p.name||"Profil")}</h3>${p.score!=null?`<span class="pill">${esc(p.score)} % mot kraven</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">Ditt svar: ${SVAR[p.mitt_svar]||esc(p.mitt_svar)}</span>`:""}${p.tidigare_krav?`<span class="pill">Bedömd mot tidigare krav</span>`:""}${bestRad(p)}</div>
     ${p.titel||p.ort?`<p class="dov">${esc([p.titel,p.ort].filter(Boolean).join(" · "))}</p>`:""}${p.note?`<p>${esc(p.note)}</p>`:""}${p.tillganglig?`<p class="dov">Tillgänglig: ${esc(p.tillganglig)}</p>`:""}
     ${lista("Stöd mot kraven",p.belagt)}${lista("Att stämma av",p.verifiera)}
     ${svara?`<div class="val" role="group" aria-label="Ditt svar på ${esc(p.name)}">${Object.entries(SVAR).map(([k,l])=>`<button type="button" class="${d.svar===k?"":"ljus"}" data-svar="${k}" aria-pressed="${d.svar===k}">${l}</button>`).join("")}</div><textarea data-kom rows="2" maxlength="1000" placeholder="Kommentar (valfritt)" aria-label="Kommentar till ${esc(p.name)}">${esc(d.text||"")}</textarea>`:""}
@@ -104,20 +105,20 @@ function kort(p,svara){
 function uppdragHTML(u,utanRubrik){
   const ps=profiler.filter(p=>p.role_id===u.id),rubrik=utanRubrik?"":`<h2>${esc(u.title||"Uppdrag")}</h2>`;
   if(!u.pool)return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(p=>kort(p,false)).join("")}</section>`;
-  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&nu.length>0,d=utkast["u:"+u.id]||{};
+  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),andrar=!!andra[u.id]&&u.besvarad,svara=(!u.besvarad||andrar)&&nu.length>0,d=utkast["u:"+u.id]||{},mx=maxOmg(u);
   const fr=fragor();
-  return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}Omgång ${u.omgang} av 3 · ${ps.length} av högst 9 profiler</p>
+  return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}Omgång ${u.omgang} av ${mx} · ${ps.length} av högst ${mx*3} profiler${u.krav_fran_omgang?` · Nya krav gäller från omgång ${u.krav_fran_omgang}`:""}</p>
     ${nu.map(p=>kort(p,svara)).join("")}
-    ${svara?`<form class="kort form" data-svara="${esc(u.id)}"><h3>Dina svar på omgång ${u.omgang}</h3><p class="dov">Svara Ja, Kanske eller Nej på varje profil ovan. Svaren styr vilka profiler du får härnäst.</p>
+    ${svara?`<form class="kort form" data-svara="${esc(u.id)}"><h3>${andrar?"Ändra dina svar":"Dina svar"} på omgång ${u.omgang}</h3><p class="dov">${andrar?"Dina tidigare svar är förvalda på profilerna ovan. Frågorna här är tomma, det du skrev förra gången finns kvar hos oss.":"Svara Ja, Kanske eller Nej på varje profil ovan. Svaren styr vilka profiler du får härnäst."}</p>
       ${fr.map((q,i)=>`<label for="q-${esc(u.id)}-${i}">${esc(q)}</label><textarea id="q-${esc(u.id)}-${i}" data-q="${i}" rows="2" maxlength="1500">${esc((d.q||[])[i]||"")}</textarea>`).join("")}
       <label for="x-${esc(u.id)}">Något annat vi bör veta? (valfritt)</label><textarea id="x-${esc(u.id)}" data-x rows="2" maxlength="1500">${esc(d.x||"")}</textarea>
-      <div class="rad"><button type="submit">Skicka svar</button><span class="fel" data-fm></span></div></form>`
-    :u.besvarad?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl.":"Tack, dina svar är inskickade. Du har nu sett alla "+ps.length+" profiler i den här sökningen."}</p>${u.omgang<3?"":`<p><strong>Nästa steg:</strong> gör ditt val under Gå vidare, eller ändra kraven för en ny sökning.</p>`}</div>`:""}
+      <div class="rad"><button type="submit">${andrar?"Spara ändrade svar":"Skicka svar"}</button>${andrar?`<button class="ljus" type="button" data-andra-avbryt="${esc(u.id)}">Avbryt</button>`:""}<span class="fel" data-fm></span></div></form>`
+    :u.besvarad?`<div class="kort"><p>${u.omgang<mx?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl.":"Tack, dina svar är inskickade. Du har nu sett alla "+ps.length+" profiler i den här sökningen."}</p>${u.omgang<mx?"":`<p><strong>Nästa steg:</strong> gör ditt val under Gå vidare, eller ändra kraven för en ny sökning.</p>`}${nu.length?`<p><button class="ljus" type="button" data-andra-svar="${esc(u.id)}">Ändra dina svar på omgång ${u.omgang}</button></p>`:""}</div>`:""}
     ${forr.length?`<details><summary>Tidigare omgångar (${forr.length} profiler)</summary>${forr.map(p=>kort(p,false)).join("")}</details>`:""}</section>`;
 }
 const STEG=["Begärd","Search pågår","Profiler","Ditt val","Klart"];
 function rollposter(){
-  const tagna=new Set(),ut=order.filter(o=>o.status!=="avslutad"||o.uppdrag).map(o=>{const u=o.uppdrag?uppdrag.find(x=>x.id===o.uppdrag):null;if(u)tagna.add(u.id);return{key:"o:"+o.id,titel:o.titel,ort:o.ort,krav:o.krav||[],start:o.start,at:o.at,u,status:o.status};});
+  const tagna=new Set(),ut=order.filter(o=>o.status!=="ersatt"&&o.status!=="vantar"&&!(o.status==="avslutad"&&o.ersatter)&&(o.status!=="avslutad"||o.uppdrag)).map(o=>{const u=o.uppdrag?uppdrag.find(x=>x.id===o.uppdrag):null;if(u)tagna.add(u.id);return{key:"o:"+o.id,id:o.id,nr:o.kravandring_nr||0,fran:o.krav_fran_omgang,vantar:order.find(v=>v.status==="vantar"&&v.ersatter===o.id)||null,titel:o.titel,ort:o.ort,krav:o.krav||[],start:o.start,at:o.at,u,status:o.status};});
   for(const u of uppdrag)if(!tagna.has(u.id))ut.push({key:"u:"+u.id,titel:u.title,ort:u.location,krav:[],u,status:"pagar"});
   return ut;
 }
@@ -129,10 +130,10 @@ function valHTML(u){
   const valda=ps.filter(p=>p.vald),ovalda=ps.filter(p=>!p.vald),kvar=ovalda.filter(p=>p.mitt_svar!=="nej"),nej=ovalda.filter(p=>p.mitt_svar==="nej");
   const klart=u.val&&valda.length?`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(valda.map(p=>p.name).join(", "))}. Vi hör av oss.</p></div>`:"";
   const nejRad=nej.map(p=>`<label class="dov"><input type="checkbox" disabled> ${esc(p.name)} (Du svarade Nej)</label>`).join("");
-  if(!kvar.length)return klart+(nej.length?`<div class="kort"><div class="vprof">${nejRad}</div><p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p></div>`:"");
+  if(!kvar.length)return klart+(nej.length?`<div class="kort"><div class="vprof">${nejRad}</div><p class="dov">En profil du har svarat Nej på går inte att välja. Svar på den senaste omgången kan du ändra själv, annars hör du av dig.</p></div>`:"");
   const d=utkast["v:"+u.id]||{};
   return klart+`<form class="kort form" data-val="${esc(u.id)}"><h3>${klart?"Gå vidare med fler":"Gå vidare"}</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Valet gäller bara de profiler du bockar för.</p>
-    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}${nejRad}</div>${nej.length?`<p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p>`:""}
+    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}${nejRad}</div>${nej.length?`<p class="dov">En profil du har svarat Nej på går inte att välja. Svar på den senaste omgången kan du ändra själv, annars hör du av dig.</p>`:""}
     <div class="rad"><button type="button" data-v="las_upp">Lås upp kandidaterna</button><button type="button" data-v="screening">Lämna över screening till oss</button><span class="fel" data-fm></span></div></form>`;
 }
 function orderFormHTML(){
@@ -146,16 +147,28 @@ function orderFormHTML(){
       <label for="o-x">Övrigt (valfritt)</label><textarea id="o-x" data-o="text" rows="3" maxlength="1500">${esc(d.text||"")}</textarea>
       <div class="rad"><button type="submit">Skicka</button><button class="ljus" type="button" data-oavbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`;
 }
+function kravHTML(r){
+  const lista=`<h4 style="margin-top:0">Dina skallkrav${r.fran?" från omgång "+r.fran:""}</h4><ul>${r.krav.map(k=>`<li>${esc(k)}</li>`).join("")}</ul>${r.start?`<p class="dov">Önskad start: ${esc(r.start)}</p>`:""}`;
+  if(r.vantar)return`<div class="kort">${lista}<h4>Din ändring väntar på oss</h4><ul>${(r.vantar.krav||[]).map(k=>`<li>${esc(k)}</li>`).join("")}</ul><p class="dov">Kraven ovan gäller tills vi har godkänt ändringen. Du får besked av oss. En ny ändring går att göra först därefter.</p></div>`;
+  if(!r.id||r.status!=="pagar"||!r.u)return`<div class="kort">${lista}</div>`;
+  if(kravForm!==r.key)return`<div class="kort">${lista}<p style="margin-bottom:0"><button class="ljus" type="button" data-kny="${esc(r.key)}">Ny sökning, ändra kravprofilen</button></p></div>`;
+  const d=utkast["k:"+r.id]||(utkast["k:"+r.id]={k:[0,1,2,3].map(i=>({pa:i<r.krav.length,text:r.krav[i]||""})),x:""});
+  return`<form class="kort form" data-krav="${esc(r.id)}"><h3>Ny sökning, ändra kravprofilen</h3><p class="dov">Bocka ur ett krav för att ta bort det, ändra texten eller lägg till ett nytt på en tom rad. Högst fyra krav.</p>
+    ${d.k.map((k,i)=>`<div class="rad" style="align-items:center;flex-wrap:nowrap"><input type="checkbox" style="width:auto" data-kp="${i}" ${k.pa?"checked":""} aria-label="Krav ${i+1} gäller"><input data-kk="${i}" maxlength="200" value="${esc(k.text)}" placeholder="${i<r.krav.length?"":"Nytt krav (valfritt)"}" aria-label="Krav ${i+1}"></div>`).join("")}
+    <label for="kx-${esc(r.id)}">Något vi bör veta om ändringen? (valfritt)</label><textarea id="kx-${esc(r.id)}" data-kx rows="2" maxlength="1500">${esc(d.x||"")}</textarea>
+    <p class="dov">${r.nr>=1?"Du har ändrat kraven förut på den här rollen. Den här ändringen startar när vi har godkänt den.":"Sökningen görs om på de nya kraven och du får tre nya omgångar. Profiler du redan har sett ligger kvar med dina svar."}</p>
+    <div class="rad"><button type="submit">Skicka nya krav</button><button class="ljus" type="button" data-kavbryt>Avbryt</button><span class="fel" data-fm></span></div></form>`;
+}
 function kundHTML(){
   const rs=rollposter(),r=oppenRoll?rs.find(x=>x.key===oppenRoll):null;
   const nav=`<nav class="flikar"><button type="button" class="${flik==="roller"?"":"ljus"}" data-flik="roller" aria-pressed="${flik==="roller"}">Roller</button><button type="button" class="${flik==="kandidater"?"":"ljus"}" data-flik="kandidater" aria-pressed="${flik==="kandidater"}">Kandidater</button></nav>`;
   if(r){return nav+`<p><button class="ljus" type="button" data-tillbaka>Tillbaka till roller</button></p><section><h2>${esc(r.titel||"Roll")}</h2><p class="dov">${esc(r.ort||"")}</p>${stegHTML(r)}
-      ${r.krav.length?`<div class="kort"><h4 style="margin-top:0">Dina skallkrav</h4><ul>${r.krav.map(k=>`<li>${esc(k)}</li>`).join("")}</ul>${r.start?`<p class="dov">Önskad start: ${esc(r.start)}</p>`:""}</div>`:""}
+      ${r.krav.length?kravHTML(r):""}
       ${r.u?uppdragHTML(r.u,true)+valHTML(r.u):`<div class="kort"><p>Sökningen är igång. Du får ett mejl med länk när de tre första profilerna finns här.</p></div>`}</section>`;}
   if(flik==="kandidater"){
     return nav+(profiler.length?`<section>${profiler.map(p=>{const u=uppdrag.find(x=>x.id===p.role_id),rr=rs.find(x=>x.u&&x.u.id===p.role_id);return`<div class="kort krad" ${rr?`data-roll="${esc(rr.key)}"`:""}><div class="rad"><b>${esc(p.name)}</b><span class="dov">${esc(u?u.title:"")}</span>${p.score!=null?`<span class="pill">${esc(p.score)} %</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">${SVAR[p.mitt_svar]}</span>`:`<span class="pill">Väntar på ditt svar</span>`}${p.vald?`<span class="pill ok">${u&&u.val==="las_upp"?"Upplåsning begärd":"Screening hos oss"}</span>`:""}${p.namn_dolt?"":`<span class="pill ok">Upplåst</span>`}</div></div>`;}).join("")}</section>`:`<div class="kort"><p>Du har inga kandidater än.</p><p class="dov">Begär kandidater under Roller, så syns de här när de första profilerna är klara.</p></div>`);}
   return nav+(visaOrder?orderFormHTML():`<p><button type="button" data-ony>Begär kandidater</button></p>`)
-    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
+    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst ${maxOmg(x.u)*3} profiler</span>`:""}${x.vantar?`<span class="pill varn">Kravändring väntar på oss</span>`:""}${x.u&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
 }
 function rita(){
   const hals=String(inst.halsning||"").trim(),ut=`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
@@ -165,6 +178,8 @@ function rita(){
 }
 yta.addEventListener("input",e=>{
   const t=e.target,k=t.closest("article[data-id]"),u=t.closest("form[data-svara]"),o=t.closest("form[data-order]");
+  const kf=t.closest("form[data-krav]");
+  if(kf){const d=utkast["k:"+kf.dataset.krav];if(!d)return;if(t.dataset.kk!=null){d.k[+t.dataset.kk].text=t.value;if(t.value.trim()&&!d.k[+t.dataset.kk].pa){d.k[+t.dataset.kk].pa=true;const c=kf.querySelector(`[data-kp="${t.dataset.kk}"]`);if(c)c.checked=true;}}else if(t.dataset.kp!=null)d.k[+t.dataset.kp].pa=t.checked;else if(t.matches("[data-kx]"))d.x=t.value;return;}
   if(k&&t.matches("[data-kom]")){(utkast[k.dataset.id]=utkast[k.dataset.id]||{}).text=t.value;}
   else if(u){const d=utkast["u:"+u.dataset.svara]=utkast["u:"+u.dataset.svara]||{q:[]};if(t.dataset.q!=null)d.q[+t.dataset.q]=t.value;else if(t.matches("[data-x]"))d.x=t.value;}
   else if(o&&t.dataset.o){(utkast.order=utkast.order||{})[t.dataset.o]=t.value;}
@@ -173,6 +188,10 @@ yta.addEventListener("input",e=>{
 yta.addEventListener("click",async e=>{
   const t=e.target;if(t.closest("[data-ut]")){await sb.auth.signOut({scope:"local"});inst={};utkast={};rub.textContent=RUB0;inloggning("Du är utloggad.");return;}
   if(t.closest("[data-ony]")){visaOrder=true;rita();const f=document.getElementById("o-t");if(f)f.focus();return;}
+  const kn=t.closest("[data-kny]");if(kn){kravForm=kn.dataset.kny;rita();return;}
+  if(t.closest("[data-kavbryt]")){kravForm=null;rita();return;}
+  const as=t.closest("[data-andra-svar]");if(as){const uid=as.dataset.andraSvar,u=uppdrag.find(x=>x.id===uid);if(!u)return;andra[uid]=true;profiler.filter(p=>p.role_id===uid&&p.omgang===u.omgang).forEach(p=>{utkast[p.id]={svar:p.mitt_svar||"",text:""};});rita();return;}
+  const aa=t.closest("[data-andra-avbryt]");if(aa){const uid=aa.dataset.andraAvbryt;delete andra[uid];profiler.filter(p=>p.role_id===uid).forEach(p=>delete utkast[p.id]);rita();return;}
   const fl=t.closest("[data-flik]");if(fl){flik=fl.dataset.flik;oppenRoll=null;rita();return;}
   if(t.closest("[data-tillbaka]")){oppenRoll=null;rita();return;}
   const vv=t.closest("[data-v]");
@@ -200,7 +219,11 @@ yta.addEventListener("submit",async e=>{
     knapp.disabled=true;fm.textContent="";const d=utkast["u:"+uid]||{q:[]},fr=fragor();
     const{error}=await sb.rpc("ats_x_svara",{p_uppdrag:uid,p:{profiler:nu.map(p=>({kod:p.id,svar:utkast[p.id].svar,text:(utkast[p.id].text||"").trim()})),fragor:fr.map((q,i)=>({fraga:q,svar:((d.q||[])[i]||"").trim()})),text:(d.x||"").trim()}});
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}
-    nu.forEach(p=>delete utkast[p.id]);delete utkast["u:"+uid];await las();return;}
+    nu.forEach(p=>delete utkast[p.id]);delete utkast["u:"+uid];delete andra[uid];await las();return;}
+  if(f.matches("form[data-krav]")){e.preventDefault();const id=f.dataset.krav,d=utkast["k:"+id]||{k:[]},krav=d.k.filter(k=>k.pa&&k.text.trim()).map(k=>k.text.trim());
+    if(!krav.length){fm.textContent="Minst ett krav måste vara kvar.";return;}
+    knapp.disabled=true;fm.textContent="";const{error}=await sb.rpc("ats_x_andra_krav",{p_begaran:id,p:{krav,text:(d.x||"").trim()}});
+    if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast["k:"+id];kravForm=null;await las();return;}
   if(f.matches("form[data-order]")){e.preventDefault();const d=utkast.order||{};knapp.disabled=true;fm.textContent="";
     const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||"",annons:d.annons||""}});
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
