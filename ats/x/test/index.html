@@ -54,13 +54,13 @@ function inloggFel(e){
 }
 function inloggning(msg){
   vem.textContent="";
-  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en sexsiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form" style="display:none"><p class="dov">Skriv koden ur mejlet.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="123456"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en sexsiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form"><p class="dov">Har du fått en kod i mejlet? Skriv din e-postadress ovan och koden här.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="123456"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
   const lf=document.getElementById("lf"),kf=document.getElementById("kf");
   lf.onsubmit=async e=>{e.preventDefault();const b=lf.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
     const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
     b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?inloggFel(error):"Mejlet är skickat. Skriv koden här, eller klicka på länken i mejlet.";
-    if(!error||/after \d+ seconds/i.test(String(error.message||""))){kf.style.display="";document.getElementById("lk").focus();}};
-  kf.onsubmit=async e=>{e.preventDefault();const b=kf.querySelector("button"),m=document.getElementById("km");b.disabled=true;
+    if(!error||/after \d+ seconds/i.test(String(error.message||"")))document.getElementById("lk").focus();};
+  kf.onsubmit=async e=>{e.preventDefault();const b=kf.querySelector("button"),m=document.getElementById("km");if(!document.getElementById("le").value.trim()){m.className="fel";m.textContent="Skriv din e-postadress i fältet ovan först.";return;}b.disabled=true;
     const{error}=await sb.auth.verifyOtp({email:document.getElementById("le").value.trim(),token:document.getElementById("lk").value.replace(/\D/g,""),type:"email"});
     b.disabled=false;if(error){m.className="fel";m.textContent="Koden stämmer inte eller har gått ut. Be om en ny kod.";}};
 }
