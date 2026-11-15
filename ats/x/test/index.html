@@ -117,10 +117,12 @@ function stegHTML(r){const n=stegNu(r),sist=r.u&&r.u.val?(r.u.val==="las_upp"?"U
   return`<ol class="steg">${STEG.map((s,i)=>`<li class="${i<n?"klar":i===n?"nu":""}">${i===4?sist:s}</li>`).join("")}</ol>`;}
 function valHTML(u){
   const ps=profiler.filter(p=>p.role_id===u.id);if(!ps.length)return"";
-  if(u.val){const v=ps.filter(p=>p.vald).map(p=>p.name).join(", ");return`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(v||"de valda profilerna")}. Vi hör av oss.</p><p class="dov">Vill du ha nya kandidater eller välja en annan väg begär du kandidater på nytt.</p></div>`;}
+  const valda=ps.filter(p=>p.vald),kvar=ps.filter(p=>!p.vald);
+  const klart=u.val&&valda.length?`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(valda.map(p=>p.name).join(", "))}. Vi hör av oss.</p></div>`:"";
+  if(!kvar.length)return klart;
   const d=utkast["v:"+u.id]||{};
-  return`<form class="kort form" data-val="${esc(u.id)}"><h3>Gå vidare</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Du väljer en väg per roll. Vill du ha nya kandidater eller välja om begär du kandidater på nytt.</p>
-    <div class="vprof">${ps.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}</div>
+  return klart+`<form class="kort form" data-val="${esc(u.id)}"><h3>${klart?"Gå vidare med fler":"Gå vidare"}</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Valet gäller bara de profiler du bockar för.</p>
+    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}</div>
     <div class="rad"><button type="button" data-v="las_upp">Lås upp kandidaterna</button><button type="button" data-v="screening">Lämna över screening till oss</button><span class="fel" data-fm></span></div></form>`;
 }
 function orderFormHTML(){
