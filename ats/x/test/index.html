@@ -72,6 +72,15 @@ function lankInloggning(th,typ){
     history.replaceState(null,"",location.pathname);
     if(error)inloggning("Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.");};
 }
+let vantarLank=!!QS.get("token_hash");
+function annatKonto(mejl,th,typ){
+  vem.textContent=mejl;
+  yta.innerHTML=`<div class="kort"><h3>Du är redan inloggad</h3><p>Den här webbläsaren är inloggad som ${esc(mejl)}. Länken i mejlet kan gälla ett annat konto.</p><div class="form"><div class="rad"><button type="button" id="ak1">Logga in med länken i stället</button><button type="button" class="ljus" id="ak2">Fortsätt som ${esc(mejl)}</button></div></div></div>`;
+  document.getElementById("ak1").onclick=async e=>{e.target.disabled=true;vantarLank=false;await sb.auth.signOut({scope:"local"});
+    const{error}=await sb.auth.verifyOtp({token_hash:th,type:typ||"email"});history.replaceState(null,"",location.pathname);
+    if(error)inloggning("Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.");};
+  document.getElementById("ak2").onclick=()=>{vantarLank=false;history.replaceState(null,"",location.pathname);las();};
+}
 async function las(){
   const[u,p,b,j,o]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("v_x_bestallningar").select("*"),sb.from("v_x_jag").select("*"),sb.from("v_x_order").select("*")]);
   if(u.error||p.error){yta.innerHTML=`<div class="kort"><p class="fel">Det gick inte att läsa profilerna. Försök igen om en stund eller hör av dig till Filip.</p></div>`;return;}
@@ -103,7 +112,7 @@ function uppdragHTML(u,utanRubrik){
       ${fr.map((q,i)=>`<label for="q-${esc(u.id)}-${i}">${esc(q)}</label><textarea id="q-${esc(u.id)}-${i}" data-q="${i}" rows="2" maxlength="1500">${esc((d.q||[])[i]||"")}</textarea>`).join("")}
       <label for="x-${esc(u.id)}">Något annat vi bör veta? (valfritt)</label><textarea id="x-${esc(u.id)}" data-x rows="2" maxlength="1500">${esc(d.x||"")}</textarea>
       <div class="rad"><button type="submit">Skicka svar</button><span class="fel" data-fm></span></div></form>`
-    :u.besvarad&&!u.val?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl med länk.":"Tack, dina svar är inskickade. Det här var den sista omgången."}</p></div>`:""}
+    :u.besvarad?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl.":"Tack, dina svar är inskickade. Du har nu sett alla "+ps.length+" profiler i den här sökningen."}</p>${u.omgang<3?"":`<p><strong>Nästa steg:</strong> gör ditt val under Gå vidare, eller ändra kraven för en ny sökning.</p>`}</div>`:""}
     ${forr.length?`<details><summary>Tidigare omgångar (${forr.length} profiler)</summary>${forr.map(p=>kort(p,false)).join("")}</details>`:""}</section>`;
 }
 const STEG=["Begärd","Search pågår","Profiler","Ditt val","Klart"];
@@ -117,12 +126,13 @@ function stegHTML(r){const n=stegNu(r),sist=r.u&&r.u.val?(r.u.val==="las_upp"?"U
   return`<ol class="steg">${STEG.map((s,i)=>`<li class="${i<n?"klar":i===n?"nu":""}">${i===4?sist:s}</li>`).join("")}</ol>`;}
 function valHTML(u){
   const ps=profiler.filter(p=>p.role_id===u.id);if(!ps.length)return"";
-  const valda=ps.filter(p=>p.vald),kvar=ps.filter(p=>!p.vald);
+  const valda=ps.filter(p=>p.vald),ovalda=ps.filter(p=>!p.vald),kvar=ovalda.filter(p=>p.mitt_svar!=="nej"),nej=ovalda.filter(p=>p.mitt_svar==="nej");
   const klart=u.val&&valda.length?`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(valda.map(p=>p.name).join(", "))}. Vi hör av oss.</p></div>`:"";
-  if(!kvar.length)return klart;
+  const nejRad=nej.map(p=>`<label class="dov"><input type="checkbox" disabled> ${esc(p.name)} (Du svarade Nej)</label>`).join("");
+  if(!kvar.length)return klart+(nej.length?`<div class="kort"><div class="vprof">${nejRad}</div><p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p></div>`:"");
   const d=utkast["v:"+u.id]||{};
   return klart+`<form class="kort form" data-val="${esc(u.id)}"><h3>${klart?"Gå vidare med fler":"Gå vidare"}</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Valet gäller bara de profiler du bockar för.</p>
-    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}</div>
+    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}${nejRad}</div>${nej.length?`<p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p>`:""}
     <div class="rad"><button type="button" data-v="las_upp">Lås upp kandidaterna</button><button type="button" data-v="screening">Lämna över screening till oss</button><span class="fel" data-fm></span></div></form>`;
 }
 function orderFormHTML(){
@@ -195,9 +205,9 @@ yta.addEventListener("submit",async e=>{
     const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||"",annons:d.annons||""}});
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
 });
-sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
-sb.auth.getSession().then(({data})=>{if(data&&data.session){if(QS.get("token_hash"))history.replaceState(null,"",location.pathname);vem.textContent=data.session.user.email;las();}
-  else if(QS.get("token_hash"))lankInloggning(QS.get("token_hash"),QS.get("type"));
+sb.auth.onAuthStateChange((h,s)=>{if(vantarLank&&h!=="SIGNED_OUT")return;if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
+sb.auth.getSession().then(({data})=>{if(data&&data.session){if(QS.get("token_hash")){annatKonto(data.session.user.email,QS.get("token_hash"),QS.get("type"));return;}vem.textContent=data.session.user.email;las();}
+  else if(QS.get("token_hash")){vantarLank=false;lankInloggning(QS.get("token_hash"),QS.get("type"));}
   else inloggning(HF.get("error_code")||HF.get("error")?"Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.":"");});
 </script>
 </body>
