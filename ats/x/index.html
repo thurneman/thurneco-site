@@ -31,6 +31,7 @@ a{color:var(--knapp)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script>
+const QS=new URLSearchParams(location.search),HF=new URLSearchParams(location.hash.replace(/^#/,""));
 const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_KEY);
 const yta=document.getElementById("yta"),vem=document.getElementById("vem");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -44,12 +45,40 @@ const fragor=()=>{const f=Array.isArray(inst.fragor)?inst.fragor.map(x=>String(x
 const SVAR={ja:"Ja",kanske:"Kanske",nej:"Nej"};
 const fel=e=>String(e&&e.message||e||"Det gick inte att skicka.").replace(/^.*?:\s*(?=[A-ZÅÄÖ])/,"");
 
+function inloggFel(e){
+  const t=String(e&&e.message||"");
+  if(/after \d+ seconds/i.test(t))return"Ett mejl skickades nyss. Titta i inkorgen och skriv koden här, eller vänta en minut och prova igen.";
+  if(e&&(e.status===429||e.code==="over_email_send_rate_limit"||/rate limit/i.test(t)))return"Vänta en minut och prova igen. Kommer inget mejl då, hör av dig till Filip.";
+  return"Det gick inte att skicka mejlet. Kontrollera adressen eller hör av dig till Filip.";
+}
 function inloggning(msg){
   vem.textContent="";
-  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka länk</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form></div>`;
-  document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en åttasiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form"><p class="dov">Har du fått en kod i mejlet? Skriv din e-postadress ovan och koden här.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,10}" maxlength="10" placeholder="12345678"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
+  const lf=document.getElementById("lf"),kf=document.getElementById("kf");
+  lf.onsubmit=async e=>{e.preventDefault();const b=lf.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
     const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
-    b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.":"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
+    b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?inloggFel(error):"Mejlet är skickat. Skriv koden här, eller klicka på länken i mejlet.";
+    if(!error||/after \d+ seconds/i.test(String(error.message||"")))document.getElementById("lk").focus();};
+  kf.onsubmit=async e=>{e.preventDefault();const b=kf.querySelector("button"),m=document.getElementById("km");if(!document.getElementById("le").value.trim()){m.className="fel";m.textContent="Skriv din e-postadress i fältet ovan först.";return;}b.disabled=true;
+    const{error}=await sb.auth.verifyOtp({email:document.getElementById("le").value.trim(),token:document.getElementById("lk").value.replace(/\D/g,""),type:"email"});
+    b.disabled=false;if(error){m.className="fel";m.textContent="Koden stämmer inte eller har gått ut. Be om en ny kod.";}};
+}
+function lankInloggning(th,typ){
+  vem.textContent="";
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Klicka på knappen för att logga in.</p><div class="form"><div><button type="button" id="lb">Logga in</button></div></div></div>`;
+  document.getElementById("lb").onclick=async e=>{e.target.disabled=true;
+    const{error}=await sb.auth.verifyOtp({token_hash:th,type:typ||"email"});
+    history.replaceState(null,"",location.pathname);
+    if(error)inloggning("Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.");};
+}
+let vantarLank=!!QS.get("token_hash");
+function annatKonto(mejl,th,typ){
+  vem.textContent=mejl;
+  yta.innerHTML=`<div class="kort"><h3>Du är redan inloggad</h3><p>Den här webbläsaren är inloggad som ${esc(mejl)}. Länken i mejlet kan gälla ett annat konto.</p><div class="form"><div class="rad"><button type="button" id="ak1">Logga in med länken i stället</button><button type="button" class="ljus" id="ak2">Fortsätt som ${esc(mejl)}</button></div></div></div>`;
+  document.getElementById("ak1").onclick=async e=>{e.target.disabled=true;vantarLank=false;await sb.auth.signOut({scope:"local"});
+    const{error}=await sb.auth.verifyOtp({token_hash:th,type:typ||"email"});history.replaceState(null,"",location.pathname);
+    if(error)inloggning("Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.");};
+  document.getElementById("ak2").onclick=()=>{vantarLank=false;history.replaceState(null,"",location.pathname);las();};
 }
 async function las(){
   const[u,p,b,j,o]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("v_x_bestallningar").select("*"),sb.from("v_x_jag").select("*"),sb.from("v_x_order").select("*")]);
@@ -74,7 +103,7 @@ function kort(p,svara){
 function uppdragHTML(u,utanRubrik){
   const ps=profiler.filter(p=>p.role_id===u.id),rubrik=utanRubrik?"":`<h2>${esc(u.title||"Uppdrag")}</h2>`;
   if(!u.pool)return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}${ps.length} ${ps.length===1?"profil":"profiler"}</p>${ps.map(p=>kort(p,false)).join("")}</section>`;
-  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&!u.val&&nu.length>0,d=utkast["u:"+u.id]||{};
+  const nu=ps.filter(p=>p.omgang===u.omgang),forr=ps.filter(p=>p.omgang!==u.omgang),svara=!u.besvarad&&nu.length>0,d=utkast["u:"+u.id]||{};
   const fr=fragor();
   return`<section data-u="${esc(u.id)}">${rubrik}<p class="dov">${esc(u.location||"")}${u.location?" · ":""}Omgång ${u.omgang} av 3 · ${ps.length} av högst 9 profiler</p>
     ${nu.map(p=>kort(p,svara)).join("")}
@@ -82,7 +111,7 @@ function uppdragHTML(u,utanRubrik){
       ${fr.map((q,i)=>`<label for="q-${esc(u.id)}-${i}">${esc(q)}</label><textarea id="q-${esc(u.id)}-${i}" data-q="${i}" rows="2" maxlength="1500">${esc((d.q||[])[i]||"")}</textarea>`).join("")}
       <label for="x-${esc(u.id)}">Något annat vi bör veta? (valfritt)</label><textarea id="x-${esc(u.id)}" data-x rows="2" maxlength="1500">${esc(d.x||"")}</textarea>
       <div class="rad"><button type="submit">Skicka svar</button><span class="fel" data-fm></span></div></form>`
-    :u.besvarad&&!u.val?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl med länk.":"Tack, dina svar är inskickade. Det här var den sista omgången."}</p></div>`:""}
+    :u.besvarad?`<div class="kort"><p>${u.omgang<3?"Tack, dina svar är inskickade. Nästa tre profiler kommer när vi har gått igenom dem. Du får ett mejl.":"Tack, dina svar är inskickade. Du har nu sett alla "+ps.length+" profiler i den här sökningen."}</p>${u.omgang<3?"":`<p><strong>Nästa steg:</strong> gör ditt val under Gå vidare, eller ändra kraven för en ny sökning.</p>`}</div>`:""}
     ${forr.length?`<details><summary>Tidigare omgångar (${forr.length} profiler)</summary>${forr.map(p=>kort(p,false)).join("")}</details>`:""}</section>`;
 }
 const STEG=["Begärd","Search pågår","Profiler","Ditt val","Klart"];
@@ -96,10 +125,13 @@ function stegHTML(r){const n=stegNu(r),sist=r.u&&r.u.val?(r.u.val==="las_upp"?"U
   return`<ol class="steg">${STEG.map((s,i)=>`<li class="${i<n?"klar":i===n?"nu":""}">${i===4?sist:s}</li>`).join("")}</ol>`;}
 function valHTML(u){
   const ps=profiler.filter(p=>p.role_id===u.id);if(!ps.length)return"";
-  if(u.val){const v=ps.filter(p=>p.vald).map(p=>p.name).join(", ");return`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(v||"de valda profilerna")}. Vi hör av oss.</p><p class="dov">Vill du ha nya kandidater eller välja en annan väg begär du kandidater på nytt.</p></div>`;}
+  const valda=ps.filter(p=>p.vald),ovalda=ps.filter(p=>!p.vald),kvar=ovalda.filter(p=>p.mitt_svar!=="nej"),nej=ovalda.filter(p=>p.mitt_svar==="nej");
+  const klart=u.val&&valda.length?`<div class="kort"><h3>${u.val==="las_upp"?"Du har valt att låsa upp kandidaterna":"Du har lämnat över screeningen till oss"}</h3><p>Det gäller ${esc(valda.map(p=>p.name).join(", "))}. Vi hör av oss.</p></div>`:"";
+  const nejRad=nej.map(p=>`<label class="dov"><input type="checkbox" disabled> ${esc(p.name)} (Du svarade Nej)</label>`).join("");
+  if(!kvar.length)return klart+(nej.length?`<div class="kort"><div class="vprof">${nejRad}</div><p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p></div>`:"");
   const d=utkast["v:"+u.id]||{};
-  return`<form class="kort form" data-val="${esc(u.id)}"><h3>Gå vidare</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Du väljer en väg per roll. Vill du ha nya kandidater eller välja om begär du kandidater på nytt.</p>
-    <div class="vprof">${ps.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}</div>
+  return klart+`<form class="kort form" data-val="${esc(u.id)}"><h3>${klart?"Gå vidare med fler":"Gå vidare"}</h3><p class="dov">Välj vilka profiler det gäller och hur du vill gå vidare. Valet gäller bara de profiler du bockar för.</p>
+    <div class="vprof">${kvar.map(p=>{const pa=d[p.id]!=null?d[p.id]:(p.mitt_svar==="ja"||(utkast[p.id]||{}).svar==="ja");return`<label><input type="checkbox" data-vp="${esc(p.id)}" ${pa?"checked":""}> ${esc(p.name)}${p.mitt_svar?` <span class="dov">(${SVAR[p.mitt_svar]||""})</span>`:""}</label>`;}).join("")}${nejRad}</div>${nej.length?`<p class="dov">En profil du har svarat Nej på går inte att välja. Hör av dig om du vill ändra ett svar.</p>`:""}
     <div class="rad"><button type="button" data-v="las_upp">Lås upp kandidaterna</button><button type="button" data-v="screening">Lämna över screening till oss</button><span class="fel" data-fm></span></div></form>`;
 }
 function orderFormHTML(){
@@ -122,7 +154,7 @@ function kundHTML(){
   if(flik==="kandidater"){
     return nav+(profiler.length?`<section>${profiler.map(p=>{const u=uppdrag.find(x=>x.id===p.role_id),rr=rs.find(x=>x.u&&x.u.id===p.role_id);return`<div class="kort krad" ${rr?`data-roll="${esc(rr.key)}"`:""}><div class="rad"><b>${esc(p.name)}</b><span class="dov">${esc(u?u.title:"")}</span>${p.score!=null?`<span class="pill">${esc(p.score)} %</span>`:""}${p.mitt_svar?`<span class="pill ${p.mitt_svar==="ja"?"ok":p.mitt_svar==="nej"?"varn":""}">${SVAR[p.mitt_svar]}</span>`:`<span class="pill">Väntar på ditt svar</span>`}${p.vald?`<span class="pill ok">${u&&u.val==="las_upp"?"Upplåsning begärd":"Screening hos oss"}</span>`:""}${p.namn_dolt?"":`<span class="pill ok">Upplåst</span>`}</div></div>`;}).join("")}</section>`:`<div class="kort"><p>Du har inga kandidater än.</p><p class="dov">Begär kandidater under Roller, så syns de här när de första profilerna är klara.</p></div>`);}
   return nav+(visaOrder?orderFormHTML():`<p><button type="button" data-ony>Begär kandidater</button></p>`)
-    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.val&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
+    +(rs.length?rs.map(x=>`<div class="kort krad" data-roll="${esc(x.key)}"><div class="rad"><h3>${esc(x.titel||"Roll")}</h3>${x.ort?`<span class="dov">${esc(x.ort)}</span>`:""}${x.u?`<span class="pill">${x.u.profiler} av högst 9 profiler</span>`:""}${x.u&&!x.u.besvarad&&x.u.pool?`<span class="pill ok">Väntar på ditt svar</span>`:""}</div>${stegHTML(x)}</div>`).join(""):`<div class="kort"><p>Du har inga roller än.</p><p class="dov">Klicka Begär kandidater och skriv rollen och dina skallkrav.</p></div>`);
 }
 function rita(){
   const hals=String(inst.halsning||"").trim(),ut=`<p style="margin-top:26px"><button class="ljus" type="button" data-ut>Logga ut</button></p>`;
@@ -172,8 +204,10 @@ yta.addEventListener("submit",async e=>{
     const{error}=await sb.rpc("ats_x_bestall_search",{p:{titel:d.titel||"",ort:d.ort||"",krav:[d.k0,d.k1,d.k2,d.k3].map(x=>String(x||"").trim()).filter(Boolean),start:d.start||"",text:d.text||"",annons:d.annons||""}});
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
 });
-sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
-sb.auth.getSession().then(({data})=>{if(data&&data.session){vem.textContent=data.session.user.email;las();}else inloggning();});
+sb.auth.onAuthStateChange((h,s)=>{if(vantarLank&&h!=="SIGNED_OUT")return;if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
+sb.auth.getSession().then(({data})=>{if(data&&data.session){if(QS.get("token_hash")){annatKonto(data.session.user.email,QS.get("token_hash"),QS.get("type"));return;}vem.textContent=data.session.user.email;las();}
+  else if(QS.get("token_hash")){vantarLank=false;lankInloggning(QS.get("token_hash"),QS.get("type"));}
+  else inloggning(HF.get("error_code")||HF.get("error")?"Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.":"");});
 </script>
 </body>
 </html>
