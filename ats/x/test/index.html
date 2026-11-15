@@ -32,6 +32,7 @@ a{color:var(--knapp)}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="../config.js"></script>
 <script>
+const QS=new URLSearchParams(location.search),HF=new URLSearchParams(location.hash.replace(/^#/,""));
 const sb=supabase.createClient(window.ATS_X.SUPABASE_URL,window.ATS_X.SUPABASE_KEY);
 const yta=document.getElementById("yta"),vem=document.getElementById("vem");
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -47,16 +48,29 @@ const fel=e=>String(e&&e.message||e||"Det gick inte att skicka.").replace(/^.*?:
 
 function inloggFel(e){
   const t=String(e&&e.message||"");
-  if(/after \d+ seconds/i.test(t))return"En länk skickades nyss. Titta i inkorgen, eller vänta en minut och prova igen.";
+  if(/after \d+ seconds/i.test(t))return"Ett mejl skickades nyss. Titta i inkorgen och skriv koden här, eller vänta en minut och prova igen.";
   if(e&&(e.status===429||e.code==="over_email_send_rate_limit"||/rate limit/i.test(t)))return"Vänta en minut och prova igen. Kommer inget mejl då, hör av dig till Filip.";
-  return"Det gick inte att skicka länken. Kontrollera adressen eller hör av dig till Filip.";
+  return"Det gick inte att skicka mejlet. Kontrollera adressen eller hör av dig till Filip.";
 }
 function inloggning(msg){
   vem.textContent="";
-  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka länk</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form></div>`;
-  document.getElementById("lf").onsubmit=async e=>{e.preventDefault();const b=e.target.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Skriv din e-postadress. Du får ett mejl med en sexsiffrig kod och en länk, inget lösenord behövs.</p><form id="lf" class="form"><input type="email" id="le" required placeholder="namn@foretag.se" autocomplete="email"><div><button type="submit">Skicka kod</button></div><p id="lm" class="dov">${esc(msg||"")}</p></form><form id="kf" class="form" style="display:none"><p class="dov">Skriv koden ur mejlet.</p><input type="text" id="lk" required inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,8}" maxlength="8" placeholder="123456"><div><button type="submit">Logga in</button></div><p id="km" class="dov"></p></form></div>`;
+  const lf=document.getElementById("lf"),kf=document.getElementById("kf");
+  lf.onsubmit=async e=>{e.preventDefault();const b=lf.querySelector("button"),m=document.getElementById("lm");b.disabled=true;
     const{error}=await sb.auth.signInWithOtp({email:document.getElementById("le").value.trim(),options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:false}});
-    b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?inloggFel(error):"Länken är skickad. Öppna mejlet på den här enheten och klicka på länken.";};
+    b.disabled=false;m.className=error?"fel":"dov";m.textContent=error?inloggFel(error):"Mejlet är skickat. Skriv koden här, eller klicka på länken i mejlet.";
+    if(!error||/after \d+ seconds/i.test(String(error.message||""))){kf.style.display="";document.getElementById("lk").focus();}};
+  kf.onsubmit=async e=>{e.preventDefault();const b=kf.querySelector("button"),m=document.getElementById("km");b.disabled=true;
+    const{error}=await sb.auth.verifyOtp({email:document.getElementById("le").value.trim(),token:document.getElementById("lk").value.replace(/\D/g,""),type:"email"});
+    b.disabled=false;if(error){m.className="fel";m.textContent="Koden stämmer inte eller har gått ut. Be om en ny kod.";}};
+}
+function lankInloggning(th,typ){
+  vem.textContent="";
+  yta.innerHTML=`<div class="kort"><h3>Logga in</h3><p class="dov">Klicka på knappen för att logga in.</p><div class="form"><div><button type="button" id="lb">Logga in</button></div></div></div>`;
+  document.getElementById("lb").onclick=async e=>{e.target.disabled=true;
+    const{error}=await sb.auth.verifyOtp({token_hash:th,type:typ||"email"});
+    history.replaceState(null,"",location.pathname);
+    if(error)inloggning("Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.");};
 }
 async function las(){
   const[u,p,b,j,o]=await Promise.all([sb.from("v_x_uppdrag").select("*"),sb.from("v_x_profiler").select("*"),sb.from("v_x_bestallningar").select("*"),sb.from("v_x_jag").select("*"),sb.from("v_x_order").select("*")]);
@@ -180,7 +194,9 @@ yta.addEventListener("submit",async e=>{
     if(error){knapp.disabled=false;fm.textContent=fel(error);return;}delete utkast.order;visaOrder=false;await las();}
 });
 sb.auth.onAuthStateChange((h,s)=>{if(s&&s.user){if(vem.textContent!==s.user.email){vem.textContent=s.user.email;las();}}else if(h==="SIGNED_OUT"){inloggning();}});
-sb.auth.getSession().then(({data})=>{if(data&&data.session){vem.textContent=data.session.user.email;las();}else inloggning();});
+sb.auth.getSession().then(({data})=>{if(data&&data.session){if(QS.get("token_hash"))history.replaceState(null,"",location.pathname);vem.textContent=data.session.user.email;las();}
+  else if(QS.get("token_hash"))lankInloggning(QS.get("token_hash"),QS.get("type"));
+  else inloggning(HF.get("error_code")||HF.get("error")?"Länken har gått ut eller är redan använd. Skriv din adress så får du en ny kod.":"");});
 </script>
 </body>
 </html>

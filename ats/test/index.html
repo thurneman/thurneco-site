@@ -1671,6 +1671,13 @@ function xInst(e){const g=xgr.get(e);return(g&&g.installningar)||{};}
 const xSlug=m=>String(m).replace(/[^a-z0-9]+/g,"_");
 function xPoang(s){const m=matches.get(s.roleId+"__"+s.candId);return m&&typeof m.score==="number"?m.score:-1;}
 function xOmg(e,rid){return Math.max(0,...[...xsl.values()].filter(s=>s.granskare===e&&s.roleId===rid&&s.status==="slappt").map(s=>+s.omgang||0));}
+async function xNotis(gid,rid,omg){
+  try{const r=await window.ATS_RUNTIME.funktion("x-omgang-mejl",{email:gid,roleId:rid,omgang:omg});const d=r&&r.data;
+    if(r&&r.error)return"Mejlet gick inte iväg: "+(r.error.message||r.error)+" Använd Öppna i mejl.";
+    if(!d||!d.ok)return"Mejlet gick inte iväg: "+(d&&d.fel||"okänt fel")+" Använd Öppna i mejl.";
+    return d.skickat?"Mejl om omgång "+omg+" är skickat till "+xNamn(gid)+".":"Mejl om omgång "+omg+" har redan gått till "+xNamn(gid)+".";
+  }catch(err){return"Mejlet gick inte iväg: "+(err&&err.message||err)+" Använd Öppna i mejl.";}
+}
 async function xKonto(mejl){
   try{const r=await window.ATS_RUNTIME.funktion("x-granskare-konto",{email:mejl});const d=r&&r.data;if(!d||!d.ok)return" Men inloggningskontot kunde inte skapas"+(d&&d.fel?": "+d.fel:r&&r.error?": "+(r.error.message||r.error):".");}
   catch(err){return" Men inloggningskontot kunde inte skapas: "+(err&&err.message||err);}
@@ -1695,7 +1702,7 @@ function xRollHTML(e,rid){
     ${sl.length?`<h4>Visas för granskaren (${sl.length})</h4>${sl.map(rad).join("")}`:""}
     ${pool.length?`<h4>I poolen, visas inte än (${pool.length})</h4>${pool.map(rad).join("")}`:""}
     ${aks.map(a=>`<div class="pbed xsv"><b>Svar på omgång ${esc(a.omgang)}</b>${(a.fragor||[]).filter(f=>f.svar).map(f=>`<p><span class="fmeta">${esc(f.fraga)}</span><br>${esc(f.svar)}</p>`).join("")}${a.text?`<p><span class="fmeta">Övrigt</span><br>${esc(a.text)}</p>`:""}</div>`).join("")}
-    <p class="fsec-act"><button type="button" class="tbtn" data-xpool="${esc(rid)}" ${canWrite?"":"disabled"}>Lägg till i poolen</button>${pool.length&&omg<3&&!val?`<button type="button" class="btn small" data-xtrio="${esc(rid)}" data-obesv="${omg>0&&!besvarad?"1":"0"}" ${canWrite?"":"disabled"}>Släpp ${omg?"nästa":"första"} ${n3===3?"tre":n3}</button>`:""}${omg>0&&harPool?`<button type="button" class="tbtn" data-xmejl="${esc(rid)}">Kopiera mejltext</button><a class="tbtn" href="mailto:${encodeURIComponent(e)}?subject=${encodeURIComponent("Profiler att granska")}&body=${encodeURIComponent(xMejltext(e,rid,omg))}">Öppna i mejl</a>`:""}</p></div>`;
+    <p class="fsec-act"><button type="button" class="tbtn" data-xpool="${esc(rid)}" ${canWrite?"":"disabled"}>Lägg till i poolen</button>${pool.length&&omg<3?`<button type="button" class="btn small" data-xtrio="${esc(rid)}" data-harval="${val?"1":"0"}" data-obesv="${omg>0&&!besvarad?"1":"0"}" ${canWrite?"":"disabled"}>Släpp ${omg?"nästa":"första"} ${n3===3?"tre":n3}</button>`:""}${omg>0&&harPool?`<button type="button" class="tbtn" data-xnotis="${esc(rid)}" ${canWrite?"":"disabled"}>Mejla kunden om omgång ${omg}</button><button type="button" class="tbtn" data-xmejl="${esc(rid)}">Kopiera mejltext</button><a class="tbtn" href="mailto:${encodeURIComponent(e)}?subject=${encodeURIComponent("Profiler att granska")}&body=${encodeURIComponent(xMejltext(e,rid,omg))}">Öppna i mejl</a>`:""}</p></div>`;
 }
 function xOrderHTML(o){
   const kopplad=o.roleId&&roles.has(o.roleId),rs=[...roles.values()].filter(r=>!["avslutad","arkiverad","stangd"].includes(r.status)).sort((a,b)=>String(a.title||"").localeCompare(String(b.title||""),"sv"));
@@ -1800,7 +1807,8 @@ function xPoolDrawer(e,rid){
   drawer("Lägg till i poolen",`<p class="fmeta">${esc(r.title||"")} · ${esc(xNamn(e))}. Bocka för dem du godkänner. De visas inte förrän du släpper en omgång, och då utan namn och CV.</p><div class="xpl">${ms.map(m=>{const c=cands.get(m.candId);return`<label><input type="checkbox" name="c" value="${esc(m.candId)}"> <b>${esc(c.name||m.candId)}</b>${typeof m.score==="number"?` <span class="pill">${m.score} %</span>`:""}${Array.isArray(m.markningar)&&m.markningar.length?`<span class="fmeta" style="display:block;margin:2px 0 8px 24px">${m.markningar.map(x=>esc(x)).join(" · ")}</span>`:""}</label>`;}).join("")}</div>`,async fd=>{
     const val=fd.getAll("c");if(!val.length){toast("Bocka för minst en person.");return false;}
     try{
-      for(const cid of val){const id=rid+"__"+cid+"__"+xSlug(e);if(xsl.has(id))await db.doc("xslapp/"+id).update({status:"pool",poolAt:nowIso()});else await db.doc("xslapp/"+id).set({granskare:e,roleId:rid,candId:cid,status:"pool",poolAt:nowIso(),slapptAv:"Filip"});}
+      for(const cid of val){const id=rid+"__"+cid+"__"+xSlug(e);if(xsl.has(id)&&xsl.get(id).status==="slappt"){toast("En person är redan släppt och ligger kvar som släppt.");continue;}
+        if(xsl.has(id))await db.doc("xslapp/"+id).update({status:"pool",poolAt:nowIso()});else await db.doc("xslapp/"+id).set({granskare:e,roleId:rid,candId:cid,status:"pool",poolAt:nowIso(),slapptAv:"Filip"});}
       xOpen.add(e);toast(val.length+(val.length===1?" person ligger":" personer ligger")+" i poolen.");render();return true;
     }catch(err){toast("Kunde inte lägga till: "+(err&&err.message||err));return false;}
   });
@@ -1845,15 +1853,16 @@ function wireX(el){
     const tr=e.target.closest("[data-xtrio]");
     if(tr&&gid){const rid=tr.dataset.xtrio;
       if(tr.dataset.obesv==="1"&&tr.dataset.armed!=="1"){tr.dataset.armed="1";tr.textContent="Förra omgången är inte besvarad. Klicka igen för att släppa ändå";return;}
+      if(tr.dataset.harval==="1"&&tr.dataset.armed2!=="1"){tr.dataset.armed2="1";tr.textContent="Kunden har redan gjort ett val. Klicka igen för att släppa ändå";return;}
       const omg=xOmg(gid,rid);if(omg>=3){toast("Tre omgångar är redan släppta.");return;}
       const tre=[...xsl.values()].filter(s=>s.granskare===gid&&s.roleId===rid&&s.status==="pool").sort((a,b)=>xPoang(b)-xPoang(a)).slice(0,3);if(!tre.length)return;
       const utanText=tre.filter(s=>!xDoltKlar(s)).length;
       if(utanText){toast(utanText+" av "+tre.length+" saknar godkänd text. Godkänn texten först, sedan går det att släppa.");return;}
       tr.disabled=true;
       try{for(const s of tre)await db.doc("xslapp/"+s.id).update({status:"slappt",omgang:omg+1,slapptAt:nowIso()});
-        let kop="";try{await navigator.clipboard.writeText(xMejltext(gid,rid,omg+1));kop=" Mejltexten ligger i urklipp, skicka den till "+xNamn(gid)+".";}catch(_){kop=" Klicka Kopiera mejltext och skicka den till "+xNamn(gid)+".";}
-        toast("Omgång "+(omg+1)+" är släppt."+kop);render();}catch(err){tr.disabled=false;toast("Kunde inte släppa: "+(err&&err.message||err));}
+        const besked=await xNotis(gid,rid,omg+1);toast("Omgång "+(omg+1)+" är släppt. "+besked);render();}catch(err){tr.disabled=false;toast("Kunde inte släppa: "+(err&&err.message||err));}
       return;}
+    const nt=e.target.closest("[data-xnotis]");if(nt&&gid){nt.disabled=true;toast(await xNotis(gid,nt.dataset.xnotis,xOmg(gid,nt.dataset.xnotis)));nt.disabled=false;return;}
     const mj=e.target.closest("[data-xmejl]");if(mj&&gid){const rid=mj.dataset.xmejl;try{await navigator.clipboard.writeText(xMejltext(gid,rid,xOmg(gid,rid)));toast("Mejltexten är kopierad.");}catch(_){toast("Kunde inte kopiera. Använd Öppna i mejl.");}return;}
     const vn=e.target.closest("[data-xvisa]");
     if(vn){const s=xsl.get(vn.dataset.xvisa);if(!s)return;const till=vn.dataset.till==="1";
