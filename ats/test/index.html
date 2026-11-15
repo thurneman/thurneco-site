@@ -2757,7 +2757,7 @@ try{view=localStorage.getItem("ats.view")||"pipeline";if(!["oversikt","pipeline"
 $("#bizseg").addEventListener("click",e=>{const b=e.target.closest("[data-biz]");if(!b||b.dataset.biz===biz)return;
   if(selected)bizSel[biz]=selected;
   biz=b.dataset.biz;filters.type=biz==="all"?"":biz;
-  const back=bizSel[biz];selected=back&&inBiz(roles.get(back))?back:null;
+  selected=null;if(personSel&&!bizPersonIds().has(personSel))personSel=null;
   try{localStorage.setItem("ats.biz",biz);localStorage.setItem("ats.bizSel",JSON.stringify(bizSel));localStorage.setItem("ats.selected",selected||"");}catch{}
   syncFilters();render();scrollToProfile();});
 $("#show-arch").addEventListener("change",e=>{filters.scope=e.target.checked?"alla":"aktiva";syncFilters();renderRoles();if(view==="oversikt"||view==="matchning")renderDetail();});
