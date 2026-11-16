@@ -1121,6 +1121,8 @@
     funktion: function (namn, kropp) { return sb.functions.invoke(namn, { body: kropp }); },
     // Anropar en databasfunktion som den inloggade användaren (ATS-X: ägarens beslut om kravändring)
     rpc: function (namn, arg) { return sb.rpc(namn, arg); },
+    // Läser en vy som den inloggade användaren (ATS Tomas: beställningar i Generera kandidater)
+    vyrad: function (namn) { return sb.from(namn).select("*"); },
     vy: VY,
     mappning: { MAP: MAP, mappedRow: mappedRow, mappedDoc: mappedDoc, rowCandidates: rowCandidates, rowKo: rowKo, docKo: docKo, kontaktRow: kontaktRow, kontaktDoc: kontaktDoc, genericRow: function (id, d) { return genericRow(ctx || { uid: null, email: null }, id, d); }, genericDoc: genericDoc, logRow: logRow, logDoc: logDoc, applyPatch: applyPatch }
   });

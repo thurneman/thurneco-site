@@ -290,10 +290,23 @@ textarea[data-cfnote]{width:100%;box-sizing:border-box;min-height:70px;font:inhe
   .nav button{padding:6px 10px;font-size:13px}
 }
 </style>
+<style>
+/* Visa eller dölj delar av vyn, sparas per webbläsare */
+.vyval{display:flex;gap:6px;align-items:center}.vyval .tbtn[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+body.dolj-roles .main{grid-template-columns:minmax(0,1fr)}body.dolj-roles .main .roles{display:none}
+body.dolj-roles .mobile-pick:not([hidden]){display:block}
+body.dolj-flist .focus{grid-template-columns:1fr}body.dolj-flist .focus .flist{display:none}
+body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .kside{display:none}
+@media (max-width:820px){.vyval{display:none}}
+</style>
+<style>
+.genrad{display:flex;flex-wrap:wrap;gap:8px 22px;margin:10px 0 0}.genb{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}.genb .gm{font-size:12px;color:var(--muted)}
+</style>
 <header class="topbar">
   <div class="brand" title="Partnervyn. Huvudregistret heter ATS Filip.">ATS Tomas<span>Testversion, inget skickas</span></div>
   <nav class="nav" aria-label="Vyer"><button type="button" data-view="uppdrag" aria-pressed="true">Uppdrag</button><button type="button" data-view="konsulter" aria-pressed="false">Konsulter</button><button type="button" data-view="sok" aria-pressed="false">Sök</button></nav>
   <div class="spacer"></div>
+  <span class="vyval" role="group" aria-label="Visa eller dölj delar av vyn"><button class="tbtn" type="button" data-dolj="roles" aria-pressed="true" title="Visa eller dölj uppdragslistan till vänster">☰ Uppdragslista</button><button class="tbtn" type="button" data-dolj="flist" aria-pressed="true" title="Visa eller dölj kandidatlistan inne på ett uppdrag">☰ Kandidatlista</button><button class="tbtn" type="button" data-dolj="kside" aria-pressed="true" title="Visa eller dölj sidospalten med uppdrag på en persons sida">☰ Sidospalt</button></span>
   <a href="#" id="ats-logout" class="ats-logout" hidden>Logga ut</a> <!-- supabase -->
   <button class="tbtn" type="button" id="btn-forslag" title="Förslag och synpunkter på vyn. Samlas och läses, ändrar inget automatiskt.">Förslagslåda</button>
 </header>
@@ -311,7 +324,7 @@ textarea[data-cfnote]{width:100%;box-sizing:border-box;min-height:70px;font:inhe
 <div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">ATS Tomas</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="../ats-runtime.js?v=c1e49707"></script> <!-- supabase -->
+<script src="../ats-runtime.js?v=gen1"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -654,6 +667,25 @@ function renderRoles(){
     return`<button class="role" type="button" data-id="${esc(r.id)}" aria-current="${r.id===selected}"><span class="t">${r.ref?`<span class="rref">${t(r.ref)}</span>`:""}${t(r.title)}</span>${r.location?`<span class="m">${t(r.location)}</span>`:""}<span class="c">${daysHTML(r)}${ARCHIVED.has(r.status)?`<span class="pill">${esc(STATUS_LABEL[r.status]||r.status)}</span>`:""}${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:""}</span></button>`;}).join(""):`<div class="empty">${roles.size?"Inga uppdrag matchar sökningen eller filtret.":"Inga uppdrag delade än."}</div>`;
   $("#mobile-role").innerHTML=`<option value="">Välj uppdrag …</option>`+list.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?"selected":""}>${t([r.ref,r.title].filter(Boolean).join(" "))}</option>`).join("");
 }
+// Generera kandidater: beställningar och antal kvar i dag (vyn v_generering, funktionerna ats_generera och ats_generera_kvar)
+let genRows=[],genKvar=null;
+async function genLadda(){const RT=window.ATS_RUNTIME;if(!RT||!RT.vyrad||!RT.rpc)return;try{const[a,b]=await Promise.all([RT.vyrad("v_generering"),RT.rpc("ats_generera_kvar")]);if(!a.error)genRows=a.data||[];if(!b.error)genKvar=b.data;render();}catch(e){}}
+const genKl=iso=>{const d=new Date(iso);return isNaN(d)?"":d.toLocaleString("sv-SE",{timeZone:TZ,day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});};
+const GEN_NAMN={talendary:"Generera kandidater",search:"Generera mer kandidater"};
+function genHTML(r){
+  if(!window.ATS_RUNTIME||!window.ATS_RUNTIME.vyrad||hiddenRole(r))return"";
+  const del=(typ,vantar)=>{const rs=genRows.filter(g=>g.role_id===r.id&&g.typ===typ).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+    const op=rs.find(g=>g.status==="vantar"||g.status==="tagen"),sen=rs.find(g=>g.status==="klar"||g.status==="fel"),kvar=genKvar?genKvar[typ]:null;
+    const info=op?`<span class="ftxt warn">Beställd ${esc(genKl(op.at))}. ${vantar} Du behöver inte klicka igen.</span>`
+      :sen?`<span class="ftxt ${sen.status==="fel"?"bad":"ok"}">${sen.status==="fel"?"Senaste sökningen gick inte igenom. Hör av dig till Filip.":`Senast klar ${esc(genKl(sen.klar_at||sen.at))}: ${sen.inlasta==null?0:sen.inlasta} nya kandidater.`}</span>`:"";
+    return`<span class="genb"><button type="button" class="tbtn" data-gen="${typ}" data-role="${esc(r.id)}" ${!canWrite||op||kvar===0?"disabled":""}>${GEN_NAMN[typ]}</button>${kvar!=null?`<span class="gm">${kvar} kvar i dag</span>`:""}${info}</span>`;};
+  return`<div class="genrad">${del("talendary","Talendary söker, nya kandidater kommer inom en till två timmar.")}${del("search","Sökningen i Recruiter görs när Filips dator är igång och ger högst fem nya profiler.")}</div>`;}
+document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-gen]");if(!b||b.disabled)return;
+  if(b.dataset.armed!=="1"){b.dataset.armed="1";b.textContent="Klicka igen för att beställa";setTimeout(()=>{if(b.isConnected&&b.dataset.armed==="1"){b.dataset.armed="";b.textContent=GEN_NAMN[b.dataset.gen];}},6000);return;}
+  b.disabled=true;const r=await window.ATS_RUNTIME.rpc("ats_generera",{p_role:b.dataset.role,p_typ:b.dataset.gen});
+  if(r.error){toast(String(r.error.message||"Det gick inte att beställa."));}else toast(b.dataset.gen==="talendary"?"Beställt. Kandidaterna kommer inom en till två timmar.":"Beställt. Sökningen görs när Filips dator är igång.");
+  genLadda();});
+setInterval(()=>{if(document.visibilityState==="visible"&&genRows.some(g=>g.status==="vantar"||g.status==="tagen"))genLadda();},120000);
 function roleHeadHTML(r){
   const facts=r.facts||{};
   const ad=r.annonsUrl||r.adUrl||r.url||"";
@@ -662,6 +694,7 @@ function roleHeadHTML(r){
   const noteDraft=drafts["role:"+r.id];
   return`<div class="rh"><div class="rh-top"><h1>${t(r.title)}</h1>${pingHTML("uppdrag",null,null,r)}</div>
     <div class="rh-meta">${r.ref?`<b>${t(r.ref)}</b>`:""}${r.location?`<span>${t(r.location)}</span>`:""}<span>Sista inskickningsdag ${daysHTML(r)}</span>${kpv(r,a,"kontaktperson")?`<span>Kontakt: ${t(kpv(r,a,"kontaktperson"))}</span>`:""}${adOk?`<a href="${esc(ad)}" target="_blank" rel="noopener">Öppna annons ↗</a>`:""}</div>
+    ${genHTML(r)}
     ${canWrite?`<div class="flinks rstyr"><span class="cf"><label>Prio<select data-prio="${esc(r.id)}">${[["","ingen"],["1","1 högst"],["2","2"],["3","3"]].map(([v,l])=>`<option value="${v}" ${effPrio(r)===v?"selected":""}>${l}</option>`).join("")}</select></label></span>${a.prioSattAt?`<span class="cnote">prio satt ${fmt(a.prioSattAt)}${a.synkad===false?", synkas":""}</span>`:""}<span class="grow"></span>${partArk(r)?`<span class="cnote">Arkiverat av dig ${a.arkiveradAt?fmt(a.arkiveradAt):""}</span><button class="btn light small" type="button" data-arkiv="${esc(r.id)}" data-val="0">Ta fram igen</button>`:`<button class="btn light small" type="button" data-arkiv="${esc(r.id)}" data-val="1" title="Döljer uppdraget i din lista. Inget raderas, det går att ta fram igen under Visa arkiverade.">Arkivera uppdraget</button>`}</div>`:""}
     ${lageHTML(r)}
     ${potRoleHTML(r)}
@@ -678,7 +711,7 @@ function procHTML(r){
   return`<div class="proc" role="group" aria-label="Process"><div class="proc-main">${main.map(([k,l,n])=>`<button type="button" data-step="${k}" aria-pressed="${cur===k}"><b>${cnt(k)}</b><span>${n}. ${l}</span></button>`).join('<span class="psep" aria-hidden="true">›</span>')}</div><div class="proc-side"><span class="vlab">Övrigt</span>${side.map(([k,l])=>`<button type="button" data-step="${k}" aria-pressed="${cur===k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div></div>`;
 }
 // I listan ligger raden i en knapp, och en knapp får inte innehålla knappar. Där används span med role button, i kortet riktiga knappar.
-const jnHTML=(m,big)=>{if(!canWrite||procOf(m)!=="kontakt"||m.egen)return"";const b=bedOf(m);const tag=big?"button":"span";const extra=big?' type="button"':' role="button" tabindex="0"';return`<span class="jn ${big?"big":""}" role="group" aria-label="Din bedömning"><${tag}${extra} class="ja" data-bed="${esc(m.id)}" data-val="ja" aria-pressed="${b==="ja"}" title="Ja, värd att kontakta">Ja</${tag}><${tag}${extra} class="nej" data-bed="${esc(m.id)}" data-val="nej" aria-pressed="${b==="nej"}" title="Nej, inte för det här uppdraget, arkiveras i listan">Nej</${tag}></span>`;};
+const jnHTML=(m,big)=>{if(!canWrite||procOf(m)!=="kontakt"||m.egen)return"";const b=bedOf(m);const tag=big?"button":"span";const extra=big?' type="button"':' role="button" tabindex="0"';return`<span class="jn ${big?"big":""}" role="group" aria-label="Din bedömning"><${tag}${extra} class="ja" data-bed="${esc(m.id)}" data-val="ja" aria-pressed="${b==="ja"}" title="Intressant, värd att kontakta">${big?"Intressant":"Ja"}</${tag}><${tag}${extra} class="nej" data-bed="${esc(m.id)}" data-val="nej" aria-pressed="${b==="nej"}" title="Ej intressant för det här uppdraget, arkiveras i listan">${big?"Ej intressant":"Nej"}</${tag}></span>`;};
 const TABS=[["profil","Profil"],["dialog","Dialog"],["anteckningar","Kommentarer"]];
 const defaultTab=m=>["dialog","inskickad","klar"].includes(procOf(m))?"dialog":"profil";
 function prevHTML(m){
@@ -1030,7 +1063,7 @@ async function setBedomning(matchId,val){
   const prev=bed.get(matchId);const now=nowIso();
   const doc={matchId,roleId:m.roleId,candId:m.candId,bedomning:nv,at:now,av:userId,avNamn:userName,synkad:false};
   bed.set(matchId,doc);renderDetail();
-  try{await db.doc("bedomningar/"+matchId).set(doc);toast(nv==="ja"?"Ja sparat. Klicka Ja igen om du vill ångra.":nv==="nej"?"Nej sparat, kandidaten arkiveras i listan. Visa nej och klicka Nej igen för att ångra.":"Bedömningen är borttagen.");}
+  try{await db.doc("bedomningar/"+matchId).set(doc);toast(nv==="ja"?"Intressant sparat. Klicka igen om du vill ångra.":nv==="nej"?"Ej intressant sparat, kandidaten arkiveras i listan. Visa nej och klicka igen för att ångra.":"Bedömningen är borttagen.");}
   catch(e){if(prev)bed.set(matchId,prev);else bed.delete(matchId);renderDetail();toast("Bedömningen kunde inte sparas ("+(e.code||"fel")+").");}
 }
 async function saveAndring(roleId,patch){
@@ -1166,6 +1199,7 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   db.collection("andringar").onSnapshot(s=>{andr=toMap(s);render();},fail("ändringar"));
   db.collection("cv").onSnapshot(s=>{cvs=toMap(s);renderDetail();},fail("CV"));
   db.collection("searchbegaran").onSnapshot(s=>{sreq=toMap(s);render();},fail("searchbegäran"));
+  genLadda();
   db.collection("bedomningar").onSnapshot(s=>{bed=toMap(s);render();},fail("bedömningar"));
   db.collection("kontaktuppgifter").onSnapshot(s=>{kuppg=toMap(s);renderDetail();},fail("kontaktuppgifter"));
   db.collection("egna").onSnapshot(s=>{egna=toMap(s);render();},fail("egna kandidater"));
@@ -1177,4 +1211,11 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   else{ordersState="fel";ordersErr="ingen identitet";renderDetail();}
   void timer;
 })();
+</script>
+<script>
+(function(){var D=["roles","flist","kside"],dolt={};
+  try{dolt=JSON.parse(localStorage.getItem("konsult.dolj")||"{}")||{};}catch(e){dolt={};}
+  function visa(){D.forEach(function(k){document.body.classList.toggle("dolj-"+k,!!dolt[k]);var b=document.querySelector('[data-dolj="'+k+'"]');if(b)b.setAttribute("aria-pressed",String(!dolt[k]));});}
+  document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-dolj]");if(!b)return;dolt[b.dataset.dolj]=!dolt[b.dataset.dolj];try{localStorage.setItem("konsult.dolj",JSON.stringify(dolt));}catch(err){}visa();});
+  visa();})();
 </script>
