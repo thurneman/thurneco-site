@@ -290,10 +290,20 @@ textarea[data-cfnote]{width:100%;box-sizing:border-box;min-height:70px;font:inhe
   .nav button{padding:6px 10px;font-size:13px}
 }
 </style>
+<style>
+/* Visa eller dölj delar av vyn, sparas per webbläsare */
+.vyval{display:flex;gap:6px;align-items:center}.vyval .tbtn[aria-pressed="false"]{opacity:.55;text-decoration:line-through}
+body.dolj-roles .main{grid-template-columns:minmax(0,1fr)}body.dolj-roles .main .roles{display:none}
+body.dolj-roles .mobile-pick:not([hidden]){display:block}
+body.dolj-flist .focus{grid-template-columns:1fr}body.dolj-flist .focus .flist{display:none}
+body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .kside{display:none}
+@media (max-width:820px){.vyval{display:none}}
+</style>
 <header class="topbar">
   <div class="brand" title="Partnervyn. Huvudregistret heter ATS Filip.">ATS Tomas<span>Thurne Konsult</span></div>
   <nav class="nav" aria-label="Vyer"><button type="button" data-view="uppdrag" aria-pressed="true">Uppdrag</button><button type="button" data-view="konsulter" aria-pressed="false">Konsulter</button><button type="button" data-view="sok" aria-pressed="false">Sök</button></nav>
   <div class="spacer"></div>
+  <span class="vyval" role="group" aria-label="Visa eller dölj delar av vyn"><button class="tbtn" type="button" data-dolj="roles" aria-pressed="true" title="Visa eller dölj uppdragslistan till vänster">☰ Uppdragslista</button><button class="tbtn" type="button" data-dolj="flist" aria-pressed="true" title="Visa eller dölj kandidatlistan inne på ett uppdrag">☰ Kandidatlista</button><button class="tbtn" type="button" data-dolj="kside" aria-pressed="true" title="Visa eller dölj sidospalten med uppdrag på en persons sida">☰ Sidospalt</button></span>
   <a href="#" id="ats-logout" class="ats-logout" hidden>Logga ut</a> <!-- supabase -->
   <button class="tbtn" type="button" id="btn-forslag" title="Förslag och synpunkter på vyn. Samlas och läses, ändrar inget automatiskt.">Förslagslåda</button>
 </header>
@@ -1177,4 +1187,11 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   else{ordersState="fel";ordersErr="ingen identitet";renderDetail();}
   void timer;
 })();
+</script>
+<script>
+(function(){var D=["roles","flist","kside"],dolt={};
+  try{dolt=JSON.parse(localStorage.getItem("konsult.dolj")||"{}")||{};}catch(e){dolt={};}
+  function visa(){D.forEach(function(k){document.body.classList.toggle("dolj-"+k,!!dolt[k]);var b=document.querySelector('[data-dolj="'+k+'"]');if(b)b.setAttribute("aria-pressed",String(!dolt[k]));});}
+  document.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-dolj]");if(!b)return;dolt[b.dataset.dolj]=!dolt[b.dataset.dolj];try{localStorage.setItem("konsult.dolj",JSON.stringify(dolt));}catch(err){}visa();});
+  visa();})();
 </script>
