@@ -23,6 +23,39 @@
   var SUPABASE_KEY = String(CFG.SUPABASE_KEY || "");
   var VY = CFG.VY === "partner" ? "partner" : CFG.VY === "agare" ? "agare" : null;
   var PARTNER = VY === "partner";
+  // Visa som: ägaren ser en partners vy genom databasfunktionen ats_visa_som. Bara läsning.
+  var SOM = null;
+  var BARA_VISA_SOM = CFG.BARA_VISA_SOM === true;
+  function somStopp() { var e = new Error("Bara läsning. Du ser en annans vy, inget går att ändra här."); e.code = "VISA_SOM"; throw e; }
+  function somFilter(rows, build) {
+    var f = [], b = {
+      eq: function (c, v) { f.push(function (r) { return String(r[c]) === String(v); }); return b; },
+      in: function (c, vs) { var set = new Set((vs || []).map(String)); f.push(function (r) { return set.has(String(r[c])); }); return b; }
+    };
+    build(b);
+    return rows.filter(function (r) { return f.every(function (t) { return t(r); }); });
+  }
+  function somLas(sb) {
+    var from0 = sb.from.bind(sb), rpc0 = sb.rpc.bind(sb);
+    sb.from = function (t) {
+      var b = from0(t);
+      ["insert", "update", "upsert", "delete"].forEach(function (m) { b[m] = somStopp; });
+      if (t !== "anvandare") b.select = somStopp;
+      return b;
+    };
+    sb.rpc = function (n, a) { if (n !== "ats_visa_som") somStopp(); return rpc0(n, a); };
+    try { sb.functions.invoke = somStopp; } catch (e) {}
+    try { sb.storage.from = somStopp; } catch (e) {}
+  }
+  function somRad(namn) {
+    var st = document.createElement("style");
+    st.textContent = "#ats-som-rad{position:sticky;top:0;z-index:9999;background:#7a4b00;color:#fff;font:600 13px/1.3 system-ui,sans-serif;padding:7px 14px;text-align:center}";
+    document.head.appendChild(st);
+    var d = document.createElement("div"); d.id = "ats-som-rad";
+    d.textContent = "Du ser " + namn + " vy, bara läsning. Inget går att klicka, beställa eller bedöma härifrån.";
+    document.body.insertBefore(d, document.body.firstChild);
+    document.documentElement.classList.add("ats-visa-som");
+  }
   var POLL_MS = +CFG.OMHAMTNING_MS > 0 ? +CFG.OMHAMTNING_MS : 60000;
   var POLL_VY_MS = +CFG.OMHAMTNING_VY_MS > 0 ? +CFG.OMHAMTNING_VY_MS : 30000;
   var CV_BUCKET = CFG.CV_BUCKET || "cv";
@@ -382,9 +415,25 @@
     }
     if (!anv || anv.aktiv === false) { showLogin("Inloggad som " + email + ", men kontot har ingen behörighet i ATS:et.", { hideForm: true, showLogout: true }); return; }
     if (VY === "agare" && anv.roll !== "agare") { showLogin("Den här vyn är bara för ägaren. Partnervyn finns under /ats/tomas/.", { hideForm: true, showLogout: true }); return; }
-    if (VY === "partner" && anv.roll !== "partner") { showLogin("Partnervyn visar bara data för partnerkonton. Ägaren använder /ats/.", { hideForm: true, showLogout: true }); return; }
+    var somAnv = null;
+    if (VY === "partner" && anv.roll === "agare") {
+      var vill = "";
+      try { vill = String(new URLSearchParams(location.search).get("som") || "").toLowerCase(); } catch (e) {}
+      var ps = [];
+      try { ps = (await q(sb.from("anvandare").select("*").eq("roll", "partner"))) || []; } catch (e) {}
+      ps = ps.filter(function (p) { return p.aktiv !== false; });
+      somAnv = ps.filter(function (p) { return String(p.email).toLowerCase() === vill; })[0] || (vill ? null : ps[0]) || null;
+      if (!somAnv) { showLogin("Det finns ingen aktiv partner att visa" + (vill ? " med adressen " + vill : "") + ".", { hideForm: true, showLogout: true }); return; }
+      SOM = String(somAnv.email).toLowerCase();
+      somLas(sb);
+    } else if (VY === "partner" && anv.roll !== "partner") { showLogin("Partnervyn visar bara data för partnerkonton. Ägaren använder /ats/.", { hideForm: true, showLogout: true }); return; }
+    else if (VY === "partner" && BARA_VISA_SOM) { showLogin("Den här testsidan används bara av ägaren genom Visa som.", { hideForm: true, showLogout: true }); return; }
     var selfKeys = [email].concat(EXTRA_SELF_KEYS.map(function (k) { return k.toLowerCase(); }));
     ctx = { uid: session.user.id, email: email, anv: anv, roll: anv.roll, selfKeys: selfKeys, namn: anv.namn || "" };
+    if (SOM) {
+      ctx = { uid: session.user.id, email: SOM, anv: somAnv, roll: "partner", selfKeys: [SOM], namn: somAnv.namn || "", visaSom: true, agare: email };
+      somRad((somAnv.namn || SOM).split(" ")[0] + (/s$/i.test((somAnv.namn || SOM).split(" ")[0]) ? "" : "s"));
+    }
     html.classList.remove("ats-ute");
     html.classList.add("ats-inne");
     var box = el("ats-login"); if (box) box.hidden = true;
@@ -398,6 +447,11 @@
   async function fetchAll(table, opt) {
     opt = opt || {};
     var out = [], order = opt.order || "id";
+    if (SOM) {
+      var alla = (await q(sb.rpc("ats_visa_som", { p_vem: SOM, p_kalla: table }))) || [];
+      if (opt.build) alla = somFilter(alla, opt.build);
+      return alla.sort(function (a, b) { return String(a[order]) < String(b[order]) ? -1 : String(a[order]) > String(b[order]) ? 1 : 0; });
+    }
     for (var from = 0; ; from += PAGE) {
       var b = sb.from(table).select(opt.select || "*");
       if (opt.build) b = opt.build(b);
@@ -1120,9 +1174,14 @@
     // Anropar en serverfunktion som den inloggade användaren (ATS-X: inloggningskonto åt granskare)
     funktion: function (namn, kropp) { return sb.functions.invoke(namn, { body: kropp }); },
     // Anropar en databasfunktion som den inloggade användaren (ATS-X: ägarens beslut om kravändring)
-    rpc: function (namn, arg) { return sb.rpc(namn, arg); },
+    rpc: function (namn, arg) {
+      if (!SOM) return sb.rpc(namn, arg);
+      if (namn === "ats_generera_kvar") return sb.rpc("ats_visa_som", { p_vem: SOM, p_kalla: "generera_kvar" });
+      return Promise.resolve({ data: null, error: { message: "Bara läsning. Du ser en annans vy." } });
+    },
     // Läser en vy som den inloggade användaren (ATS Tomas: beställningar i Generera kandidater)
-    vyrad: function (namn) { return sb.from(namn).select("*"); },
+    vyrad: function (namn) { return SOM ? sb.rpc("ats_visa_som", { p_vem: SOM, p_kalla: namn }) : sb.from(namn).select("*"); },
+    visaSom: function () { return SOM; },
     vy: VY,
     mappning: { MAP: MAP, mappedRow: mappedRow, mappedDoc: mappedDoc, rowCandidates: rowCandidates, rowKo: rowKo, docKo: docKo, kontaktRow: kontaktRow, kontaktDoc: kontaktDoc, genericRow: function (id, d) { return genericRow(ctx || { uid: null, email: null }, id, d); }, genericDoc: genericDoc, logRow: logRow, logDoc: logDoc, applyPatch: applyPatch }
   });

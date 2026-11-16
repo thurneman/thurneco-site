@@ -302,6 +302,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 <style>
 .genrad{display:flex;flex-wrap:wrap;gap:8px 22px;margin:10px 0 0}.genb{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}.genb .gm{font-size:12px;color:var(--muted)}
 </style>
+<style>.ats-visa-som :is([data-gen],[data-bed],[data-inmail],[data-order],[data-arkiv],[data-prio],[data-ping],[data-reply],[data-reply-undo],[data-matcha],[data-begar],[data-askfor],[data-addcand],[data-kom],[data-comment],[data-cv],[data-foresla],[data-rolenote],[data-cfnote],[data-dl],#a-save,#b-send,#o-send,#f-save,#btn-forslag){pointer-events:none;opacity:.55}.ats-visa-som :is(textarea,input:not([type=search]):not(#ksok):not(#show-arch)){pointer-events:none}</style>
 <header class="topbar">
   <div class="brand" title="Partnervyn. Huvudregistret heter ATS Filip.">ATS Tomas<span>Testversion, inget skickas</span></div>
   <nav class="nav" aria-label="Vyer"><button type="button" data-view="uppdrag" aria-pressed="true">Uppdrag</button><button type="button" data-view="konsulter" aria-pressed="false">Konsulter</button><button type="button" data-view="sok" aria-pressed="false">Sök</button></nav>
@@ -324,7 +325,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 <div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">ATS Tomas</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="../ats-runtime.js?v=gen1"></script> <!-- supabase -->
+<script src="../ats-runtime.js?v=som1"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
