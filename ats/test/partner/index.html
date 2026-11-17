@@ -1,0 +1,66 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>ATS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
+<style>
+*{box-sizing:border-box}body{margin:0;background:#F7F8FB;color:#0B1B3F;font:17px/1.5 Inter,system-ui,sans-serif}
+h1,h2,.namn,.sidnamn,.fet{font-family:Poppins,Inter,system-ui,sans-serif}
+h1{margin:0 0 6px;font-size:40px;line-height:1.15;font-weight:700}h2{margin:0;font-size:28px;font-weight:700}
+button{font:inherit;color:inherit;cursor:pointer}
+.topp{background:#0B1F44;color:#fff;position:sticky;top:0;z-index:50}
+.topp-in{display:flex;flex-wrap:wrap;align-items:center;gap:8px 32px;padding:0 28px;min-height:68px}
+.sidnamn{font-weight:700;font-size:24px}
+.topp nav{display:flex;flex-wrap:wrap;gap:8px 28px;flex:1}
+.topp nav button{background:none;border:0;border-bottom:4px solid transparent;color:#fff;font-size:19px;padding:18px 6px 14px;min-height:48px}
+.topp nav button[aria-current=page]{border-bottom-color:#2F6BFF;font-weight:600}
+.lage{font-size:14px;color:#C9D3E8}.ladda{background:none;border:1px solid #6F80A6;color:#fff;border-radius:8px;min-height:40px;padding:0 14px;font-size:15px}
+.topp .ats-logout{position:static;color:#fff;font-size:15px;background:none;border:0;padding:0;text-decoration:underline}
+.jag{width:44px;height:44px;border-radius:50%;background:#5A6B8C;display:flex;align-items:center;justify-content:center;font-weight:600}
+.jag:empty{display:none}
+.vy{padding:32px 28px 56px}
+.tva{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:24px;align-items:start;margin-top:20px}
+.kort{background:#fff;border:1px solid #D5DAE3;border-radius:14px;padding:26px}
+.rubrikrad{display:flex;align-items:center;gap:12px}
+.antal{background:#CFF5D0;color:#0B5A1B;font-weight:700;font-size:20px;padding:2px 13px;border-radius:10px}
+.rad{display:flex;align-items:center;gap:18px;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #D5DAE3;padding:20px 0;min-height:64px}
+.rad:hover .namn{text-decoration:underline}
+.mitt{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;overflow-wrap:anywhere}
+.namn{font-weight:700;font-size:21px}.fet{font-weight:600}.dov{color:#556079;font-size:15px}.tid{color:#556079;font-size:14px;white-space:nowrap}
+.pil{font-size:30px;line-height:1;color:#0B1B3F}
+.rund{flex:none;width:56px;height:56px;border-radius:50%;background:#D6E4FB;color:#0B1B3F;display:flex;align-items:center;justify-content:center;font-family:Poppins,Inter,sans-serif;font-weight:700;font-size:19px}
+.rund.stor{width:120px;height:120px;font-size:42px}
+.lank{background:none;border:0;color:#1447E6;font-weight:600;font-size:18px;padding:18px 0 0;min-height:44px}
+.chip{display:inline-block;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.chip.gron{background:#CFF5D0;color:#0B5A1B}.chip.bla{background:#D6E4FB;color:#0B2A66}.chip.gra{background:#E9ECF2;color:#2B3550}.chip.rod{background:#FBDDD3;color:#7A1F05}
+.chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:46%}
+.tom{color:#556079;padding:14px 0}
+.delad{display:flex;flex-wrap:wrap;gap:0;margin:-32px -28px -56px;min-height:calc(100vh - 68px)}
+.delad aside{flex:0 0 340px;max-width:100%;background:#fff;border-right:1px solid #D5DAE3;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
+.delad aside h2{padding-left:6px}
+.delad main{flex:1 1 460px;min-width:0;padding:32px 28px 56px}
+.falt{display:flex;flex-direction:column;gap:4px;font-size:14px;color:#556079}
+.falt input,.falt select{min-height:46px;padding:0 12px;border:1px solid #B9C1CF;border-radius:8px;font:inherit;font-size:16px;color:#0B1B3F;background:#fff}
+.lista{display:flex;flex-direction:column;gap:2px;max-height:62vh;overflow:auto}
+.val{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:13px 12px;min-height:52px}
+.val.vald{background:#D6E4FB}.val:hover{background:#EEF3FC}.val.vald:hover{background:#D6E4FB}
+.kryss{display:flex;align-items:center;gap:10px;min-height:44px;color:#3F4A63;font-size:15px;padding-left:6px}.kryss input{width:20px;height:20px}
+.under{color:#556079;font-size:19px;margin:0 0 10px}
+.del{border-top:1px solid #D5DAE3;margin-top:26px;padding-top:24px}
+.huvud{display:flex;flex-wrap:wrap;align-items:center;gap:26px}
+.svar{background:#E6F8E7;border-radius:12px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:22px}
+.medd{max-width:760px;border-radius:12px;padding:12px 16px;margin-top:10px;background:#fff;border:1px solid #D5DAE3;overflow-wrap:anywhere;white-space:pre-wrap}
+.medd.in{background:#E6F8E7;border-color:#BFE8C2}.medd.ut{margin-left:auto;margin-right:0}
+html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,html.ats-visa-som nav button,html.ats-visa-som .ladda{pointer-events:auto}
+@media(max-width:700px){h1{font-size:30px}.chips{max-width:100%}.rad{flex-wrap:wrap}.delad aside{flex-basis:100%;border-right:0;border-bottom:1px solid #D5DAE3}.lista{max-height:40vh}}
+</style></head><body>
+<!-- Nya partnervyn, testsida. Steg 1: bara läsning. Samma partnervyer och inloggning som /ats/test/tomas/. -->
+<header class="topp"><div class="topp-in"><div id="sidnamn" class="sidnamn">ATS</div>
+<nav aria-label="Flikar"><button type="button" id="flik-oversikt" data-flik="oversikt" aria-current="page">Översikt</button><button type="button" id="flik-kandidater" data-flik="kandidater">Kandidater</button><button type="button" id="flik-uppdrag" data-flik="uppdrag">Uppdrag</button></nav>
+<span id="lage" class="lage" role="status"></span><button type="button" id="ladda" class="ladda">Uppdatera</button>
+<a href="#" id="ats-logout" class="ats-logout" hidden>Logga ut</a><span id="jag" class="jag" aria-hidden="true"></span></div></header>
+<div id="vy" class="vy"><p class="tom">Hämtar…</p></div>
+<div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">Logga in</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="../ats-runtime.js?v=som1"></script>
+<script src="vy.js?v=1"></script>
+</body></html>
