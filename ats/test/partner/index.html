@@ -33,28 +33,37 @@ button{font:inherit;color:inherit;cursor:pointer}
 .chip.gron{background:#CFF5D0;color:#0B5A1B}.chip.bla{background:#D6E4FB;color:#0B2A66}.chip.gra{background:#E9ECF2;color:#2B3550}.chip.rod{background:#FBDDD3;color:#7A1F05}
 .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:46%}
 .tom{color:#556079;padding:14px 0}
-.delad{display:flex;flex-wrap:wrap;gap:0;margin:-32px -28px -56px;min-height:calc(100vh - 68px)}
+.delad{display:flex;flex-wrap:wrap;gap:0;margin:0 -28px -56px;min-height:calc(100vh - 68px);border-top:1px solid #D5DAE3}
 .delad aside{flex:0 0 340px;max-width:100%;background:#fff;border-right:1px solid #D5DAE3;padding:28px 16px;display:flex;flex-direction:column;gap:14px}
 .delad aside h2{padding-left:6px}
 .delad main{flex:1 1 460px;min-width:0;padding:32px 28px 56px}
 .falt{display:flex;flex-direction:column;gap:4px;font-size:14px;color:#556079}
 .falt input,.falt select{min-height:46px;padding:0 12px;border:1px solid #B9C1CF;border-radius:8px;font:inherit;font-size:16px;color:#0B1B3F;background:#fff}
-.lista{display:flex;flex-direction:column;gap:2px;max-height:62vh;overflow:auto}
+.lista{display:flex;flex-direction:column;gap:2px;max-height:62vh;overflow:auto}.lista>*{flex:none}
 .val{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:13px 12px;min-height:52px}
-.val.vald{background:#D6E4FB}.val:hover{background:#EEF3FC}.val.vald:hover{background:#D6E4FB}
+.val{flex-direction:column;align-items:flex-start;gap:6px}.val .mitt{flex:none;width:100%;overflow-wrap:break-word}.val.vald{background:#D6E4FB}.val:hover{background:#EEF3FC}.val.vald:hover{background:#D6E4FB}
 .kryss{display:flex;align-items:center;gap:10px;min-height:44px;color:#3F4A63;font-size:15px;padding-left:6px}.kryss input{width:20px;height:20px}
 .under{color:#556079;font-size:19px;margin:0 0 10px}
 .del{border-top:1px solid #D5DAE3;margin-top:26px;padding-top:24px}
 .huvud{display:flex;flex-wrap:wrap;align-items:center;gap:26px}
 .svar{background:#E6F8E7;border-radius:12px;padding:14px 18px;display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:22px}
 .medd{max-width:760px;border-radius:12px;padding:12px 16px;margin-top:10px;background:#fff;border:1px solid #D5DAE3;overflow-wrap:anywhere;white-space:pre-wrap}
-.medd.in{background:#E6F8E7;border-color:#BFE8C2}.medd.ut{margin-left:auto;margin-right:0}
-html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,html.ats-visa-som nav button,html.ats-visa-som .ladda{pointer-events:auto}
-@media(max-width:700px){h1{font-size:30px}.chips{max-width:100%}.rad{flex-wrap:wrap}.delad aside{flex-basis:100%;border-right:0;border-bottom:1px solid #D5DAE3}.lista{max-height:40vh}}
+.medd.in{background:#E6F8E7;border-color:#BFE8C2}.medd.ut{margin-left:auto;margin-right:0}.medd.egen{background:#FFF6D6;border-color:#EBD98A}
+.notis{background:#fff;border:1px solid #D5DAE3;border-left:6px solid #2F6BFF;border-radius:14px;padding:22px 26px 14px;margin-bottom:28px}
+.notis .tom{padding:8px 0 4px}.notis .rad{padding:12px 0;min-height:56px}.notis .rund{width:44px;height:44px;font-size:16px}.notis .namn{font-size:18px}
+.chip.ny{background:#0B1F44;color:#fff;vertical-align:middle}.chip.gul{background:#FFF0B8;color:#5A4300}
+.matt{background:#EEF3FC;border-radius:12px;padding:14px 18px;margin-top:16px;font-size:18px}.matt.full{background:#E6F8E7}
+.knapprad{display:flex;flex-wrap:wrap;align-items:center;gap:4px 28px;min-height:44px}.knapprad .lank{padding-top:8px}
+a.lank{display:inline-block;text-decoration:none;padding:0 0 0 12px;min-height:0;vertical-align:middle}
+html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,html.ats-visa-som nav button,html.ats-visa-som .ladda,html.ats-visa-som .falt input,html.ats-visa-som .kryss input{pointer-events:auto}
+@media(max-width:700px){h1{font-size:30px}h2{font-size:23px}.topp-in{padding:0 16px;gap:2px 16px}.topp nav{order:5;flex:1 1 100%;gap:4px 22px}.topp nav button{padding:10px 4px 8px}
+.vy{padding:20px 16px 40px}.delad{margin:0 -16px -40px}.delad main{padding:24px 16px 40px}.notis{padding:16px 16px 10px}
+.rad{flex-wrap:wrap;gap:8px 12px;padding:14px 0}.rad .mitt{flex:1 1 180px}.rad .pil{display:none}.rad .tid{flex:1 1 100%}.chips{max-width:100%;justify-content:flex-start}
+.delad aside{flex-basis:100%;border-right:0;border-bottom:1px solid #D5DAE3}.lista{max-height:40vh}.rund.stor{width:72px;height:72px;font-size:26px}}
 </style></head><body>
-<!-- Nya partnervyn, testsida. Steg 1: bara läsning. Samma partnervyer och inloggning som /ats/test/tomas/. -->
+<!-- Nya partnervyn, testsida. Kärnan: uppdrag, kandidat, typ av roll, intresse och cv. Bara läsning. Samma partnervyer och inloggning som /ats/test/tomas/. -->
 <header class="topp"><div class="topp-in"><div id="sidnamn" class="sidnamn">ATS</div>
-<nav aria-label="Flikar"><button type="button" id="flik-oversikt" data-flik="oversikt" aria-current="page">Översikt</button><button type="button" id="flik-kandidater" data-flik="kandidater">Kandidater</button><button type="button" id="flik-uppdrag" data-flik="uppdrag">Uppdrag</button></nav>
+<nav aria-label="Flikar"><button type="button" id="flik-uppdrag" data-flik="uppdrag" aria-current="page">Uppdrag</button><button type="button" id="flik-kandidater" data-flik="kandidater">Kandidater</button></nav>
 <span id="lage" class="lage" role="status"></span><button type="button" id="ladda" class="ladda">Uppdatera</button>
 <a href="#" id="ats-logout" class="ats-logout" hidden>Logga ut</a><span id="jag" class="jag" aria-hidden="true"></span></div></header>
 <div id="vy" class="vy"><p class="tom">Hämtar…</p></div>
@@ -62,5 +71,5 @@ html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="../ats-runtime.js?v=som1"></script>
-<script src="vy.js?v=1"></script>
+<script src="vy.js?v=2"></script>
 </body></html>
