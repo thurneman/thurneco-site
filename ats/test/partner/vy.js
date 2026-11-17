@@ -125,6 +125,13 @@
     D.matches.forEach(function (m) {
       if (obesvarad(m)) ut.push({ k: "svar:" + m.id + ":" + m.svar.at, typ: "svar", cand: m.cand_id, namn: m.cand_name, r: roll(m.role_id), text: m.svar.text, at: ms(m.svar.at), ny: ms(m.svar.at) > N.sett });
     });
+    D.psvar.forEach(function (x) {
+      var d = x.data || {}, vantar = x.status === "bestalld" && !!d.vantarPaFilip, ejut = x.status === "avvisad" || x.status === "kontrolleras";
+      if (!vantar && !ejut) return;
+      var at = ms(d.statusAt || d.vantarAt || x.updated_at || x.at);
+      if (ejut && Date.now() - at > 3 * 864e5) return;
+      ut.push({ k: "eget:" + x.id + ":" + x.status, typ: vantar ? "vantar" : "ejut", cand: x.cand_id, namn: (D.cands[x.cand_id] || {}).name || "", r: roll(x.role_id), text: "", skal: vantar ? svarSkal(x) : skalText(d.fel), at: at, ny: at > N.sett });
+    });
     if (N.cv) Object.keys(D.cands).forEach(function (id) {
       if (!harCv(id) || N.cv.indexOf(id) >= 0) return;
       var m = D.matches.filter(function (x) { return x.cand_id === id && !x.dismissed && x.stage !== "avslutad"; }).sort(sortMatch)[0];
@@ -145,8 +152,8 @@
     hs.slice(0, 5).forEach(function (e) {
       var r = e.r || {};
       h += '<button type="button" class="rad" data-kand="' + esc(e.cand) + '">' + rund(e.namn) + '<span class="mitt"><span class="namn">' + esc(e.namn) + (e.ny ? ' <span class="chip ny">Nytt</span>' : "") + '</span><span class="dov">' +
-        esc((e.typ === "cv" ? "Har skickat cv" : "Har svarat") + (r.title ? " · " + [r.ref, r.title].filter(Boolean).join(" ") : "") + (r.id && !oppen(r) ? " · stängt uppdrag" : "")) + "</span>" +
-        (e.text ? '<span>"' + esc(kort(e.text, 160)) + '"</span>' : "") + '</span><span class="tid">' + esc(e.at ? nar(new Date(e.at).toISOString()) : "") + '</span><span class="pil" aria-hidden="true">›</span></button>';
+        esc((e.typ === "cv" ? "Har skickat cv" : e.typ === "vantar" ? "Ditt svar väntar på Filips ja" : e.typ === "ejut" ? "Ditt svar skickades inte" : "Har svarat") + (r.title ? " · " + [r.ref, r.title].filter(Boolean).join(" ") : "") + (r.id && !oppen(r) ? " · stängt uppdrag" : "")) + "</span>" +
+        (e.text ? '<span>"' + esc(kort(e.text, 160)) + '"</span>' : "") + (e.skal ? "<span>" + esc(kort(e.skal, 200)) + "</span>" : "") + '</span><span class="tid">' + esc(e.at ? nar(new Date(e.at).toISOString()) : "") + '</span><span class="pil" aria-hidden="true">›</span></button>';
     });
     if (hs.length > 5) h += '<p class="dov">och ' + (hs.length - 5) + " till, se fliken Kandidater.</p>";
     h += '<div class="knapprad">' + (nya ? '<button type="button" class="lank" id="sett">Markera som sett</button>' : "") + notisLage() + "</div></section>";
@@ -246,6 +253,10 @@
     return Object.keys(per).map(function (k) { return per[k]; });
   }
   var SVARLAGE = { bestalld: "väntar på att skickas", skickas: "skickas nu", avvisad: "skickades inte", kontrolleras: "behöver kontrolleras", aterkallad: "återkallat" };
+  // Skälet visas för partnern bara när det inte nämner verktyg. Annars en hänvisning till Filip.
+  function skalText(t) { t = String(t || "").trim(); return !t ? "" : /talendary|recruiter|linkedin/i.test(t) ? "Hör med Filip om varför." : t; }
+  function svarLage(x) { var d = x.data || {}; return x.status === "bestalld" && d.vantarPaFilip ? "väntar på Filips ja" : (SVARLAGE[x.status] || x.status); }
+  function svarSkal(x) { var d = x.data || {}; return x.status === "avvisad" || x.status === "kontrolleras" ? skalText(d.fel) : (x.status === "bestalld" && d.vantarPaFilip ? skalText(String(d.vantarSkal || "").replace(/\bpartnerns\b/g, "ditt")) : ""); }
   function egnaSvar(candId) { return D.psvar.filter(function (p) { return p.cand_id === candId && p.status !== "skickat"; }); }
   function kandStatus(p) { return !p.kvar ? "Tackat nej eller avslutad" : p.sv ? "Väntar på svar från dig" : (p.ja ? "Intresserad" : (p.senast ? "Kontaktad" : "Inte kontaktad")) + (harCv(p.id) ? " · CV inne" : " · CV saknas"); }
   function kandMatch(p) {
@@ -273,7 +284,7 @@
       h += '<button type="button" class="rad" data-roll="' + esc(r.id) + '"><span class="mitt"><span class="namn">' + esc(r.title) + '</span><span class="dov">' + esc(rollrad(r)) + "</span>" + (mv ? "<span>" + esc(mv) + "</span>" : "") + '</span><span class="chips">' +
         (obesvarad(m) ? '<span class="chip gron">Väntar på svar från dig</span>' : "") + (m.stage === "avslutad" ? '<span class="chip gra">Avslutad</span>' : intrChip(m)) + '<span class="chip ' + k.k + '">' + esc(k.t) + '</span></span><span class="pil" aria-hidden="true">›</span></button>';
     });
-    var kt = (D.kont[p.id] || []).concat(egnaSvar(p.id).map(function (x) { var d = x.data || {}; return { order: true, at: x.at || x.created_at, role_id: x.role_id, text: d.text || "", lage: SVARLAGE[x.status] || x.status, skal: x.status === "avvisad" || x.status === "kontrolleras" ? (d.fel || "") : "" }; })).sort(function (a, b) { return ms(a.at) - ms(b.at); });
+    var kt = (D.kont[p.id] || []).concat(egnaSvar(p.id).map(function (x) { var d = x.data || {}; return { order: true, at: x.at || x.created_at, role_id: x.role_id, text: d.text || "", lage: svarLage(x), skal: svarSkal(x) }; })).sort(function (a, b) { return ms(a.at) - ms(b.at); });
     h += '</section><section class="del"><h2>Konversation</h2>';
     if (!kt.length) h += '<p class="tom">Ingen kontakt loggad än.</p>';
     if (kt.length > 40) h += '<p class="dov">Visar de 40 senaste av ' + kt.length + " meddelanden.</p>";
@@ -365,6 +376,6 @@
     var sek = Math.max(parseInt((window.ATS_CONFIG || {}).POLL_SEK, 10) || 120, 5);
     window.claude.use("user").then(function () { return hamta(); }).then(function () { setInterval(function () { hamta(true); }, sek * 1000); });
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
+  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, skalText: skalText, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
   else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

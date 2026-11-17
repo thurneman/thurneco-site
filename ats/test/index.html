@@ -121,6 +121,7 @@ a{color:var(--copper)}
 .lseg button[aria-pressed="true"]{background:var(--surface);color:var(--fg);border-color:var(--copper)}
 .lseg b{font-size:11px;border-radius:999px;padding:0 7px;background:var(--copper);color:#fff;line-height:18px}
 .lseg b.zero{background:var(--line-strong);color:var(--muted)}
+.lseg b.fortur{background:var(--bad);color:#fff}
 .todo-list{overflow:auto;min-height:0;flex:1;font-size:13px}
 .todo-list .group-label{display:flex;justify-content:space-between;align-items:center}
 .todo-list .group-label a{color:inherit;text-decoration:none;cursor:pointer}
@@ -669,7 +670,7 @@ body{font-size:15px}
   <div class="mobile-pick"><select id="mobile-role" aria-label="Välj roll"></select></div>
   <div class="main">
     <aside class="roles">
-      <div class="lseg" id="left-seg" role="tablist" aria-label="Vänsterpanel"><button type="button" data-ls="roles" aria-pressed="true">Uppdrag</button><button type="button" data-ls="todo" aria-pressed="false" title="Allt som väntar på dig: åtgärdsposter från chattarna, pausade köposter, utkast utan ja, passerade nästa steg, uppdrag utan deadline">Att göra nu <b id="todo-count" hidden>0</b></button></div>
+      <div class="lseg" id="left-seg" role="tablist" aria-label="Vänsterpanel"><button type="button" data-ls="roles" aria-pressed="true">Uppdrag</button><button type="button" data-ls="todo" aria-pressed="false" title="Allt som väntar på dig: åtgärdsposter från chattarna, pausade köposter, utkast utan ja, passerade nästa steg, uppdrag utan deadline">Att göra nu <b id="todo-count" hidden>0</b> <b id="fortur-count" class="fortur" hidden></b></button></div>
       <div class="roles-filters" id="filters" aria-label="Filter, kan kombineras">
         <button class="chip" type="button" data-dim="prio" data-f="prio" aria-pressed="false">Prio</button>
         <details class="rmenu lmenu" id="list-menu"><summary class="chip" title="Fler åtgärder för listan">Mer</summary><div class="rmenu-pop"><button class="chip mitem" type="button" id="btn-archive-passed" title="Arkiverar alla öppna roller där sista svarsdag har passerat" hidden>Arkivera passerade</button><span class="mnote" id="list-menu-note">Inga öppna uppdrag med passerad sista svarsdag.</span></div></details>
@@ -982,17 +983,20 @@ document.addEventListener("click",e=>{const pg=e.target.closest("[data-ping]");i
 // plus härledda poster ur det som redan finns: pausade köposter, utkast utan ja, köposter utan Kör, passerade nästa steg, svar utan flytt, uppdrag utan deadline.
 let atgarder=new Map(),forslagPosts=new Map(),leftPane="roles",todoShowDone=false,todoBusy=new Set();
 try{leftPane=localStorage.getItem("ats.left")==="todo"?"todo":"roles";}catch{}
-const TODO_TYP={go:"GO",beslut:"Beslut",kundaction:"Kund",fel:"Fel","recruiter-manuell":"Recruiter",forslag:"Förslag",paminnelse:"Påminnelse",utkast:"Utkast",ko:"Kö",deadline:"Deadline",bevakning:"Bevakning",svar:"Svar",partner:"Partner",ping:"Ping"};
+const TODO_TYP={fortur:"Förtur",go:"GO",beslut:"Beslut",kundaction:"Kund",fel:"Fel","recruiter-manuell":"Recruiter",forslag:"Förslag",paminnelse:"Påminnelse",utkast:"Utkast",ko:"Kö",deadline:"Deadline",bevakning:"Bevakning",svar:"Svar",partner:"Partner",ping:"Ping"};
 const roleRef=id=>{const r=roles.get(id);return r?[r.ref,r.title].filter(Boolean).join(" "):(id||"");};
+// Förtur (Filip 17 nov 22.13): poster som databasen skriver när partnerns svar går före. De ligger överst i Att göra nu, oavsett affärsfilter.
+const arFortur=a=>!!a&&(a.skapadAv==="ATS, partnerns förtur"||/^(svarsorder-stoppad-|partnersvar-ja-)/.test(a.id||""));
 function todoItems(){
   // Returnerar {id, typ, roleId, candId, text, matchId, koId, at, av, kind (doc|forslag|derived), klar, cls}
   const out=[];const today=new Date().toISOString().slice(0,10);
   const openRole=r=>!!r&&inBiz(r)&&ACTIVE.has(r.status||"ny");
   for(const a of atgarder.values()){
     if(a.status!=="oppen"&&!(todoShowDone&&a.status==="klar"))continue;
-    const r=roles.get(a.roleId);if(a.roleId&&r&&!inBiz(r))continue;
+    const ft=arFortur(a);
+    const r=roles.get(a.roleId);if(!ft&&a.roleId&&r&&!inBiz(r))continue;
     const mid=a.matchId||(a.roleId&&a.candId?`${a.roleId}__${a.candId}`:"");
-    out.push({id:a.id,typ:a.typ||"beslut",roleId:a.roleId||"",candId:a.candId||"",matchId:matches.has(mid)?mid:"",text:a.text||"",at:a.at||"",av:a.skapadAv||"",kind:"doc",klar:a.status==="klar",cls:a.typ==="fel"?"fel":a.typ==="go"||a.typ==="ping"?"go":a.forslag||a.skapadAv==="Rolldrivare"?"forslag":"",recruiterUrl:a.recruiterUrl||""});
+    out.push({fortur:ft,id:a.id,typ:ft?"fortur":a.typ||"beslut",roleId:a.roleId||"",candId:a.candId||"",matchId:matches.has(mid)?mid:"",text:a.text||"",at:a.at||"",av:a.skapadAv||"",kind:"doc",klar:a.status==="klar",cls:ft?"fel":a.typ==="fel"?"fel":a.typ==="go"||a.typ==="ping"?"go":a.forslag||a.skapadAv==="Rolldrivare"?"forslag":"",recruiterUrl:a.recruiterUrl||""});
   }
   for(const f of forslagPosts.values()){
     if(f.status==="hanterad"&&!todoShowDone)continue;
@@ -1033,24 +1037,28 @@ function renderTodo(){
   const list=$("#todo-list"),rl=$("#roles-list"),cnt=$("#todo-count");if(!list)return;
   const items=todoItems();const open=items.filter(i=>!i.klar).length;
   cnt.hidden=false;cnt.textContent=String(open);cnt.classList.toggle("zero",!open);
+  const ftur=items.filter(i=>i.fortur&&!i.klar);
+  const fc=$("#fortur-count");if(fc){fc.hidden=!ftur.length;fc.textContent="Förtur "+ftur.length;}
   for(const b of document.querySelectorAll("#left-seg button"))b.setAttribute("aria-pressed",String(b.dataset.ls===leftPane));
   const todo=leftPane==="todo";list.hidden=!todo;rl.hidden=todo;$("#filters").hidden=todo;document.querySelector(".showarch").hidden=todo;
   const fa=$("#filters-active");if(todo)fa.hidden=true;else fa.hidden=!fa.innerHTML.trim();
   if(!todo)return;
   if(!items.length){list.innerHTML=`<div class="tnote">Inget väntar på dig just nu${biz==="all"?"":` i ${BIZ_LABEL[biz].toLowerCase()}`}. Chattarna skriver åtgärdsposter här när de behöver dig, och sidan lägger själv till pausade köposter, utkast utan ja, passerade nästa steg och uppdrag utan deadline.</div><div class="tfoot"><label><input type="checkbox" id="todo-done" ${todoShowDone?"checked":""}> Visa klara</label></div>`;return;}
-  const byRole=new Map();for(const i of items){const k=i.roleId||"";if(!byRole.has(k))byRole.set(k,[]);byRole.get(k).push(i);}
+  const byRole=new Map();for(const i of items){if(i.fortur&&!i.klar)continue;const k=i.roleId||"";if(!byRole.has(k))byRole.set(k,[]);byRole.get(k).push(i);}
   const order=[...byRole.keys()].sort((a,b)=>{const ra=byRole.get(a).reduce((m,i)=>Math.min(m,i.klar?9:i.cls==="fel"?0:i.cls==="go"?1:i.cls==="forslag"?3:2),9),rb=byRole.get(b).reduce((m,i)=>Math.min(m,i.klar?9:i.cls==="fel"?0:i.cls==="go"?1:i.cls==="forslag"?3:2),9);return ra-rb||(a===""?1:b===""?-1:roleRef(a).localeCompare(roleRef(b),"sv"));});
-  let html="";
-  for(const rid of order){
-    const its=byRole.get(rid);
-    html+=`<div class="group-label">${rid?`<a data-gorole="${esc(rid)}" title="Öppna uppdraget">${esc(roleRef(rid))}</a>`:"<span>Utan uppdrag</span>"}<span>${its.filter(i=>!i.klar).length}</span></div>`;
-    for(const i of its){
-      const who=[i.av?`av ${i.av}`:"",i.at?fmtDate(i.at)||i.at:""].filter(Boolean).join(" · ");
+  const todoRow=(i,medRoll)=>{
+      const who=[medRoll&&i.roleId?roleRef(i.roleId):"",i.av?`av ${i.av}`:"",i.at?fmtDate(i.at)||i.at:""].filter(Boolean).join(" · ");
       const act=i.kind==="doc"||i.kind==="forslag"||i.kind==="partner"?(i.klar?`<span class="sub ok">Klar</span>`:`<button class="tbtn" type="button" data-klar="${esc(i.id)}" data-kind="${i.kind}" ${canWrite&&!todoBusy.has(i.id)?"":"disabled"} title="Markerar som gjord. Loggas med vem som klickade.">Klar</button>`):"";
       const open=i.matchId?`<button class="tbtn" type="button" data-openm="${esc(i.matchId)}">Öppna</button>`:i.koId?`<button class="tbtn" type="button" data-goko="${esc(i.koId)}">Kö</button>`:i.typ==="deadline"&&i.roleId?`<button class="tbtn" type="button" data-gorole="${esc(i.roleId)}">Sätt</button>`:"";
       const rec=i.recruiterUrl?`<a class="tbtn" href="${esc(i.recruiterUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Recruiter</a>`:"";
-      html+=`<div class="todo ${i.cls}${i.klar?" klar":""}" data-tid="${esc(i.id)}"><span class="tt">${esc(i.text)}</span><span class="tm"><span class="sub">${esc(TODO_TYP[i.typ]||i.typ)}</span> ${esc(who)}</span><span class="ta">${rec}${open}${act}</span></div>`;
-    }
+      return `<div class="todo ${i.cls}${i.klar?" klar":""}" data-tid="${esc(i.id)}"><span class="tt">${esc(i.text)}</span><span class="tm"><span class="sub">${esc(TODO_TYP[i.typ]||i.typ)}</span> ${esc(who)}</span><span class="ta">${rec}${open}${act}</span></div>`;
+  };
+  let html="";
+  if(ftur.length)html+=`<div class="group-label"><span>Förtur: partnerns svar går före dina</span><span>${ftur.length}</span></div>`+ftur.map(i=>todoRow(i,true)).join("");
+  for(const rid of order){
+    const its=byRole.get(rid);
+    html+=`<div class="group-label">${rid?`<a data-gorole="${esc(rid)}" title="Öppna uppdraget">${esc(roleRef(rid))}</a>`:"<span>Utan uppdrag</span>"}<span>${its.filter(i=>!i.klar).length}</span></div>`;
+    for(const i of its)html+=todoRow(i,false);
   }
   html+=`<div class="tfoot"><label><input type="checkbox" id="todo-done" ${todoShowDone?"checked":""}> Visa klara</label></div>`;
   list.innerHTML=html;
