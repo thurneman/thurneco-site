@@ -1,9 +1,9 @@
 /*
- * Partnervyn, kärnan (nattorder 17 november 2026): uppdrag, kandidat och typ av roll.
+ * Partnervyn med kort åt båda håll (17 november 2026): uppdrag med matchade kandidater, kandidater med matchade uppdrag.
  * Av kandidaten visas två saker: intresse och cv. Högst tre cv per uppdrag. Det som brådskar ligger överst.
  * Bara läsning. Läser partnervyerna (v_roles_partner, v_matches_partner, v_candidates_partner, v_kontakter_partner)
  * genom ATS_RUNTIME.vyrad. Ägaren ser partnerns urval genom Visa som. Inget skrivs härifrån.
- * Visas inte: kund, pris, lön, poäng, nivå, motivering, anteckningar, kontaktuppgifter. Ordningen styrs av dagar kvar, aldrig av pris.
+ * Visas inte: kund, pris, lön, poäng, nivå, anteckningar, kontaktuppgifter. Motivering visas bara när den inte nämner ett verktyg. Ordningen styrs av dagar kvar, aldrig av pris.
  * Obs inför skarp inloggning för partnern: vyrad utan Visa som hämtar högst 1000 rader per vy.
  */
 (function () {
@@ -91,7 +91,7 @@
   function senast(m) { var t = m.svar ? ms(m.svar.at) : 0; kontakter(m).forEach(function (k) { var x = ms(k.at); if (x > t) t = x; }); return t; }
   function cvChip(id) { return harCv(id) ? '<span class="chip gron">CV inne</span>' : '<span class="chip gra">CV saknas</span>'; }
   function intrChip(m) { var i = intresse(m); return '<span class="chip ' + (i === "ja" ? "bla" : i === "fraga" ? "gul" : "gra") + '">' + esc(intrText(m)) + "</span>"; }
-  function rund(n, stor) { return '<span class="rund' + (stor ? " stor" : "") + '" aria-hidden="true">' + esc(ini(n)) + "</span>"; }
+  function rund(n, stor, liten) { return '<span class="rund' + (stor ? " stor" : "") + (liten ? " liten" : "") + '" aria-hidden="true">' + esc(ini(n)) + "</span>"; }
   function sortRoller(a, b) {
     var sa = a.prio === "skip" ? 1 : 0, sb = b.prio === "skip" ? 1 : 0;
     if (sa !== sb) return sa - sb;
@@ -161,34 +161,45 @@
     try { new Notification(D.sidnamn, { body: text, tag: "ats-partner" }); } catch (x) { /* notisen är ett tillägg, sidan visar samma sak */ }
   }
 
-  // ---------- Uppdrag ----------
+  // ---------- Kort och detalj ----------
+  var RENT = /talendary|recruiter|linkedin/i;
+  // Motiveringen visas bara när den inte nämner ett verktyg.
+  function motiv(m) { var r = m.rekommendation || (Array.isArray(m.belagt) ? m.belagt[0] : m.belagt) || ""; r = typeof r === "string" ? r : ""; return RENT.test(r) ? "" : kort(r, 150); }
+  function intrKort(m) { var i = intresse(m); return i === "ja" ? (STEG[m.stage] || "Intresserad") : i === "fraga" ? "Har frågat" : i === "vantar" ? "Kontaktad" : i === "nej" ? "Tackat nej" : "Föreslagen"; }
+  function lageChip(m) { return obesvarad(m) ? '<span class="chip gron">Svar väntar</span>' : '<span class="chip ' + (intresse(m) === "ja" ? "bla" : intresse(m) === "fraga" ? "gul" : "gra") + '">' + esc(intrKort(m)) + "</span>"; }
   function kandRad(m, medSvar) {
+    var mv = motiv(m);
     return '<button type="button" class="rad" data-kand="' + esc(m.cand_id) + '">' + rund(m.cand_name) + '<span class="mitt"><span class="namn">' + esc(m.cand_name) + "</span>" +
-      (medSvar && m.svar && m.svar.text && intresse(m) !== "nej" ? '<span>"' + esc(kort(m.svar.text, 140)) + '"</span>' : "") + (senast(m) ? '<span class="dov">' + esc(nar(new Date(senast(m)).toISOString())) + "</span>" : "") + '</span>' +
+      (medSvar && m.svar && m.svar.text && intresse(m) !== "nej" ? '<span>"' + esc(kort(m.svar.text, 140)) + '"</span>' : (mv ? "<span>" + esc(mv) + "</span>" : "")) + (senast(m) ? '<span class="dov">' + esc(nar(new Date(senast(m)).toISOString())) + "</span>" : "") + '</span>' +
       '<span class="chips">' + (obesvarad(m) ? '<span class="chip gron">Väntar på svar från dig</span>' : "") + intrChip(m) + cvChip(m.cand_id) + '</span><span class="pil" aria-hidden="true">›</span></button>';
   }
-  function vUppdrag() {
-    var q = S.usok.toLowerCase();
-    var rs = D.roles.filter(function (r) { return (S.gamla || oppen(r)) && (!q || [r.title, r.ref, r.category, r.location].join(" ").toLowerCase().indexOf(q) >= 0); }).sort(function (a, b) {
-      return (oppen(a) ? 0 : 1) - (oppen(b) ? 0 : 1) || sortRoller(a, b);
-    });
-    if (!S.roll || !rs.some(function (r) { return r.id === S.roll; })) S.roll = rs.length ? rs[0].id : null;
-    var h = '<div class="delad"><aside><h2>Uppdrag</h2><p class="dov">Det som brådskar ligger överst.</p><label class="falt">Sök<input type="search" id="usok" placeholder="Sök titel, nummer, typ av roll eller ort" value="' + esc(S.usok) + '"></label><div class="lista">';
-    rs.slice(0, 200).forEach(function (r) {
-      var k = kvar(r);
-      h += '<button type="button" class="val' + (r.id === S.roll ? " vald" : "") + '" data-roll="' + esc(r.id) + '"><span class="chip ' + k.k + '">' + esc(k.t) + '</span><span class="mitt"><span class="fet">' + esc(r.title) + '</span><span class="dov">' + esc(rollrad(r)) + '</span><span class="dov">' + esc(rollSummering(r)) + "</span></span></button>";
-    });
-    if (rs.length > 200) h += '<p class="dov">Visar 200 av ' + rs.length + ". Sök för att hitta fler.</p>";
-    if (!rs.length) h += '<p class="tom">Inga uppdrag matchar.</p>';
-    h += '</div><label class="kryss"><input type="checkbox" id="gamla"' + (S.gamla ? " checked" : "") + "> Visa passerade och stängda</label></aside><main>";
-    var r = roll(S.roll);
-    if (!r) return h + '<p class="tom">Välj ett uppdrag i listan.</p></main></div>';
+  function miniKand(m) {
+    return '<button type="button" class="mini" data-kand="' + esc(m.cand_id) + '">' + rund(m.cand_name, false, true) + '<span class="mitt">' + esc(m.cand_name) + "</span>" + lageChip(m) + (harCv(m.cand_id) ? '<span class="chip gron">CV</span>' : "") + "</button>";
+  }
+  function miniRoll(m) {
+    var r = roll(m.role_id); if (!r) return "";
+    var k = kvar(r);
+    return '<button type="button" class="mini" data-roll="' + esc(r.id) + '"><span class="mitt">' + esc(r.title) + "</span>" + lageChip(m) + '<span class="chip ' + k.k + '">' + esc(k.t) + "</span></button>";
+  }
+  function matchade(id) { return iRoll(id).filter(function (m) { return intresse(m) !== "nej"; }).sort(sortMatch); }
+
+  // ---------- Uppdrag ----------
+  function uppdragKort(r) {
+    var k = kvar(r), ml = matchade(r.id), n = klara(r.id);
+    var h = '<article class="kk"><div class="kkrad"><span class="chip ' + k.k + '">' + esc(k.t) + '</span><span class="dov">' + esc(r.category || "") + "</span></div>" +
+      '<button type="button" class="huvudknapp" data-roll="' + esc(r.id) + '"><span class="mitt"><span class="namn">' + esc(r.title) + '</span><span class="dov">' + esc([r.ref, r.location].filter(Boolean).join(" · ")) + '</span></span><span class="pil" aria-hidden="true">›</span></button>' +
+      '<div class="dov">Cv inne ' + Math.min(n, MAXCV) + " av " + MAXCV + " · " + ml.length + (ml.length === 1 ? " matchad kandidat" : " matchade kandidater") + "</div>";
+    ml.slice(0, 3).forEach(function (m) { h += miniKand(m); });
+    if (ml.length > 3) h += '<button type="button" class="lank liten" data-roll="' + esc(r.id) + '">och ' + (ml.length - 3) + " till ›</button>";
+    return h + "</article>";
+  }
+  function uppdragDetalj(r) {
     var k = kvar(r), alla = iRoll(r.id).sort(sortMatch), n = klara(r.id);
     var intr = alla.filter(function (m) { var i = intresse(m); return i === "ja" || i === "fraga"; });
     var vant = alla.filter(function (m) { return intresse(m) === "vantar"; });
     var ej = alla.filter(function (m) { return intresse(m) === "ej"; });
     var nej = alla.filter(function (m) { return intresse(m) === "nej"; }).length;
-    h += "<h1>" + esc(r.title) + '</h1><p class="under">' + esc(rollrad(r)) + '</p><p><span class="chip ' + k.k + '">' + esc(k.t) + "</span>" +
+    var h = "<h1>" + esc(r.title) + '</h1><p class="under">' + esc(rollrad(r)) + '</p><p><span class="chip ' + k.k + '">' + esc(k.t) + "</span>" +
       (r.deadline ? ' <span class="dov">Sista dag ' + esc(r.deadline) + "</span>" : (slut(r).ant ? ' <span class="dov">Sista dag ' + esc(r.deadline_antagen) + " (antagen)</span>" : "")) + "</p>";
     h += '<div class="matt' + (n >= MAXCV ? " full" : "") + '"><span class="fet">Cv inne: ' + Math.min(n, MAXCV) + " av " + MAXCV + "</span> " +
       (n >= MAXCV ? "Uppdraget har de cv som behövs." : n ? "Räknas när kandidaten är intresserad och cv finns." : "Inget cv inne än. Ett tidigt cv går före ett bättre som kommer för sent.") + "</div>";
@@ -199,10 +210,25 @@
     if (!vant.length) h += '<p class="tom">Ingen väntar på svar.</p>';
     vant.slice(0, 40).forEach(function (m) { h += kandRad(m, false); });
     if (vant.length > 40) h += '<p class="dov">och ' + (vant.length - 40) + " till</p>";
-    h += '</section><section class="del"><h2>Föreslagna, inte kontaktade</h2><p class="dov">' + ej.length + (ej.length === 1 ? " kandidat" : " kandidater") + (nej ? ". " + nej + " har tackat nej" : "") + ".</p>";
-    ej.slice(0, 12).forEach(function (m) { h += kandRad(m, false); });
-    if (ej.length > 12) h += '<p class="dov">och ' + (ej.length - 12) + " till</p>";
-    return h + "</section></main></div>";
+    h += '</section><section class="del"><h2>Matchade, inte kontaktade</h2><p class="dov">' + ej.length + (ej.length === 1 ? " kandidat" : " kandidater") + (nej ? ". " + nej + " har tackat nej" : "") + ".</p>";
+    ej.slice(0, 30).forEach(function (m) { h += kandRad(m, false); });
+    if (ej.length > 30) h += '<p class="dov">och ' + (ej.length - 30) + " till</p>";
+    return h + "</section>";
+  }
+  function vUppdrag() {
+    var vald = S.roll ? roll(S.roll) : null;
+    if (vald) return '<button type="button" class="bak" data-bak="uppdrag">‹ Alla uppdrag</button>' + uppdragDetalj(vald);
+    var q = S.usok.toLowerCase();
+    var rs = D.roles.filter(function (r) { return (S.gamla || oppen(r)) && (!q || [r.title, r.ref, r.category, r.location].join(" ").toLowerCase().indexOf(q) >= 0); }).sort(function (a, b) {
+      return (oppen(a) ? 0 : 1) - (oppen(b) ? 0 : 1) || sortRoller(a, b);
+    });
+    var h = '<div class="verktyg"><h1>Uppdrag</h1><label class="falt">Sök<input type="search" id="usok" placeholder="Sök titel, nummer, typ av roll eller ort" value="' + esc(S.usok) + '"></label>' +
+      '<label class="kryss"><input type="checkbox" id="gamla"' + (S.gamla ? " checked" : "") + '> Visa passerade och stängda</label></div><p class="dov">' + rs.length + " uppdrag. Det som brådskar ligger överst.</p>" + '<div class="kortnat">';
+    rs.slice(0, 60).forEach(function (r) { h += uppdragKort(r); });
+    h += "</div>";
+    if (rs.length > 60) h += '<p class="dov">Visar 60 av ' + rs.length + ". Sök för att hitta fler.</p>";
+    if (!rs.length) h += '<p class="tom">Inga uppdrag matchar.</p>';
+    return h;
   }
 
   // ---------- Kandidater ----------
@@ -210,8 +236,9 @@
     var per = {};
     D.matches.forEach(function (m) {
       if (m.dismissed) return;
-      var p = per[m.cand_id] || (per[m.cand_id] = { id: m.cand_id, namn: m.cand_name, ms: [], sv: 0, ja: 0, senast: 0 });
+      var p = per[m.cand_id] || (per[m.cand_id] = { id: m.cand_id, namn: m.cand_name, ms: [], sv: 0, ja: 0, senast: 0, kvar: 0 });
       p.ms.push(m);
+      if (m.stage !== "avslutad" && intresse(m) !== "nej") p.kvar++;
       if (obesvarad(m)) p.sv++;
       if (m.stage !== "avslutad" && intresse(m) === "ja") p.ja++;
       var t = senast(m); if (t > p.senast) p.senast = t;
@@ -220,30 +247,30 @@
   }
   var SVARLAGE = { bestalld: "väntar på att skickas", skickas: "skickas nu", avvisad: "skickades inte", kontrolleras: "behöver kontrolleras", aterkallad: "återkallat" };
   function egnaSvar(candId) { return D.psvar.filter(function (p) { return p.cand_id === candId && p.status !== "skickat"; }); }
-  function kandStatus(p) { return p.sv ? "Väntar på svar från dig" : (p.ja ? "Intresserad" : (p.senast ? "Kontaktad" : "Inte kontaktad")) + (harCv(p.id) ? " · CV inne" : " · CV saknas"); }
-  function vKandidater() {
-    var alla = kandLista(), q = S.ksok.toLowerCase();
-    var ks = alla.filter(function (p) { return !q || String(p.namn).toLowerCase().indexOf(q) >= 0; }).sort(function (a, b) {
-      return b.sv - a.sv || (b.ja ? 1 : 0) - (a.ja ? 1 : 0) || b.senast - a.senast || String(a.namn).localeCompare(String(b.namn), "sv");
+  function kandStatus(p) { return !p.kvar ? "Tackat nej eller avslutad" : p.sv ? "Väntar på svar från dig" : (p.ja ? "Intresserad" : (p.senast ? "Kontaktad" : "Inte kontaktad")) + (harCv(p.id) ? " · CV inne" : " · CV saknas"); }
+  function kandMatch(p) {
+    return p.ms.filter(function (m) { return roll(m.role_id) && m.stage !== "avslutad" && intresse(m) !== "nej"; }).sort(function (a, b) {
+      var ra = roll(a.role_id), rb = roll(b.role_id);
+      return (oppen(ra) ? 0 : 1) - (oppen(rb) ? 0 : 1) || (obesvarad(b) ? 1 : 0) - (obesvarad(a) ? 1 : 0) || senast(b) - senast(a) || sortRoller(ra, rb);
     });
-    if (!S.kand || !alla.some(function (p) { return p.id === S.kand; })) S.kand = ks.length ? ks[0].id : null;
-    var h = '<div class="delad"><aside><h2>Kandidater</h2><p class="dov">De som väntar på dig ligger överst.</p><label class="falt">Sök<input type="search" id="ksok" placeholder="Sök kandidat" value="' + esc(S.ksok) + '"></label><div class="lista">';
-    ks.slice(0, 150).forEach(function (p) {
-      h += '<button type="button" class="val' + (p.id === S.kand ? " vald" : "") + '" data-kand="' + esc(p.id) + '"><span class="mitt"><span class="fet">' + esc(p.namn) + '</span><span class="dov">' + esc(kandStatus(p)) + "</span></span></button>";
-    });
-    if (ks.length > 150) h += '<p class="dov">Visar 150 av ' + ks.length + ". Sök för att hitta fler.</p>";
-    if (!ks.length) h += '<p class="tom">Inga kandidater matchar.</p>';
-    h += "</div></aside><main>";
-    var p = alla.filter(function (x) { return x.id === S.kand; })[0];
-    if (!p) return h + '<p class="tom">Välj en kandidat i listan.</p></main></div>';
+  }
+  function kandKort(p) {
+    var ml = kandMatch(p);
+    var h = '<article class="kk"><button type="button" class="huvudknapp" data-kand="' + esc(p.id) + '">' + rund(p.namn) + '<span class="mitt"><span class="namn">' + esc(p.namn) + '</span><span class="dov">' + esc(kandStatus(p)) + '</span></span><span class="pil" aria-hidden="true">›</span></button>' +
+      '<div class="dov">' + ml.length + (ml.length === 1 ? " matchat uppdrag" : " matchade uppdrag") + "</div>";
+    ml.slice(0, 3).forEach(function (m) { h += miniRoll(m); });
+    if (ml.length > 3) h += '<button type="button" class="lank liten" data-kand="' + esc(p.id) + '">och ' + (ml.length - 3) + " till ›</button>";
+    return h + "</article>";
+  }
+  function kandDetalj(p) {
     var c = D.cands[p.id] || {}, cv = String(c.cv == null ? "" : c.cv).trim();
-    h += '<div class="huvud">' + rund(p.namn, true) + "<div><h1>" + esc(p.namn) + "</h1><p>" + cvChip(p.id) +
+    var h = '<div class="huvud">' + rund(p.namn, true) + "<div><h1>" + esc(p.namn) + "</h1><p>" + cvChip(p.id) +
       (/^https:\/\/\S+$/i.test(cv) ? ' <a class="lank" href="' + esc(cv) + '" target="_blank" rel="noopener noreferrer">Öppna cv</a>' : "") + "</p></div></div>";
-    h += '<section class="del"><h2>Uppdrag</h2>';
-    p.ms.slice().sort(function (a, b) { var ra = roll(a.role_id) || {}, rb = roll(b.role_id) || {}; return (oppen(ra) ? 0 : 1) - (oppen(rb) ? 0 : 1) || sortMatch(a, b); }).slice(0, 25).forEach(function (m) {
+    h += '<section class="del"><h2>Matchade uppdrag</h2>';
+    p.ms.slice().sort(function (a, b) { var ra = roll(a.role_id) || {}, rb = roll(b.role_id) || {}; return (oppen(ra) ? 0 : 1) - (oppen(rb) ? 0 : 1) || sortMatch(a, b) || sortRoller(ra, rb); }).slice(0, 25).forEach(function (m) {
       var r = roll(m.role_id); if (!r) return;
-      var k = kvar(r);
-      h += '<button type="button" class="rad" data-roll="' + esc(r.id) + '"><span class="mitt"><span class="namn">' + esc(r.title) + '</span><span class="dov">' + esc(rollrad(r)) + '</span></span><span class="chips">' +
+      var k = kvar(r), mv = motiv(m);
+      h += '<button type="button" class="rad" data-roll="' + esc(r.id) + '"><span class="mitt"><span class="namn">' + esc(r.title) + '</span><span class="dov">' + esc(rollrad(r)) + "</span>" + (mv ? "<span>" + esc(mv) + "</span>" : "") + '</span><span class="chips">' +
         (obesvarad(m) ? '<span class="chip gron">Väntar på svar från dig</span>' : "") + (m.stage === "avslutad" ? '<span class="chip gra">Avslutad</span>' : intrChip(m)) + '<span class="chip ' + k.k + '">' + esc(k.t) + '</span></span><span class="pil" aria-hidden="true">›</span></button>';
     });
     var kt = (D.kont[p.id] || []).concat(egnaSvar(p.id).map(function (x) { var d = x.data || {}; return { order: true, at: x.at || x.created_at, role_id: x.role_id, text: d.text || "", lage: SVARLAGE[x.status] || x.status, skal: x.status === "avvisad" || x.status === "kontrolleras" ? (d.fel || "") : "" }; })).sort(function (a, b) { return ms(a.at) - ms(b.at); });
@@ -255,7 +282,22 @@
       var kr = roll(k.role_id) || {}, egen = /^kommentar/.test(String(k.kanal || "")), inn = k.riktning === "in" && !egen;
       h += '<div class="medd ' + (egen ? "egen" : inn ? "in" : "ut") + '"><div class="dov">' + esc((egen ? "Din anteckning" : inn ? p.namn : "Vi") + " · " + datum(k.at) + (kr.ref ? " · " + kr.ref : "")) + "</div><div>" + esc(kort(k.text, 1500)) + "</div></div>";
     });
-    return h + "</section></main></div>";
+    return h + "</section>";
+  }
+  function vKandidater() {
+    var alla = kandLista();
+    var vald = S.kand ? alla.filter(function (x) { return x.id === S.kand; })[0] : null;
+    if (vald) return '<button type="button" class="bak" data-bak="kandidater">‹ Alla kandidater</button>' + kandDetalj(vald);
+    var q = S.ksok.toLowerCase();
+    var ks = alla.filter(function (p) { return !q || String(p.namn).toLowerCase().indexOf(q) >= 0; }).sort(function (a, b) {
+      return (a.kvar ? 0 : 1) - (b.kvar ? 0 : 1) || b.sv - a.sv || (b.ja ? 1 : 0) - (a.ja ? 1 : 0) || b.senast - a.senast || String(a.namn).localeCompare(String(b.namn), "sv");
+    });
+    var h = '<div class="verktyg"><h1>Kandidater</h1><label class="falt">Sök<input type="search" id="ksok" placeholder="Sök kandidat" value="' + esc(S.ksok) + '"></label></div><p class="dov">' + ks.length + " kandidater. De som väntar på dig ligger överst.</p>" + '<div class="kortnat">';
+    ks.slice(0, 60).forEach(function (p) { h += kandKort(p); });
+    h += "</div>";
+    if (ks.length > 60) h += '<p class="dov">Visar 60 av ' + ks.length + ". Sök för att hitta fler.</p>";
+    if (!ks.length) h += '<p class="tom">Inga kandidater matchar.</p>';
+    return h;
   }
 
   function rita() {
@@ -303,14 +345,15 @@
 
   function start() {
     document.addEventListener("click", function (ev) {
-      var t = ev.target.closest ? ev.target.closest("[data-flik],[data-roll],[data-kand],#ladda,#sett,#notisknapp") : null;
+      var t = ev.target.closest ? ev.target.closest("[data-flik],[data-roll],[data-kand],[data-bak],#ladda,#sett,#notisknapp") : null;
       if (!t) return;
       if (t.id === "ladda") { hamta(); return; }
       if (t.id === "sett") { N.sett = Date.now(); N.cv = Object.keys(D.cands).filter(harCv); lagra(); avisera(); rita(); return; }
       if (t.id === "notisknapp") { try { var p = Notification.requestPermission(function () { rita(); }); if (p && p.then) p.then(rita, rita); } catch (e) { rita(); } return; }
-      if (t.hasAttribute("data-flik")) S.flik = t.getAttribute("data-flik");
-      else if (t.hasAttribute("data-roll")) { S.roll = t.getAttribute("data-roll"); S.flik = "uppdrag"; S.usok = ""; var r = roll(S.roll); if (r && !oppen(r)) S.gamla = true; }
-      else if (t.hasAttribute("data-kand")) { S.kand = t.getAttribute("data-kand"); S.flik = "kandidater"; S.ksok = ""; }
+      if (t.hasAttribute("data-bak")) { if (t.getAttribute("data-bak") === "uppdrag") S.roll = null; else S.kand = null; }
+      else if (t.hasAttribute("data-flik")) { S.flik = t.getAttribute("data-flik"); S.roll = null; S.kand = null; }
+      else if (t.hasAttribute("data-roll")) { S.roll = t.getAttribute("data-roll"); S.flik = "uppdrag"; }
+      else if (t.hasAttribute("data-kand")) { S.kand = t.getAttribute("data-kand"); S.flik = "kandidater"; }
       rita(); window.scrollTo(0, 0);
     });
     document.addEventListener("input", function (ev) {
@@ -322,6 +365,6 @@
     var sek = Math.max(parseInt((window.ATS_CONFIG || {}).POLL_SEK, 10) || 120, 5);
     window.claude.use("user").then(function () { return hamta(); }).then(function () { setInterval(function () { hamta(true); }, sek * 1000); });
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
+  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
   else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();

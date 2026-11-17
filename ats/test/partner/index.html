@@ -52,16 +52,27 @@ button{font:inherit;color:inherit;cursor:pointer}
 .notis{background:#fff;border:1px solid #D5DAE3;border-left:6px solid #2F6BFF;border-radius:14px;padding:22px 26px 14px;margin-bottom:28px}
 .notis .tom{padding:8px 0 4px}.notis .rad{padding:12px 0;min-height:56px}.notis .rund{width:44px;height:44px;font-size:16px}.notis .namn{font-size:18px}
 .chip.ny{background:#0B1F44;color:#fff;vertical-align:middle}.chip.gul{background:#FFF0B8;color:#5A4300}
+.kortnat{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;margin-top:18px;align-items:start}
+.kk{background:#fff;border:1px solid #D5DAE3;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.kkrad{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.huvudknapp{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:none;border:0;padding:4px 0;min-height:48px}
+.huvudknapp:hover .namn{text-decoration:underline}.kk .namn{font-size:19px;line-height:1.25}.kk .pil{font-size:26px}
+.mini{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:#F7F8FB;border:0;border-radius:10px;padding:8px 10px;min-height:44px}
+.mini:hover{background:#EEF3FC}.mini .mitt{font-size:15px;font-weight:500}.mini .chip{font-size:12px;padding:3px 9px}
+.rund.liten{width:32px;height:32px;font-size:12px}
+.lank.liten{font-size:15px;padding:4px 0 0;min-height:36px;text-align:left}
+.verktyg{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 24px}.verktyg h1{margin:0 auto 0 0}.verktyg .falt{flex:0 1 340px}
+.bak{background:none;border:0;color:#1447E6;font-weight:600;font-size:17px;padding:0 0 14px;min-height:44px}
 .matt{background:#EEF3FC;border-radius:12px;padding:14px 18px;margin-top:16px;font-size:18px}.matt.full{background:#E6F8E7}
 .knapprad{display:flex;flex-wrap:wrap;align-items:center;gap:4px 28px;min-height:44px}.knapprad .lank{padding-top:8px}
 a.lank{display:inline-block;text-decoration:none;padding:0 0 0 12px;min-height:0;vertical-align:middle}
-html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,html.ats-visa-som nav button,html.ats-visa-som .ladda,html.ats-visa-som .falt input,html.ats-visa-som .kryss input{pointer-events:auto}
+html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,html.ats-visa-som nav button,html.ats-visa-som .ladda,html.ats-visa-som .falt input,html.ats-visa-som .kryss input,html.ats-visa-som .kk button,html.ats-visa-som .bak{pointer-events:auto}
 @media(max-width:700px){h1{font-size:30px}h2{font-size:23px}.topp-in{padding:0 16px;gap:2px 16px}.topp nav{order:5;flex:1 1 100%;gap:4px 22px}.topp nav button{padding:10px 4px 8px}
 .vy{padding:20px 16px 40px}.delad{margin:0 -16px -40px}.delad main{padding:24px 16px 40px}.notis{padding:16px 16px 10px}
 .rad{flex-wrap:wrap;gap:8px 12px;padding:14px 0}.rad .mitt{flex:1 1 180px}.rad .pil{display:none}.rad .tid{flex:1 1 100%}.chips{max-width:100%;justify-content:flex-start}
 .delad aside{flex-basis:100%;border-right:0;border-bottom:1px solid #D5DAE3}.lista{max-height:40vh}.rund.stor{width:72px;height:72px;font-size:26px}}
 </style></head><body>
-<!-- Nya partnervyn, testsida. Kärnan: uppdrag, kandidat, typ av roll, intresse och cv. Bara läsning. Samma partnervyer och inloggning som /ats/test/tomas/. -->
+<!-- Nya partnervyn, testsida. Kort åt båda håll: uppdrag med matchade kandidater och kandidater med matchade uppdrag. Bara läsning. Samma partnervyer och inloggning som /ats/test/tomas/. -->
 <header class="topp"><div class="topp-in"><div id="sidnamn" class="sidnamn">ATS</div>
 <nav aria-label="Flikar"><button type="button" id="flik-uppdrag" data-flik="uppdrag" aria-current="page">Uppdrag</button><button type="button" id="flik-kandidater" data-flik="kandidater">Kandidater</button></nav>
 <span id="lage" class="lage" role="status"></span><button type="button" id="ladda" class="ladda">Uppdatera</button>
@@ -71,5 +82,5 @@ html.ats-visa-som .vy button.rad,html.ats-visa-som .val,html.ats-visa-som .lank,
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="config.js"></script>
 <script src="../ats-runtime.js?v=som1"></script>
-<script src="vy.js?v=3"></script>
+<script src="vy.js?v=4"></script>
 </body></html>
