@@ -1,0 +1,44 @@
+<!doctype html><html lang="sv"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Domaren, demo</title>
+<style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
+<style>
+:root{--bg:#F7F8FB;--fg:#0B1B3F;--muted:#5B6770;--surface:#fff;--surface-2:#fff;--line:#E3E7EE;--line-strong:#C9D1DD;--r:10px;--ok:#1E7B4A;--warn:#9A5B00;--acc:#0B1F44}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Inter,system-ui,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 20px 60px}
+h1{font-size:30px;margin:0 0 4px}h2{font-size:21px;margin:0 0 10px}h3{font-size:16px;margin:16px 0 6px}
+.lead{color:var(--muted);margin:0 0 20px}
+.ruta{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:0 0 18px}
+.etikett{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.kort{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:start}
+.ini{width:56px;height:56px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:18px}
+.namn{font-weight:600;font-size:19px}.sub{color:var(--muted)}
+ul{margin:4px 0 0;padding-left:20px}
+.knappar{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line-strong);background:#fff;padding:9px 16px}
+button.huvud{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.besked{margin-top:12px;font-weight:600;color:var(--ok)}
+.tal{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.tal div{border:1px solid var(--line);border-radius:8px;padding:10px}
+.tal b{display:block;font-size:26px}.tal span{color:var(--muted);font-size:13px}
+.dom p{margin:6px 0}.dom .slut{font-weight:600;font-size:18px}
+.tva{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:640px){.tva{grid-template-columns:1fr}}
+.hist{border-top:1px solid var(--line);padding:8px 0}.hist:first-child{border-top:0}
+.tid{color:var(--muted);font-size:13px}
+table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-top:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.saknas{color:var(--warn);font-weight:600}
+.fel{color:#9B1C1C}
+details summary{cursor:pointer;font-weight:600}
+.liten{font-size:13px;color:var(--muted)}
+</style></head><body>
+<div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">Logga in</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
+<div class="wrap">
+<h1>Domaren, demo</h1>
+<p class="lead">Fiktivt prov. Inget uppdrag, ingen kandidat och ingen kund är på riktigt. Inget skickas, inget hamnar i kön eller larmet, och partnern ser ingenting av det här.</p>
+<div id="app"><p class="liten">Läser…</p></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
+<script src="../config.js"></script>
+<script src="../ats-runtime.js?v=som1"></script>
+<script src="domaren.js?v=1"></script>
+</body></html>
