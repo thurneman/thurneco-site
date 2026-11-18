@@ -133,6 +133,7 @@ a{color:var(--copper)}
 .todo .tm{font-size:11px;color:var(--faint)}
 .todo .ta{display:flex;gap:6px;align-items:center;justify-content:flex-end}
 .todo .ta .tbtn{padding:2px 8px;font-size:11px}
+.todo.svarja{display:block}.todo.svarja textarea{display:block;box-sizing:border-box;width:100%;min-height:8.5rem;margin:8px 0;padding:10px;font:inherit;font-size:15px;line-height:1.45;color:var(--fg);background:var(--surface);border:1px solid var(--line-strong);border-radius:6px}.todo.svarja .sv-in{margin:6px 0 0;padding:8px 10px;border-left:3px solid var(--line-strong);font-size:13px;white-space:pre-wrap}.todo.svarja .ta{display:flex;gap:10px;margin-top:8px}.todo.svarja .ta .tbtn{padding:10px 16px;font-size:14px;min-height:44px}.todo.svarja .ta .tbtn.svja{font-weight:600;color:var(--fg);border-color:var(--fg)}
 .todo-list .tnote{padding:10px 14px;color:var(--faint);font-size:12px}
 .todo-list .tfoot{padding:8px 14px 14px}
 .todo-list .tfoot label{font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center}
@@ -1033,17 +1034,45 @@ function todoItems(){
   out.sort((a,b)=>rank(a)-rank(b)||(b.at||"").localeCompare(a.at||""));
   return out;
 }
+// Svar som väntar på ägarens ja (svarsvägen). Läser tabellen svarsorder, där radskyddet bara släpper in ägaren. Ja och nej går genom databasfunktionerna.
+let svarRader=[],svarLast=0,svarBusy=false,svarArm=null,svarVantarRit=false;const svarEgen={};
+async function laddaSvar(){
+  if(svarBusy||typeof window==="undefined"||!window.ATS_RUNTIME)return;svarBusy=true;
+  try{const r=await window.ATS_RUNTIME.vyrad("svarsorder");if(!r.error&&Array.isArray(r.data)){svarRader=r.data;svarLast=Date.now();renderTodo();}}catch(e){}
+  svarBusy=false;
+}
+const svarUtkast=()=>svarRader.filter(o=>o.status==="utkast").sort((a,b)=>String(a.utkast_at||"").localeCompare(String(b.utkast_at||"")));
+const svarPaVag=()=>svarRader.filter(o=>o.status==="godkand"||o.status==="skickas");
+function svarHtml(){
+  const ut=svarUtkast(),pv=svarPaVag();if(!ut.length&&!pv.length)return"";
+  const arm=svarArm&&Date.now()-svarArm.t<8000?svarArm:null;
+  let h=`<div class="group-label"><span>Svar som väntar på ditt ja</span><span>${ut.length}</span></div>`;
+  for(const o of ut){
+    const c=cands.get(o.cand_id)||{},m=matches.get(o.match_id)||{},sv=m.svar&&m.svar.text?String(m.svar.text):"",txt=Object.prototype.hasOwnProperty.call(svarEgen,o.id)?svarEgen[o.id]:(o.utkast||"");
+    const aj=arm&&arm.id===o.id&&arm.typ==="ja",an=arm&&arm.id===o.id&&arm.typ==="nej";
+    h+=`<div class="todo svarja" data-svar="${esc(o.id)}"><span class="tt"><b>${esc(c.name||o.cand_id)}</b> · ${esc(roleRef(o.role_id))}</span>`+
+      (sv?`<div class="sv-in"><span class="sub">Kandidaten skrev</span> ${esc(sv.length>600?sv.slice(0,600)+"…":sv)}</div>`:"")+
+      `<textarea data-svartext="${esc(o.id)}" rows="6" aria-label="Svar till ${esc(c.name||"kandidaten")}" ${canWrite?"":"disabled"}>${esc(txt)}</textarea>`+
+      `<span class="tm"><span class="sub">Utkast</span> ${esc([o.utkast_av?"av "+o.utkast_av:"",o.utkast_at?fmtDate(o.utkast_at)||"":""].filter(Boolean).join(" · "))}</span>`+
+      `<span class="ta"><button class="tbtn svja" type="button" data-svarja="${esc(o.id)}" ${canWrite?"":"disabled"}>${aj?"Tryck igen för att skicka":"Ja, skicka"}</button><button class="tbtn" type="button" data-svarnej="${esc(o.id)}" ${canWrite?"":"disabled"}>${an?"Tryck igen för att säga nej":"Nej"}</button></span></div>`;
+  }
+  for(const o of pv){const c=cands.get(o.cand_id)||{};h+=`<div class="todo"><span class="tt">Svaret till ${esc(c.name||o.cand_id)} går ut med nästa körning.</span><span class="tm"><span class="sub">Godkänt</span> ${esc(o.ja_at?fmtDate(o.ja_at)||"":"")}</span></div>`;}
+  return h;
+}
 function renderTodo(){
   const list=$("#todo-list"),rl=$("#roles-list"),cnt=$("#todo-count");if(!list)return;
+  // Medan ägaren skriver i ett svar ritas listan inte om. Den ritas när fältet lämnas.
+  if(typeof document!=="undefined"&&document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.svartext){svarVantarRit=true;return;}
   const items=todoItems();const open=items.filter(i=>!i.klar).length;
-  cnt.hidden=false;cnt.textContent=String(open);cnt.classList.toggle("zero",!open);
+  const nsv=svarUtkast().length;cnt.hidden=false;cnt.textContent=String(open+nsv);cnt.classList.toggle("zero",!(open+nsv));
   const ftur=items.filter(i=>i.fortur&&!i.klar);
   const fc=$("#fortur-count");if(fc){fc.hidden=!ftur.length;fc.textContent="Förtur "+ftur.length;}
   for(const b of document.querySelectorAll("#left-seg button"))b.setAttribute("aria-pressed",String(b.dataset.ls===leftPane));
   const todo=leftPane==="todo";list.hidden=!todo;rl.hidden=todo;$("#filters").hidden=todo;document.querySelector(".showarch").hidden=todo;
   const fa=$("#filters-active");if(todo)fa.hidden=true;else fa.hidden=!fa.innerHTML.trim();
   if(!todo)return;
-  if(!items.length){list.innerHTML=`<div class="tnote">Inget väntar på dig just nu${biz==="all"?"":` i ${BIZ_LABEL[biz].toLowerCase()}`}. Chattarna skriver åtgärdsposter här när de behöver dig, och sidan lägger själv till pausade köposter, utkast utan ja, passerade nästa steg och uppdrag utan deadline.</div><div class="tfoot"><label><input type="checkbox" id="todo-done" ${todoShowDone?"checked":""}> Visa klara</label></div>`;return;}
+  if(Date.now()-svarLast>20000)laddaSvar();
+  if(!items.length){list.innerHTML=svarHtml()+`<div class="tnote">Inget väntar på dig just nu${biz==="all"?"":` i ${BIZ_LABEL[biz].toLowerCase()}`}. Chattarna skriver åtgärdsposter här när de behöver dig, och sidan lägger själv till pausade köposter, utkast utan ja, passerade nästa steg och uppdrag utan deadline.</div><div class="tfoot"><label><input type="checkbox" id="todo-done" ${todoShowDone?"checked":""}> Visa klara</label></div>`;return;}
   const byRole=new Map();for(const i of items){if(i.fortur&&!i.klar)continue;const k=i.roleId||"";if(!byRole.has(k))byRole.set(k,[]);byRole.get(k).push(i);}
   const order=[...byRole.keys()].sort((a,b)=>{const ra=byRole.get(a).reduce((m,i)=>Math.min(m,i.klar?9:i.cls==="fel"?0:i.cls==="go"?1:i.cls==="forslag"?3:2),9),rb=byRole.get(b).reduce((m,i)=>Math.min(m,i.klar?9:i.cls==="fel"?0:i.cls==="go"?1:i.cls==="forslag"?3:2),9);return ra-rb||(a===""?1:b===""?-1:roleRef(a).localeCompare(roleRef(b),"sv"));});
   const todoRow=(i,medRoll)=>{
@@ -1053,7 +1082,7 @@ function renderTodo(){
       const rec=i.recruiterUrl?`<a class="tbtn" href="${esc(i.recruiterUrl)}" target="_blank" rel="noopener" style="text-decoration:none">Recruiter</a>`:"";
       return `<div class="todo ${i.cls}${i.klar?" klar":""}" data-tid="${esc(i.id)}"><span class="tt">${esc(i.text)}</span><span class="tm"><span class="sub">${esc(TODO_TYP[i.typ]||i.typ)}</span> ${esc(who)}</span><span class="ta">${rec}${open}${act}</span></div>`;
   };
-  let html="";
+  let html=svarHtml();
   if(ftur.length)html+=`<div class="group-label"><span>Förtur: partnerns svar går före dina</span><span>${ftur.length}</span></div>`+ftur.map(i=>todoRow(i,true)).join("");
   for(const rid of order){
     const its=byRole.get(rid);
@@ -2861,6 +2890,21 @@ window.addEventListener("hashchange",()=>{deepLinkHandled="";applyDeepLink();});
   db.collection("forslag").onSnapshot(snap=>{forslagPosts=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));renderTodo();},()=>{});
   db.collection("pingar").onSnapshot(snap=>{pings=new Map(snap.docs.filter(d=>d.exists).map(d=>[d.id,{id:d.id,...d.data()}]));if(view==="pipeline")renderDetail();},()=>{});
 })();
+// Svar: ägarens ja eller nej på sin egen sida. Två tryck, så att ett svar inte går iväg av misstag.
+document.addEventListener("input",e=>{const x=e.target;if(x&&x.dataset&&x.dataset.svartext)svarEgen[x.dataset.svartext]=x.value;});
+document.addEventListener("focusout",e=>{const x=e.target;if(x&&x.dataset&&x.dataset.svartext)setTimeout(()=>{if(svarVantarRit){svarVantarRit=false;renderTodo();}},400);});
+document.addEventListener("click",async e=>{
+  const ja=e.target.closest&&e.target.closest("[data-svarja]"),nej=ja?null:e.target.closest&&e.target.closest("[data-svarnej]"),b=ja||nej;if(!b)return;
+  const id=ja?b.dataset.svarja:b.dataset.svarnej,typ=ja?"ja":"nej";
+  if(!(svarArm&&svarArm.id===id&&svarArm.typ===typ&&Date.now()-svarArm.t<8000)){svarArm={id,typ,t:Date.now()};b.textContent=ja?"Tryck igen för att skicka":"Tryck igen för att säga nej";setTimeout(()=>{if(svarArm&&svarArm.id===id&&svarArm.typ===typ&&Date.now()-svarArm.t>=8000){svarArm=null;renderTodo();}},8200);return;}
+  const ta=document.querySelector(`textarea[data-svartext="${CSS.escape(id)}"]`),text=ta?ta.value.trim():"";
+  if(ja&&!text){toast("Svaret saknar text.");return;}
+  svarArm=null;b.disabled=true;
+  const r=ja?await window.ATS_RUNTIME.rpc("ats_svar_ja",{p_id:id,p_text:text}):await window.ATS_RUNTIME.rpc("ats_svar_nej",{p_id:id});
+  if(r.error){b.disabled=false;b.textContent=ja?"Ja, skicka":"Nej";toast("Det gick inte: "+(r.error.message||r.error));return;}
+  delete svarEgen[id];toast(ja?"Godkänt. Svaret går ut med nästa körning.":"Utkastet är draget tillbaka. Inget skickas.");svarLast=0;laddaSvar();
+});
+setInterval(()=>{if(document.visibilityState==="visible")laddaSvar();},60000);setTimeout(laddaSvar,2500);
 </script>
 
 </body></html>

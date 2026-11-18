@@ -1,14 +1,15 @@
 /*
  * Partnervyn med kort åt båda håll (17 november 2026): uppdrag med matchade kandidater, kandidater med matchade uppdrag.
  * Av kandidaten visas två saker: intresse och cv. Högst tre cv per uppdrag. Det som brådskar ligger överst.
- * Bara läsning. Läser partnervyerna (v_roles_partner, v_matches_partner, v_candidates_partner, v_kontakter_partner)
- * genom ATS_RUNTIME.vyrad. Ägaren ser partnerns urval genom Visa som. Inget skrivs härifrån.
+ * Läser partnervyerna (v_roles_partner, v_matches_partner, v_candidates_partner, v_kontakter_partner, v_lage, v_stangda_forfragningar)
+ * genom ATS_RUNTIME.vyrad. Ägaren ser partnerns urval genom Visa som, och då är allt bara läsning.
+ * Två saker skrivs härifrån, båda genom databasfunktioner: utfall av samtal och öppna en stängd förfrågan igen (18 november 2026).
  * Visas inte: kund, pris, lön, poäng, nivå, anteckningar, kontaktuppgifter. Motivering visas bara när den inte nämner ett verktyg. Ordningen styrs av dagar kvar, aldrig av pris.
  * Obs inför skarp inloggning för partnern: vyrad utan Visa som hämtar högst 1000 rader per vy.
  */
 (function () {
   "use strict";
-  var D = { roles: [], matches: [], cands: {}, kont: {}, psvar: [], namn: "", sidnamn: "ATS", sign: "" };
+  var D = { roles: [], matches: [], cands: {}, kont: {}, psvar: [], lage: {}, stangda: [], namn: "", sidnamn: "ATS", sign: "" };
   var S = { flik: "uppdrag", roll: null, kand: null, gamla: false, usok: "", ksok: "" };
   var N = { nyckel: "ats-partner-sett", sett: 0, cv: null, visade: {}, forsta: true };
   var OPPNA = ["ny", "pagar", "presenterad"];
@@ -212,7 +213,7 @@
       (n >= MAXCV ? "Uppdraget har de cv som behövs." : n ? "Räknas när kandidaten är intresserad och cv finns." : "Inget cv inne än. Ett tidigt cv går före ett bättre som kommer för sent.") + "</div>";
     h += '<section class="del"><h2>Intresserade</h2>';
     if (!intr.length) h += '<p class="tom">Ingen har visat intresse än.</p>';
-    intr.slice(0, 40).forEach(function (m) { h += kandRad(m, true); });
+    intr.slice(0, 40).forEach(function (m) { h += kandRad(m, true) + lageRad(m); });
     h += '</section><section class="del"><h2>Kontaktade, inget svar än</h2>';
     if (!vant.length) h += '<p class="tom">Ingen väntar på svar.</p>';
     vant.slice(0, 40).forEach(function (m) { h += kandRad(m, false); });
@@ -230,12 +231,67 @@
       return (oppen(a) ? 0 : 1) - (oppen(b) ? 0 : 1) || sortRoller(a, b);
     });
     var h = '<div class="verktyg"><h1>Uppdrag</h1><label class="falt">Sök<input type="search" id="usok" placeholder="Sök titel, nummer, typ av roll eller ort" value="' + esc(S.usok) + '"></label>' +
-      '<label class="kryss"><input type="checkbox" id="gamla"' + (S.gamla ? " checked" : "") + '> Visa passerade och stängda</label></div><p class="dov">' + rs.length + " uppdrag. Det som brådskar ligger överst.</p>" + '<div class="kortnat">';
+      '<label class="kryss"><input type="checkbox" id="gamla"' + (S.gamla ? " checked" : "") + '> Visa passerade och stängda</label></div><p class="dov">' + rs.length + " uppdrag. Det som brådskar ligger överst.</p>" + vStangda() + '<div class="kortnat">';
     rs.slice(0, 60).forEach(function (r) { h += uppdragKort(r); });
     h += "</div>";
     if (rs.length > 60) h += '<p class="dov">Visar 60 av ' + rs.length + ". Sök för att hitta fler.</p>";
     if (!rs.length) h += '<p class="tom">Inga uppdrag matchar.</p>';
     return h;
+  }
+
+  // ---------- Läget, checklistan, utfallet och stängda förfrågningar ----------
+  var UTFALL = [["ja_presentation", "Ja, vill presenteras"], ["vill_veta_mer", "Vill veta mer"], ["aterkom", "Återkom senare"], ["nej", "Nej"], ["ej_natt", "Inte nådd"]];
+  var CHECK = [["har_cv", "Cv"], ["har_tillganglig", "Tillgänglighet"], ["har_upplagg", "Upplägg"], ["har_pris", "Pris uppgett"], ["har_ort", "Ort och närvaro"], ["ja_presentation", "Ja till presentation"]];
+  function lage(m) { return D.lage[m.id] || null; }
+  function kortDag(iso) { var t = ms(iso); return t ? new Date(t).toLocaleDateString("sv-SE", { day: "numeric", month: "short" }) : ""; }
+  function utfallNamn(v) { for (var i = 0; i < UTFALL.length; i++) if (UTFALL[i][0] === v) return UTFALL[i][1]; return ""; }
+  function lageRad(m) {
+    var l = lage(m); if (!l || !l.nasta) return "";
+    return '<div class="lagerad"><span class="fet">Nästa steg:</span> ' + esc(skalText(kort(l.nasta, 120))) + " · Ansvarig: " + esc(l.ansvarig_namn || "") + (l.senast ? " · Senast " + esc(kortDag(l.senast)) : "") + "</div>";
+  }
+  function checklista(m) {
+    var l = lage(m); if (!l) return "";
+    var h = '<div class="check"><span class="chip ' + (l.klar_att_presentera ? "gron" : "gra") + '">' + (l.klar_att_presentera ? "Klar att presentera" : "Inte klar att presentera") + "</span>";
+    CHECK.forEach(function (x) { h += '<span class="bock' + (l[x[0]] ? " ja" : "") + '">' + (l[x[0]] ? "✓ " : "○ ") + x[1] + "</span>"; });
+    return h + "</div>";
+  }
+  function utfallForm(m) {
+    var l = lage(m); if (!l) return "";
+    var id = esc(m.id), som = window.ATS_RUNTIME && window.ATS_RUNTIME.visaSom && window.ATS_RUNTIME.visaSom();
+    var h = '<details class="utfall"><summary>Skriv utfall av samtal' + (l.utfall ? " (senast: " + esc(utfallNamn(l.utfall)) + ")" : "") + '</summary><fieldset><legend class="dov">Ett val</legend>';
+    UTFALL.forEach(function (u) { h += '<label class="kryss"><input type="radio" name="utf-' + id + '" value="' + u[0] + '"> ' + u[1] + "</label>"; });
+    return h + '</fieldset><label class="falt">En rad. Skriv tillgänglighet, inte orsak.<input type="text" maxlength="300" id="utfrad-' + id + '" placeholder="Till exempel: tillgänglig från januari"></label>' +
+      '<label class="kryss"><input type="checkbox" id="utfort-' + id + '"> Ort och närvaro stämmer</label>' +
+      '<button type="button" class="knapp" data-utfall="' + id + '">Spara utfall</button> <span class="dov" id="utfmedd-' + id + '" role="status">' + (som ? "Bara läsning. Du ser en annans vy." : "") + "</span></details>";
+  }
+  function lageBox(m) { return lage(m) ? '<div class="lagebox">' + lageRad(m) + checklista(m) + utfallForm(m) + "</div>" : ""; }
+  function stangdaNyss() { var gr = Date.now() - 3 * 86400000; return D.stangda.filter(function (x) { return ms(x.stangd_at) >= gr; }).sort(function (a, b) { return ms(b.stangd_at) - ms(a.stangd_at); }); }
+  function vStangda() {
+    var l = stangdaNyss(); if (!l.length) return "";
+    var h = '<section class="del stangda"><h2>Stängda på svarsdag</h2><p class="dov">Svarsdagen har passerat. Öppna igen om förfrågan fortfarande gäller.</p>';
+    l.slice(0, 30).forEach(function (x) {
+      var nyss = Date.now() - ms(x.stangd_at) < 86400000;
+      h += '<div class="stangd"><span class="mitt"><span class="namn">' + esc(x.title || "") + '</span><span class="dov">' + esc([x.ref, x.svarsdag ? "svarsdag " + kortDag(x.svarsdag) : "", nyss ? "stängd i natt" : "stängd " + kortDag(x.stangd_at)].filter(Boolean).join(" · ")) +
+        '</span></span><button type="button" class="knapp" data-oppna="' + esc(x.role_id) + '">Öppna igen</button></div>';
+    });
+    if (l.length > 30) h += '<p class="dov">och ' + (l.length - 30) + " till</p>";
+    return h + "</section>";
+  }
+  async function oppnaIgen(b) {
+    b.disabled = true; b.textContent = "Öppnar…";
+    var r = await window.ATS_RUNTIME.rpc("ats_oppna_forfragan", { p_role: b.getAttribute("data-oppna") });
+    if (r.error) { b.disabled = false; b.textContent = "Öppna igen"; var e = document.createElement("span"); e.className = "dov"; e.textContent = " " + (r.error.message || "Det gick inte."); b.parentNode.appendChild(e); return; }
+    hamta();
+  }
+  async function sparaUtfall(b) {
+    var id = b.getAttribute("data-utfall"), box = b.closest("details"), val = box ? box.querySelector('input[type="radio"]:checked') : null, medd = $("utfmedd-" + id);
+    if (!val) { if (medd) medd.textContent = "Välj ett utfall."; return; }
+    b.disabled = true; if (medd) medd.textContent = "Sparar…";
+    var r = await window.ATS_RUNTIME.rpc("ats_samtalsutfall", { p_match: id, p_utfall: val.value, p_rad: ($("utfrad-" + id) || {}).value || "", p_ort_ok: !!($("utfort-" + id) || {}).checked });
+    b.disabled = false;
+    if (r.error) { if (medd) medd.textContent = r.error.message || "Det gick inte att spara."; return; }
+    if (box) box.open = false;
+    hamta();
   }
 
   // ---------- Kandidater ----------
@@ -282,7 +338,7 @@
       var r = roll(m.role_id); if (!r) return;
       var k = kvar(r), mv = motiv(m);
       h += '<button type="button" class="rad" data-roll="' + esc(r.id) + '"><span class="mitt"><span class="namn">' + esc(r.title) + '</span><span class="dov">' + esc(rollrad(r)) + "</span>" + (mv ? "<span>" + esc(mv) + "</span>" : "") + '</span><span class="chips">' +
-        (obesvarad(m) ? '<span class="chip gron">Väntar på svar från dig</span>' : "") + (m.stage === "avslutad" ? '<span class="chip gra">Avslutad</span>' : intrChip(m)) + '<span class="chip ' + k.k + '">' + esc(k.t) + '</span></span><span class="pil" aria-hidden="true">›</span></button>';
+        (obesvarad(m) ? '<span class="chip gron">Väntar på svar från dig</span>' : "") + (m.stage === "avslutad" ? '<span class="chip gra">Avslutad</span>' : intrChip(m)) + '<span class="chip ' + k.k + '">' + esc(k.t) + '</span></span><span class="pil" aria-hidden="true">›</span></button>' + lageBox(m);
     });
     var kt = (D.kont[p.id] || []).concat(egnaSvar(p.id).map(function (x) { var d = x.data || {}; return { order: true, at: x.at || x.created_at, role_id: x.role_id, text: d.text || "", lage: svarLage(x), skal: svarSkal(x) }; })).sort(function (a, b) { return ms(a.at) - ms(b.at); });
     h += '</section><section class="del"><h2>Konversation</h2>';
@@ -325,16 +381,19 @@
   }
   function signatur() {
     return JSON.stringify([D.roles.map(function (r) { return [r.id, r.status, r.deadline, r.deadline_antagen, r.prio]; }), D.matches.map(function (m) { return [m.id, m.stage, m.dismissed, m.svar && m.svar.at]; }),
-      Object.keys(D.cands).filter(harCv), Object.keys(D.kont).map(function (k) { return D.kont[k].length; }), D.psvar.map(function (x) { var d = x.data || {}; return [x.id, x.status, !!d.vantarPaFilip, d.fel || ""]; })]);
+      Object.keys(D.cands).filter(harCv), Object.keys(D.kont).map(function (k) { return D.kont[k].length; }), D.psvar.map(function (x) { var d = x.data || {}; return [x.id, x.status, !!d.vantarPaFilip, d.fel || ""]; }),
+      Object.keys(D.lage).sort().map(function (k) { var l = D.lage[k]; return [k, l.nasta, l.ansvarig, l.senast, l.utfall, !!l.klar_att_presentera, !!l.har_ort]; }), D.stangda.map(function (x) { return x.role_id; }).sort()]);
   }
   // tyst = bakgrundskontroll: ritar bara om när något har ändrats, och rör inte sökfält eller rullning i onödan.
   async function hamta(tyst) {
     if (!tyst) $("lage").textContent = "Hämtar…";
     try {
-      var x = await Promise.all([las("v_roles_partner"), las("v_matches_partner"), las("v_candidates_partner"), las("v_kontakter_partner"), las("partnersvar").catch(function () { return []; }), las("anvandare").catch(function () { return []; })]);
+      var x = await Promise.all([las("v_roles_partner"), las("v_matches_partner"), las("v_candidates_partner"), las("v_kontakter_partner"), las("partnersvar").catch(function () { return []; }), las("anvandare").catch(function () { return []; }),
+        las("v_lage").catch(function () { return []; }), las("v_stangda_forfragningar").catch(function () { return []; })]);
       D.roles = x[0]; D.matches = x[1]; D.cands = {}; D.kont = {}; D.psvar = x[4];
       x[2].forEach(function (c) { D.cands[c.id] = c; });
       x[3].forEach(function (k) { (D.kont[k.cand_id] || (D.kont[k.cand_id] = [])).push(k); });
+      D.lage = {}; x[6].forEach(function (l) { D.lage[l.match_id] = l; }); D.stangda = x[7];
       var som = window.ATS_RUNTIME.visaSom && window.ATS_RUNTIME.visaSom();
       var jag = x[5].filter(function (a) { return som ? String(a.email).toLowerCase() === som : a.roll === "partner"; })[0] || {};
       D.namn = jag.namn || "";
@@ -344,9 +403,10 @@
       $("jag").textContent = fn ? fn.charAt(0).toUpperCase() : "";
       if (N.forsta) { N.nyckel = "ats-partner-sett:" + (som || "jag"); lasSett(); }
       $("lage").textContent = "Uppdaterad " + new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
-      var sg = signatur(), andrad = sg !== D.sign; D.sign = sg;
+      // Ett öppet utfallsformulär ritas inte över av bakgrundskontrollen. Ändringen ritas vid nästa kontroll.
+      var sg = signatur(), andrad = sg !== D.sign, upptagen = !!tyst && !!document.querySelector("details.utfall[open]"); if (!upptagen) D.sign = sg;
       avisera(); N.forsta = false;
-      if (!tyst || andrad) { var akt = document.activeElement && document.activeElement.id; rita(); if (akt === "usok" || akt === "ksok") behall(akt); }
+      if (!tyst || (andrad && !upptagen)) { var akt = document.activeElement && document.activeElement.id; rita(); if (akt === "usok" || akt === "ksok") behall(akt); }
     } catch (e) {
       if (tyst) { $("lage").textContent = "Kunde inte uppdatera " + new Date().toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" }); return; }
       $("lage").textContent = "";
@@ -356,9 +416,11 @@
 
   function start() {
     document.addEventListener("click", function (ev) {
-      var t = ev.target.closest ? ev.target.closest("[data-flik],[data-roll],[data-kand],[data-bak],#ladda,#sett,#notisknapp") : null;
+      var t = ev.target.closest ? ev.target.closest("[data-flik],[data-roll],[data-kand],[data-bak],[data-oppna],[data-utfall],#ladda,#sett,#notisknapp") : null;
       if (!t) return;
       if (t.id === "ladda") { hamta(); return; }
+      if (t.hasAttribute("data-oppna")) { oppnaIgen(t); return; }
+      if (t.hasAttribute("data-utfall")) { sparaUtfall(t); return; }
       if (t.id === "sett") { N.sett = Date.now(); N.cv = Object.keys(D.cands).filter(harCv); lagra(); avisera(); rita(); return; }
       if (t.id === "notisknapp") { try { var p = Notification.requestPermission(function () { rita(); }); if (p && p.then) p.then(rita, rita); } catch (e) { rita(); } return; }
       if (t.hasAttribute("data-bak")) { if (t.getAttribute("data-bak") === "uppdrag") S.roll = null; else S.kand = null; }
@@ -376,6 +438,6 @@
     var sek = Math.max(parseInt((window.ATS_CONFIG || {}).POLL_SEK, 10) || 120, 5);
     window.claude.use("user").then(function () { return hamta(); }).then(function () { setInterval(function () { hamta(true); }, sek * 1000); });
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, skalText: skalText, signatur: signatur, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
+  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, skalText: skalText, signatur: signatur, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater, lageRad: lageRad, checklista: checklista, utfallForm: utfallForm, vStangda: vStangda };
   else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
