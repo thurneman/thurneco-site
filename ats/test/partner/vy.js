@@ -325,7 +325,7 @@
   }
   function signatur() {
     return JSON.stringify([D.roles.map(function (r) { return [r.id, r.status, r.deadline, r.deadline_antagen, r.prio]; }), D.matches.map(function (m) { return [m.id, m.stage, m.dismissed, m.svar && m.svar.at]; }),
-      Object.keys(D.cands).filter(harCv), Object.keys(D.kont).map(function (k) { return D.kont[k].length; }), D.psvar.length]);
+      Object.keys(D.cands).filter(harCv), Object.keys(D.kont).map(function (k) { return D.kont[k].length; }), D.psvar.map(function (x) { var d = x.data || {}; return [x.id, x.status, !!d.vantarPaFilip, d.fel || ""]; })]);
   }
   // tyst = bakgrundskontroll: ritar bara om när något har ändrats, och rör inte sökfält eller rullning i onödan.
   async function hamta(tyst) {
@@ -376,6 +376,6 @@
     var sek = Math.max(parseInt((window.ATS_CONFIG || {}).POLL_SEK, 10) || 120, 5);
     window.claude.use("user").then(function () { return hamta(); }).then(function () { setInterval(function () { hamta(true); }, sek * 1000); });
   }
-  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, skalText: skalText, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
+  if (typeof module !== "undefined" && module.exports) module.exports = { D: D, S: S, N: N, tolka: tolka, dagar: dagar, intresse: intresse, klara: klara, obesvarad: obesvarad, handelser: handelser, sortRoller: sortRoller, motiv: motiv, skalText: skalText, signatur: signatur, vNotis: vNotis, vUppdrag: vUppdrag, vKandidater: vKandidater };
   else if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 })();
