@@ -57,6 +57,11 @@ button.kort:hover{border-color:var(--ink)}
 .kort .x{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted);white-space:pre-line}
 .mark{align-self:flex-start;background:var(--mark-bg);color:var(--mark-ink);font-size:13px;font-weight:600;padding:3px 9px;border-radius:4px;display:inline-block}
 .sim{font-size:14px;color:var(--muted)}
+ol.steg{margin:0;padding-left:22px;display:grid;gap:8px}
+.pagar{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.pagar::before{content:'';width:14px;height:14px;flex:none;border-radius:50%;border:2px solid var(--line);border-top-color:var(--ink);animation:snurr 1s linear infinite}
+@keyframes snurr{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.pagar::before{animation:none;border-top-color:var(--line)}}
 .dim{opacity:.72}
 .stack>.link{align-self:flex-start}
 .f{display:flex;flex-direction:column;gap:6px}
@@ -584,7 +589,7 @@ function uppdragEl(best){
 }
 async function route(){
   closeAll();
-  S.besked='';
+  S.besked='';S.vakt=null;
   var rid=++S.rid;
   var p=new URLSearchParams(location.hash.slice(1));
   var tok=p.get('in'),e=p.get('e');
@@ -645,10 +650,23 @@ function bokRad(p){
   var b=p.bokning;
   return h('div',{class:'note'},[h('b',null,[(S.et[p.id]||'Profil')+', '+String(p.titel||'')]),h('p',null,[bokLage(b)+'. '+fmtDag(b.dag)+' kl '+fmtTid(b.tid)+'.'])]);
 }
+function sokningStartar(betaldRedan){
+  return h('div',{class:'stack',role:'status'},[
+    h('p',null,['Tack för dina svar. Nu startar vi sökningen efter personer som liknar det du har sparat.']),
+    h('ol',{class:'steg'},[
+      h('li',null,['Vi letar och läser profilerna själva. Inga verkliga personer visas förrän vi har hittat några som passar.']),
+      h('li',null,['Du får ett mejl när det finns profiler att titta på. Logga in här och säg Spara, Kanske eller Nej om varje profil, på samma sätt som med exemplen.']),
+      h('li',null,[betaldRedan?'Vill du träffa någon bokar du en tid här. Startbetalningen är redan gjord.':'Vill du träffa någon gör du startbetalningen och bokar en tid här.']),
+      h('li',null,['Kandidaten bekräftar tiden. När vi har gått igenom matchningen står det Mötet är bokat.'])
+    ]),
+    h('p',{class:'sim'},['Du behöver inte göra något just nu.'])
+  ]);
+}
 function kortEl(p,etikett){
   S.et[p.id]=etikett;
   return h('button',{type:'button',class:'card kort','aria-haspopup':'dialog',onclick:function(){oppna(p.id);}},[
-    h('span',{class:'eyebrow'},[etikett]),h('span',{class:'t'},[String(p.titel||'')]),h('span',{class:'x'},[String(p.text||'')]),
+    h('span',{class:'eyebrow'},[etikett]),p.ar_exempel?h('span',{class:'sim'},['Exempel på en typ av profil. Ingen verklig person.']):null,
+    h('span',{class:'t'},[String(p.titel||'')]),h('span',{class:'x'},[String(p.text||'')]),
     p.svar?h('span',{class:'mark'},['Ditt svar: '+(VAL[p.svar.val]||'')]):null,
     p.bokning?h('span',{class:'mark'},[bokLage(p.bokning)]):null]);
 }
@@ -656,7 +674,7 @@ function byggGranska(keep,p0){
   var best=S.best,pr=S.prof.profiler||[];
   stat(best);
   var ex=['i_ko','soks','nytt_forsok'].indexOf(best.status)>-1;
-  var main,rubrik,ingress,mark=null;
+  var main,rubrik,ingress,mark=null,klarText=null;
   S.et={};
   var tidigare=[];
   if(ex){
@@ -668,6 +686,14 @@ function byggGranska(keep,p0){
     rubrik=(sist&&sist.runda>0)?'Tre till, valda efter dina svar':'De tre första';
     mark='Exempelprofiler. Inga verkliga personer.';
     ingress='Titta på dem och säg vad du tycker. Det kostar ingenting och hjälper oss att förstå vad du söker.';
+    /* Alla kort i sista rundan är besvarade och ingen ny runda har kommit: sökningen startar. */
+    var klar=main.length>0&&main.every(function(p){return !!p.svar;});
+    if(klar){
+      rubrik='Sökningen startar';
+      ingress=null;
+      klarText=sokningStartar(S.prof&&S.prof.bestallning&&S.prof.bestallning.start_betald);
+      tidigare=tidigare.concat(main);main=[];
+    }
   }else{
     var ne=pr.filter(function(p){return !p.ar_exempel&&p.runda>=1;});
     main=[];
@@ -686,15 +712,25 @@ function byggGranska(keep,p0){
     S.besked?h('p',{class:'note',role:'status'},[S.besked]):null,
     uppdragEl(best),
     mark?h('span',{class:'mark'},[mark]):null,
-    h('h1',null,[rubrik]),h('p',null,[ingress]),
-    main.length?rad:h('p',{class:'sim'},['Inga profiler att visa ännu.']),
+    h('h1',null,[rubrik]),ingress?h('p',null,[ingress]):null,
+    klarText,
+    klarText?null:(main.length?rad:h('p',{class:'sim'},['Inga profiler att visa ännu.'])),
     main.length?h('button',{class:'btn',type:'button',onclick:function(){oppna(main[0].id);}},[ex?'Titta på första exemplet':'Öppna första profilen']):null
   ]);
   var bok=pr.filter(function(p){return p.bokning;});
-  if(bok.length)el.appendChild(h('section',{class:'stack'},[h('h2',null,['Dina möten'])].concat(bok.map(bokRad))));
+  var bokVantar=bok.filter(function(p){return p.bokning.match!=='godkand'&&p.bokning.match!=='nekad'&&p.bokning.status!=='avbokad';});
+  if(bok.length){
+    var ms=h('section',{class:'stack'},[h('h2',null,['Dina möten'])].concat(bok.map(bokRad)));
+    if(bokVantar.length)ms.appendChild(h('p',{class:'pagar',id:'pagar-mote'},['Väntar på svar. Sidan uppdateras själv.']));
+    el.appendChild(ms);
+  }
+  /* Något pågår: sökningen eller ett möte som väntar. Då frågar sidan själv efter nyheter. */
+  S.vakt=(klarText||bokVantar.length)?{best:best.id,fp:fingeravtryck(S.prof)}:null;
+  if(klarText)klarText.appendChild(h('p',{class:'pagar',id:'pagar-sok'},['Vi söker nu. Sidan uppdateras själv när profilerna är klara.']));
   if(tidigare.length){
     el.appendChild(h('section',{class:'stack dim','aria-label':'Tidigare exempel'},[h('span',{class:'eyebrow'},['Tidigare exempel']),
       h('div',{class:'grid'},tidigare.map(function(p){return kortEl(p,'Exempel '+exNr(p));}))]));
+    if(klarText)el.lastChild.querySelector('.eyebrow').textContent='Dina svar på exemplen';
   }
   if(aldre.length){
     el.appendChild(h('details',null,[h('summary',null,['Äldre profiler']),
@@ -722,6 +758,33 @@ async function vyBokning(best){
     bok.length?h('div',{class:'stack'},bok.map(bokRad)):h('p',null,['Du har inga bokade möten ännu.']),
     h('button',{class:'btn2',type:'button',onclick:function(){nav('vy=granska&b='+encodeURIComponent(best.id));}},['Till profilerna'])]));
 }
+/* ---------- sidan uppdaterar sig själv ---------- */
+var POLL_MS=(window.JOY_POLL_MS||10000);
+function fingeravtryck(prof){
+  var b=(prof&&prof.bestallning)||{};
+  return JSON.stringify([b.status,b.forsok_nr,((prof&&prof.profiler)||[]).map(function(p){
+    return [p.id,p.ar_exempel,p.svar&&p.svar.val,p.bokning&&p.bokning.status,p.bokning&&p.bokning.match];})]);
+}
+async function bevaka(){
+  if(!S.vakt||!S.mejl||!S.best||S.best.id!==S.vakt.best||document.hidden)return;
+  var d=$('#pd');if(d&&d.open&&D&&D.mode!=='val')return;
+  var vakt=S.vakt;
+  var r=await k(function(){return sb.rpc('joy_profiler',{p_bestallning:vakt.best});});
+  if(r.error||!r.data||S.vakt!==vakt)return;
+  var ny=fingeravtryck(r.data);
+  if(ny===vakt.fp){var t=new Date();var s=$('#pagar-sok')||$('#pagar-mote');if(s)s.setAttribute('data-kollat',t.toISOString());return;}
+  var forr=S.prof||{};
+  var riktigaForr=((forr.profiler)||[]).filter(function(p){return !p.ar_exempel;}).length;
+  var riktigaNu=(r.data.profiler||[]).filter(function(p){return !p.ar_exempel;}).length;
+  var bokat=(r.data.profiler||[]).some(function(p){return p.bokning&&p.bokning.match==='godkand';})&&!((forr.profiler)||[]).some(function(p){return p.bokning&&p.bokning.match==='godkand';});
+  var bekr=(r.data.profiler||[]).some(function(p){return p.bokning&&p.bokning.status==='bekraftad';})&&!((forr.profiler)||[]).some(function(p){return p.bokning&&p.bokning.status==='bekraftad';});
+  S.besked=riktigaNu>riktigaForr?'Nu finns det profiler att titta på.':bokat?'Mötet är bokat.':bekr?'Kandidaten har bekräftat tiden.':'';
+  await omlad();
+  if(S.besked&&!(d&&d.open))window.scrollTo(0,0);
+}
+setInterval(function(){bevaka().catch(function(){});},POLL_MS);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)bevaka().catch(function(){});});
+
 async function omlad(){
   var r=await k(function(){return sb.rpc('joy_profiler',{p_bestallning:S.best.id});});
   if(!r.error)S.prof=r.data;
@@ -838,6 +901,23 @@ async function svara(p,val){
   }
   D.msg='Ditt svar är sparat: '+VAL[val]+'.';D.err=false;
   await omlad();
+  if(p.ar_exempel){
+    /* Gå vidare till nästa obesvarade exempel i samma runda. Är alla besvarade stängs rutan och sidan säger att sökningen startar. */
+    var pr=S.prof.profiler||[];
+    var rundan=pr.filter(function(x){return x.ar_exempel&&x.forsok_nr===p.forsok_nr&&x.runda===p.runda;});
+    var obesv=rundan.filter(function(x){return !x.svar;});
+    var nasta=obesv.filter(function(x){return x.ordning>p.ordning;})[0]||obesv[0];
+    if(nasta){
+      var etik=S.et[p.id]||'Exemplet';
+      D={id:nasta.id,mode:'val',kom:'',msg:'Ditt svar på '+etik.toLowerCase()+' är sparat: '+VAL[val]+'. Här är nästa.',err:false,pending:null,dag:null,tider:null,busy:false};
+      fyllDialog();
+      var tt=$('#pd');if(tt)tt.scrollTop=0;
+      return;
+    }
+    var dl2=$('#pd');if(dl2&&dl2.open)dl2.close();
+    D.msg='';
+    window.scrollTo(0,0);
+  }
 }
 async function efterBetalning(){
   var v=D.pending;D.pending=null;D.mode='val';
