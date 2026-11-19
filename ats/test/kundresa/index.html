@@ -58,6 +58,11 @@ button.kort:hover{border-color:var(--ink)}
 .mark{align-self:flex-start;background:var(--mark-bg);color:var(--mark-ink);font-size:13px;font-weight:600;padding:3px 9px;border-radius:4px;display:inline-block}
 .sim{font-size:14px;color:var(--muted)}
 ol.steg{margin:0;padding-left:22px;display:grid;gap:8px}
+.bild{display:block;border-radius:10px;overflow:hidden;line-height:0}.bild svg{width:100%;height:auto;display:block}
+.fakta{display:block;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;margin-top:4px}
+.var{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:600}
+.prick{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--ink);margin-left:6px}.prick.nu{background:var(--ink)}.prick.vald{background:var(--ok);border-color:var(--ok)}
+.krav{list-style:none;margin:0;padding:0;display:grid;gap:6px}.krav li::before{content:'✓';display:inline-block;width:20px;font-weight:700;color:var(--ok)}
 .pagar{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
 .pagar::before{content:'';width:14px;height:14px;flex:none;border-radius:50%;border:2px solid var(--line);border-top-color:var(--ink);animation:snurr 1s linear infinite}
 @keyframes snurr{to{transform:rotate(360deg)}}
@@ -108,6 +113,7 @@ dialog::backdrop{background:rgba(10,16,30,.62)}
 .dpad{padding:0 18px 22px}
 .dsplit{display:grid;grid-template-columns:1.2fr 1fr;gap:24px;padding:0 18px 22px;align-items:start}
 @media (max-width:820px){.dsplit{grid-template-columns:1fr}}
+.forslag{display:block;margin-top:6px;padding:8px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:14px;text-align:left;cursor:pointer}.forslag[hidden]{display:none}
 .prov{position:fixed;right:14px;bottom:14px;background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;z-index:5}
 .pbi{display:flex;flex-direction:column;gap:2px;width:100%;text-align:left;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
 .pbi[aria-pressed=true]{border-color:var(--ink);border-width:2px}
@@ -142,7 +148,7 @@ var NYCKEL='sb_publishable_S85y21aHzodwXI_I-qrmhA_lc5CxxY5';
 var DEF={underlag_vikter:{annons:38,titel:37,referens:25},tider:{},bokningsbara_dagar_fram:21,farsk_kod_minuter:10,prov_brevlada_oppen:false,startbetalning_sek:490,namn_mot_kund:''};
 var sb=null;
 try{sb=supabase.createClient(ADR,NYCKEL,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});}catch(e){sb=null;}
-var S={cfg:DEF,mejl:null,lage:null,prof:null,best:null,vantande:null,idem:null,idemKey:'',rid:0,et:{},godkMsg:'',redId:null,besked:''};
+var S={utk:{},cfg:DEF,mejl:null,lage:null,prof:null,best:null,vantande:null,idem:null,idemKey:'',rid:0,et:{},godkMsg:'',redId:null,besked:''};
 var D={}, PB={mejl:''}, U=0;
 var VAL={spara:'Spara',kanske:'Kanske',nej:'Nej'};
 
@@ -272,6 +278,18 @@ function falt(o){
   var wrap=h('div',{class:'f'},[h('label',{for:id},[o.label]),o.hint?h('span',{class:'hint'},[o.hint]):null,inp,er]);
   return {wrap:wrap,inp:inp,er:er};
 }
+/* Bara i prov: när man trycker i ett fält dyker visningskundens uppgift upp under fältet. Ett tryck fyller i den. */
+var VISNING={'s-mejl':'visning@example.com','l-mejl':'visning@example.com','s-tel':'070-174 06 70','s-for':'Exempelbolaget AB','s-tit':'Driftchef','s-ann':'Lagerchef till terminalen\nHeltid, Stockholm.'};
+function forslag(f){
+  var v=VISNING[f.inp.id];if(!v||f.inp.readOnly)return;
+  var kn=h('button',{type:'button',class:'forslag',hidden:true,'aria-label':'Fyll i '+v.split('\n')[0]},['Visningskunden: '+v.split('\n')[0]]);
+  kn.addEventListener('mousedown',function(e){e.preventDefault();});
+  kn.addEventListener('click',function(){f.inp.value=v;f.inp.dispatchEvent(new Event('input',{bubbles:true}));kn.hidden=true;rensa(f);});
+  function visa(){kn.hidden=f.inp.value===v;}
+  f.inp.addEventListener('focus',visa);f.inp.addEventListener('click',visa);f.inp.addEventListener('input',visa);
+  f.inp.addEventListener('blur',function(){setTimeout(function(){kn.hidden=true;},150);});
+  f.wrap.insertBefore(kn,f.er);
+}
 function markera(f,t){f.inp.setAttribute('aria-invalid','true');f.er.textContent=t;}
 function rensa(f){f.inp.removeAttribute('aria-invalid');f.er.textContent='';}
 
@@ -366,6 +384,7 @@ function vyLogin(notis,mejl0){
   var box=h('div',{class:'stack'});
   function steg1(){
     var f=falt({id:'l-mejl',label:'Mejl',type:'email',ac:'email',value:mejl0||''});
+    forslag(f);
     var btn=h('button',{class:'btn',type:'submit'},['Skicka kod']);
     box.replaceChildren(h('form',{class:'card big',novalidate:true,onsubmit:async function(ev){
       ev.preventDefault();rensa(f);
@@ -420,6 +439,7 @@ function vyStart(){
   var fR=falt({id:'s-tit',label:'Din titel',ac:'organization-title',value:kund.egen_titel||u.titel||''});
   var fA=falt({id:'s-ann',label:'Annons',area:true,hint:'Länk eller text.',value:u.annons||''});
   var fP=falt({id:'s-ref',label:'Referensprofil',im:'url',hint:'Länk.',value:u.ref||''});
+  [fM,fT,fF,fR,fA].forEach(forslag);
   var bar=h('div',{class:'bar',role:'progressbar','aria-valuemin':'0','aria-valuemax':'100','aria-label':'Underlag','aria-valuenow':'0'});
   var cov=h('i');bar.appendChild(cov);
   var lab=h('span',{class:'sim'});
@@ -589,7 +609,7 @@ function uppdragEl(best){
 }
 async function route(){
   closeAll();
-  S.besked='';S.vakt=null;
+  S.besked='';S.vakt=null;S.utk=utkLas();
   var rid=++S.rid;
   var p=new URLSearchParams(location.hash.slice(1));
   var tok=p.get('in'),e=p.get('e');
@@ -662,13 +682,57 @@ function sokningStartar(betaldRedan){
     h('p',{class:'sim'},['Du behöver inte göra något just nu.'])
   ]);
 }
+/* ---------- bild, fakta, skallkrav och utkast till svar ---------- */
+function hashTal(s){var x=0;s=String(s||'');for(var i=0;i<s.length;i++)x=(x*31+s.charCodeAt(i))>>>0;return x;}
+/* En bild som skapas för varje kort. Aldrig ett ansikte: en färg ur kortets id och ett motiv ur titeln. */
+function bild(p){
+  var hue=hashTal(p.id)%360,t=String(p.titel||'').toLowerCase();
+  var bg='hsl('+hue+' 42% 30%)',fg='hsl('+hue+' 60% 80%)',m;
+  if(/lager|logistik|terminal|distribution|supply/.test(t))m='<rect x="38" y="40" width="20" height="18"/><rect x="62" y="40" width="20" height="18"/><rect x="50" y="18" width="20" height="18"/>';
+  else if(/fabrik|produktion|verkstad|process|industri/.test(t))m='<path d="M26 58V34l16 10V34l16 10V34l16 10V20h12v38z"/>';
+  else if(/kärntekn|anläggning|bygg|entrepren/.test(t))m='<path d="M34 58V42a26 26 0 0 1 52 0v16z"/><rect x="92" y="24" width="8" height="34"/>';
+  else if(/butik|handel|sälj/.test(t))m='<path d="M30 30h60l6 12H24z"/><rect x="34" y="44" width="52" height="14"/>';
+  else m='<circle cx="48" cy="38" r="16"/><circle cx="72" cy="38" r="16" opacity=".6"/>';
+  var el=h('span',{class:'bild','aria-hidden':'true'});
+  el.innerHTML='<svg viewBox="0 0 120 72" xmlns="http://www.w3.org/2000/svg"><rect width="120" height="72" fill="'+bg+'"/><g fill="'+fg+'">'+m+'</g></svg>';
+  return el;
+}
+function fakta(p){
+  var a=Number(p.ar_i_yrket),g=Number(p.arbetsgivare);
+  if(!(a>0)||!(g>0))return null;
+  var snitt=Math.round(a/g*10)/10;
+  return h('span',{class:'fakta'},[a+' år i yrket · '+g+' arbetsgivare · i snitt '+String(snitt).replace('.',',')+' år per arbetsgivare']);
+}
+/* Skallkrav lästa ur annonsen: raderna efter titeln, delade på komma. En enkel läsning, ingen tolkning. */
+function kravUr(best){
+  var rader=String((best&&best.uppdragstext)||'').split(/\n/).slice(1).join('\n');
+  var ut=[];
+  rader.split(/[\n,;•·]|\. /).forEach(function(x){x=x.trim().replace(/\.$/,'');if(x.length>=2&&x.length<=60&&ut.indexOf(x)<0)ut.push(x);});
+  return ut.slice(0,6);
+}
+function kravEl(best){
+  var k=kravUr(best);if(!k.length)return null;
+  return h('section',{class:'stack','aria-label':'Skallkrav'},[h('span',{class:'eyebrow'},['Skallkrav ur din annons']),
+    h('ul',{class:'krav'},k.map(function(x){return h('li',null,[x]);})),h('p',{class:'sim'},['De här kraven har vi läst in. Sökningen utgår från dem.'])]);
+}
+function utkLas(){try{return JSON.parse(sessionStorage.getItem('joy_utk')||'{}')||{};}catch(e){return {};}}
+function utkSpara(){try{sessionStorage.setItem('joy_utk',JSON.stringify(S.utk));}catch(e){}}
+function grupp(p){
+  return (S.prof.profiler||[]).filter(function(x){return x.ar_exempel===p.ar_exempel&&x.forsok_nr===p.forsok_nr&&x.runda===p.runda;});
+}
+function valt(x){return x.svar?x.svar.val:(S.utk[x.id]&&S.utk[x.id].val)||null;}
+function attSkicka(g){return g.length>0&&g.every(function(x){return !!valt(x);})&&g.some(function(x){return !x.svar;});}
 function kortEl(p,etikett){
   S.et[p.id]=etikett;
+  var utk=!p.svar&&S.utk[p.id];
   return h('button',{type:'button',class:'card kort','aria-haspopup':'dialog',onclick:function(){oppna(p.id);}},[
+    bild(p),
     h('span',{class:'eyebrow'},[etikett]),p.ar_exempel?h('span',{class:'sim'},['Exempel på en typ av profil. Ingen verklig person.']):null,
     h('span',{class:'t'},[String(p.titel||'')]),h('span',{class:'x'},[String(p.text||'')]),
     p.svar?h('span',{class:'mark'},['Ditt svar: '+(VAL[p.svar.val]||'')]):null,
-    p.bokning?h('span',{class:'mark'},[bokLage(p.bokning)]):null]);
+    utk?h('span',{class:'mark'},['Valt: '+(VAL[utk.val]||'')+'. Inte skickat.']):null,
+    p.bokning?h('span',{class:'mark'},[bokLage(p.bokning)]):null,
+    fakta(p)]);
 }
 function byggGranska(keep,p0){
   var best=S.best,pr=S.prof.profiler||[];
@@ -715,7 +779,10 @@ function byggGranska(keep,p0){
     h('h1',null,[rubrik]),ingress?h('p',null,[ingress]):null,
     klarText,
     klarText?null:(main.length?rad:h('p',{class:'sim'},['Inga profiler att visa ännu.'])),
-    main.length?h('button',{class:'btn',type:'button',onclick:function(){oppna(main[0].id);}},[ex?'Titta på första exemplet':'Öppna första profilen']):null
+    (ex&&attSkicka(main))?h('button',{class:'btn',type:'button',id:'skicka-sida',onclick:function(){skicka(main);}},['Skicka svaren']):
+      (main.length?h('button',{class:'btn',type:'button',onclick:function(){oppna((main.filter(function(x){return !valt(x);})[0]||main[0]).id);}},[ex?(main.some(valt)?'Fortsätt med nästa exempel':'Titta på första exemplet'):'Öppna första profilen']):null),
+    (ex&&main.length&&!klarText)?h('p',{class:'sim'},[main.filter(valt).length+' av '+main.length+' valda. Du kan ändra tills du trycker Skicka svaren.']):null,
+    kravEl(best)
   ]);
   var bok=pr.filter(function(p){return p.bokning;});
   var bokVantar=bok.filter(function(p){return p.bokning.match!=='godkand'&&p.bokning.match!=='nekad'&&p.bokning.status!=='avbokad';});
@@ -846,26 +913,66 @@ function pdlg(){
 }
 function oppna(id){
   var p=(S.prof.profiler||[]).filter(function(x){return x.id===id;})[0];if(!p)return;
-  D={id:id,mode:'val',kom:(p.svar&&p.svar.kommentar)||'',msg:'',err:false,pending:null,dag:null,tider:null,busy:false};
+  D={id:id,mode:'val',kom:(p.svar&&p.svar.kommentar)||(S.utk[id]&&S.utk[id].kom)||'',msg:'',err:false,pending:null,dag:null,tider:null,busy:false};
   var d=pdlg();fyllDialog();if(!d.open)d.showModal();
+}
+function ga(id,msg){
+  var p=(S.prof.profiler||[]).filter(function(x){return x.id===id;})[0];if(!p)return;
+  D={id:id,mode:'val',kom:(p.svar&&p.svar.kommentar)||(S.utk[id]&&S.utk[id].kom)||'',msg:msg||'',err:false,pending:null,dag:null,tider:null,busy:false};
+  fyllDialog();var d=$('#pd');if(d)d.scrollTop=0;
+}
+/* Exempel: valet sparas bara här i sidan tills kunden trycker Skicka svaren. */
+function valj(p,v){
+  var ta=$('#kom');if(ta)D.kom=ta.value;
+  S.utk[p.id]={val:v,kom:D.kom};utkSpara();
+  var g=grupp(p),nasta=g.filter(function(x){return !valt(x)&&x.ordning>p.ordning;})[0]||g.filter(function(x){return !valt(x);})[0];
+  byggGranska(true);
+  if(nasta){ga(nasta.id,'Valt på '+(S.et[p.id]||'exemplet').toLowerCase()+': '+VAL[v]+'. Här är nästa.');return;}
+  D.msg='Valt: '+VAL[v]+'. Alla är valda. Tryck Skicka svaren när du är nöjd.';D.err=false;fyllDialog();
+}
+async function skicka(g){
+  if(D.busy)return;
+  D.busy=true;D.msg='Skickar';D.err=false;if($('#pd')&&$('#pd').open)fyllDialog();
+  var sist=null,kvar=g.filter(function(x){return !x.svar;}).sort(function(a,b){return a.ordning-b.ordning;});
+  for(var i=0;i<kvar.length;i++){
+    var x=kvar[i],u=S.utk[x.id];
+    var r=await k(function(){return sb.rpc('joy_svara',{p_visning:x.id,p_val:u.val,p_kommentar:u.kom?u.kom:null});});
+    if(r.error){D.busy=false;D.msg=fel(r.error);D.err=true;await omlad();return;}
+    delete S.utk[x.id];utkSpara();sist=r;
+  }
+  D.busy=false;D.msg='';
+  var dl=$('#pd');if(dl&&dl.open)dl.close();
+  S.besked=(sist&&sist.data&&typeof sist.data.ny_runda==='number')?'Tack. Här är tre till, valda efter dina svar.':'';
+  await omlad();
+  window.scrollTo(0,0);
 }
 function fyllDialog(){
   var p=(S.prof.profiler||[]).filter(function(x){return x.id===D.id;})[0];if(!p)return;
+  var g=grupp(p).sort(function(a,b){return a.ordning-b.ordning;}),ix=g.indexOf(p);
+  var var_=h('div',{class:'var',id:'var'},[
+    h('span',null,[(p.ar_exempel?'Exempel ':'Profil ')+(ix+1)+' av '+g.length]),
+    h('span',{'aria-hidden':'true'},g.map(function(x){return h('span',{class:'prick'+(x===p?' nu':(valt(x)?' vald':''))});}))]);
+  var nav=h('div',{class:'row'},[
+    h('button',{type:'button',class:'btn2',disabled:ix<=0,onclick:function(){ga(g[ix-1].id);}},['Föregående']),
+    h('button',{type:'button',class:'btn2',disabled:ix>=g.length-1,onclick:function(){ga(g[ix+1].id);}},['Nästa'])]);
   var vans=h('article',{class:'card big'},[
+    var_,bild(p),
     h('span',{class:'mark'},[p.ar_exempel?'Exempelprofil. Ingen verklig person.':(S.et[p.id]||'Profil')]),
     h('h2',null,[String(p.titel||'')]),h('p',{class:'pre'},[String(p.text||'')]),
-    p.ar_exempel?null:uppgifter(p)]);
+    p.ar_exempel?null:uppgifter(p),fakta(p),kravEl(S.best),g.length>1?nav:null]);
   $('#pdc').replaceChildren(h('div',{class:'dsplit'},[vans,hoger(p)]));
 }
 function hoger(p){
   if(D.mode==='betala')return betalPanel(S.best,efterBetalning,function(){D.mode='val';D.pending=null;fyllDialog();});
   if(D.mode==='boka')return bokaVy(p);
-  var cur=p.svar&&p.svar.val;
-  var ta=h('textarea',{id:'kom',rows:'4',maxlength:'2000'});ta.value=D.kom;
-  ta.addEventListener('input',function(){D.kom=ta.value;});
+  var last=p.ar_exempel&&!!p.svar;
+  var cur=valt(p);
+  var ta=h('textarea',{id:'kom',rows:'4',maxlength:'2000',readonly:last});ta.value=D.kom;
+  ta.addEventListener('input',function(){D.kom=ta.value;if(p.ar_exempel&&S.utk[p.id]){S.utk[p.id].kom=ta.value;utkSpara();}});
   var knappar=['spara','kanske','nej'].map(function(v){
-    return h('button',{type:'button',class:'pick','aria-pressed':String(cur===v),disabled:D.busy,onclick:function(){svara(p,v);}},[VAL[v]]);
+    return h('button',{type:'button',class:'pick','aria-pressed':String(cur===v),disabled:D.busy||last,onclick:function(){if(p.ar_exempel)valj(p,v);else svara(p,v);}},[VAL[v]]);
   });
+  var gr=grupp(p);
   var kan=!p.ar_exempel&&!p.bokning&&cur==='spara'&&betald();
   return h('div',{class:'card big'},[
     h('h3',null,['Vad tycker du?']),
@@ -873,7 +980,8 @@ function hoger(p){
     h('div',{class:'f'},[h('label',{for:'kom'},['Kommentar ',h('span',{class:'hint'},['(frivilligt)'])]),ta]),
     h('div',{class:'row',role:'group','aria-label':'Ditt val'},knappar),
     h('p',{class:D.err?'fel':'ok',role:'status'},[D.msg]),
-    p.ar_exempel?h('p',{class:'sim'},['På exempel kostar inga val något.']):null,
+    p.ar_exempel?h('p',{class:'sim'},[last?'Svaren är skickade och går inte att ändra.':'På exempel kostar inga val något. Du kan ändra ditt val tills du trycker Skicka svaren.']):null,
+    (p.ar_exempel&&attSkicka(gr))?h('button',{class:'btn',type:'button',id:'skicka',disabled:D.busy,onclick:function(){skicka(gr);}},['Skicka svaren']):null,
     p.bokning?bokRad(p):null,
     kan?h('button',{class:'btn',type:'button',onclick:function(){D.mode='boka';D.dag=null;D.tider=null;D.msg='';fyllDialog();}},['Boka möte']):null
   ]);
