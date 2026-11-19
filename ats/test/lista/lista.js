@@ -1,4 +1,4 @@
-// Listan, testvy. Visar partnerns lista: fem uppdrag och fem namn per uppdrag med Satsa.
+// Listan, testvy. Visar partnerns lista: fem uppdrag och fem namn per uppdrag som partnern kör.
 // Läser public.satsa_lista och trycker med public.satsa_besked. Ett tryck ger ett besked som går att ändra. Ett kort utan tryck har inget besked.
 (function () {
   "use strict";
@@ -6,28 +6,31 @@
   function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   function tid(iso) { if (!iso) return ""; var d = new Date(iso); if (isNaN(d)) return ""; return d.toLocaleString("sv-SE", { timeZone: "Europe/Stockholm", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }); }
   function dag(s) { if (!s) return ""; var d = new Date(s + "T12:00:00Z"); if (isNaN(d)) return s; return d.toLocaleDateString("sv-SE", { timeZone: "Europe/Stockholm", day: "numeric", month: "long" }); }
-  function knappar(k) {
-    var val = function (v, etikett, huvud) { return '<button' + (huvud ? ' class="huvud"' : "") + ' data-besked="' + v + '" data-kort="' + esc(k.kort) + '">' + etikett + "</button>"; };
-    if (!k.besked) return '<div class="knappar">' + val("satsa", "Satsa", true) + val("nej", "Nej") + "</div>";
-    return '<p class="besked' + (k.besked === "nej" ? " nej" : "") + '">' + (k.besked === "satsa" ? "Satsa" : "Nej") + ' sparat.</p><div class="knappar">' + (k.besked === "satsa" ? val("nej", "Ändra till Nej") : val("satsa", "Ändra till Satsa")) + "</div>";
+  // Orden på knapparna. Det som sparas är satsa eller nej, oavsett ord.
+  var ORD = { uppdrag: { satsa: "Vi kör", nej: "Hoppa över" }, namn: { satsa: "Intressant", nej: "Inte aktuell" } };
+  function knappar(k, slag) {
+    var o = ORD[slag || "uppdrag"];
+    var val = function (v, etikett, huvud) { return '<button' + (huvud ? ' class="huvud"' : "") + ' data-besked="' + v + '" data-kort="' + esc(k.kort) + '">' + esc(etikett) + "</button>"; };
+    if (!k.besked) return '<div class="knappar">' + val("satsa", o.satsa, true) + val("nej", o.nej) + "</div>";
+    return '<p class="besked' + (k.besked === "nej" ? " nej" : "") + '">' + esc(o[k.besked]) + ' sparat.</p><div class="knappar">' + (k.besked === "satsa" ? val("nej", "Ändra till " + o.nej) : val("satsa", "Ändra till " + o.satsa)) + "</div>";
   }
   function namnHtml(n) {
     var u = n.underlag || {};
     return '<div class="kort"><div class="ini" aria-hidden="true">' + esc(u.initialer) + '</div><div><div class="namn">' + esc(u.namn) + "</div>" +
       (u.stod && u.stod.length ? "<h3>Stöd mot kraven</h3><ul>" + u.stod.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") +
       (u.stam_av && u.stam_av.length ? "<h3>Att stämma av</h3><ul>" + u.stam_av.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>" : "") +
-      knappar(n) + (n.besked === "satsa" ? '<label class="kryss"><input type="checkbox" data-kryss="tillsatt" data-kort="' + esc(n.kort) + '"' + (n.tillsatt ? " checked" : "") + "> Tillsatt</label>" : "") + "</div></div>";
+      knappar(n, "namn") + (n.besked === "satsa" ? '<label class="kryss"><input type="checkbox" data-kryss="tillsatt" data-kort="' + esc(n.kort) + '"' + (n.tillsatt ? " checked" : "") + "> Tillsatt</label>" : "") + "</div></div>";
   }
   function uppHtml(x) {
     var u = x.underlag || {};
     var rad = [u.ort, u.omfattning, u.period, u.svarsdag ? "Svar senast " + dag(u.svarsdag) + (u.svarstid ? " kl " + u.svarstid : "") : ""].filter(Boolean);
     var namn = x.namn || [];
-    return '<div class="upp"><div class="namn">' + esc(u.titel) + '</div><div class="rad">' + rad.map(function (r) { return "<span>" + esc(r) + "</span>"; }).join("") + "</div>" + knappar(x) +
+    return '<div class="upp"><div class="namn">' + esc(u.titel) + '</div><div class="rad">' + rad.map(function (r) { return "<span>" + esc(r) + "</span>"; }).join("") + "</div>" + knappar(x, "uppdrag") +
       (x.besked === "satsa" ? (namn.length ? '<div class="namnlista">' + namn.map(namnHtml).join("") + "</div>" : '<p class="liten">Inga namn finns på uppdraget än.</p>') : "") + "</div>";
   }
   function nejHtml(nej) {
     if (!nej.length) return "";
-    return '<section class="ruta"><h2>Uppdrag du har sagt nej till</h2>' + nej.map(function (x) {
+    return '<section class="ruta"><h2>Uppdrag du har hoppat över</h2>' + nej.map(function (x) {
       return '<div class="upp"><div class="namn">' + esc(x.titel) + '</div><div class="rad">' + [x.ort, x.svarsdag ? "Svar senast " + dag(x.svarsdag) : ""].filter(Boolean).map(function (r) { return "<span>" + esc(r) + "</span>"; }).join("") +
         '</div><div class="knappar"><button data-besked="satsa" data-kort="' + esc(x.kort) + '">Hämta tillbaka</button></div></div>';
     }).join("") + "</section>";
