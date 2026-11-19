@@ -312,7 +312,6 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
   <aside class="roles" id="roles">
     <div class="todo-t" id="todo-t" hidden></div>
     <label class="showarch"><input type="checkbox" id="show-arch"> Visa arkiverade och passerade <span id="arch-note"></span></label>
-    <button class="tbtn" type="button" id="ark-antagna" hidden></button>
     <div class="roles-list" id="roles-list"></div>
   </aside>
   <section class="detail" id="detail"><div class="empty">Laddar uppdrag …</div></section>
@@ -379,7 +378,6 @@ function daysHTML(r){
 const partArk=r=>(andr.get(r.id)||{}).arkiverad===true;
 const effPrio=r=>{const a=andr.get(r.id)||{};return String(a.prioSattAt?(a.prio||""):(r.prio||""));};
 const hiddenRole=r=>ARCHIVED.has(r.status)||isPassed(r)||partArk(r);
-const antagenPasserad=r=>!ARCHIVED.has(r.status)&&!effDeadline(r).ymd&&/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")&&r.deadlineAntagen<todayYmd()&&!partArk(r);
 const kpv=(r,a,f)=>{const ra=r.kontaktSattAt||"",aa=a.kontaktSattAt||"";return String((ra&&ra>=aa?r[f]:a[f]!==undefined?a[f]:r[f])||"");};
 function refKey(r){const m=/^([A-Za-zÅÄÖåäö]+)\s*0*(\d+)(.*)$/.exec(String(r.ref||"").trim());return m?[0,m[1].toUpperCase(),+m[2],m[3]]:[1,"",Infinity,""];}
 function refCmp(a,b){const x=refKey(a),y=refKey(b);return(x[0]-y[0])||x[1].localeCompare(y[1])||(x[2]-y[2])||x[3].localeCompare(y[3])||(a.title||"").localeCompare(b.title||"","sv");}
@@ -659,7 +657,6 @@ function renderRoles(){
   const td=$("#todo-t");if(td){const items=todoHTML();td.hidden=!items.length;td.innerHTML=items.length?`<details class="todo-d" ${todoOpen?"open":""}><summary class="todo-h">Att göra nu <b>${items.length}</b></summary><div class="todo-b">${items.slice(0,8).map(i=>`<button type="button" class="todo-i ${i.k}" ${i.match?`data-openm="${esc(i.match)}"`:`data-openr="${esc(i.role)}" data-step="${esc(i.step||"")}"`}><span class="tt">${esc(i.txt)}</span><span class="ts">${esc(i.sub)}</span></button>`).join("")}${items.length>8?`<div class="todo-m">och ${items.length-8} till i uppdragslistan</div>`:""}</div></details>`:"";}
   const hidden=[...roles.values()].filter(hiddenRole).length;
   $("#arch-note").textContent=showArch?"(visas)":`(${hidden} dolda)`;
-  {const ap=[...roles.values()].filter(antagenPasserad),ab=$("#ark-antagna");if(ab){ab.hidden=!canWrite||!ap.length;if(!ab.dataset.arm)ab.textContent=`Arkivera ${ap.length} med antagen, passerad dag`;}}
   $("#roles-list").innerHTML=list.length?`<div class="group-label">Uppdrag · ${list.length}</div>`+list.map(r=>{const st=roleState(r);
     return`<button class="role" type="button" data-id="${esc(r.id)}" aria-current="${r.id===selected}"><span class="t">${r.ref?`<span class="rref">${t(r.ref)}</span>`:""}${t(r.title)}</span>${r.location?`<span class="m">${t(r.location)}</span>`:""}<span class="c">${daysHTML(r)}${ARCHIVED.has(r.status)?`<span class="pill">${esc(STATUS_LABEL[r.status]||r.status)}</span>`:""}${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:""}</span></button>`;}).join(""):`<div class="empty">${roles.size?"Inga uppdrag matchar sökningen eller filtret.":"Inga uppdrag delade än."}</div>`;
   $("#mobile-role").innerHTML=`<option value="">Välj uppdrag …</option>`+list.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?"selected":""}>${t([r.ref,r.title].filter(Boolean).join(" "))}</option>`).join("");
@@ -875,11 +872,6 @@ $("#roles-list").addEventListener("click",e=>{const b=e.target.closest(".role");
 $("#mobile-role").addEventListener("change",e=>{selected=e.target.value||null;$("#detail").scrollTop=0;render();});
 $("#show-arch").addEventListener("change",e=>{showArch=e.target.checked;renderRoles();});
 $("#btn-forslag").addEventListener("click",openForslag);
-$("#ark-antagna").addEventListener("click",async e=>{const b=e.currentTarget;const ap=[...roles.values()].filter(antagenPasserad);if(!ap.length||b.disabled)return;
-  if(!b.dataset.arm){b.dataset.arm="1";b.textContent=`Arkivera ${ap.length} uppdrag? Klicka igen`;setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;render();}},5000);return;}
-  delete b.dataset.arm;b.disabled=true;b.textContent="Arkiverar …";let n=0;
-  for(const r of ap){const ok=await saveAndring(r.id,{arkiverad:true,arkiveradAt:nowIso(),arkiveradAv:userId,arkiveradAvNamn:userName});if(ok)n++;}
-  b.disabled=false;toast(`${n} uppdrag arkiverade. Bocka i Visa arkiverade för att ta fram dem igen.`);render();});
 const detail=$("#detail");
 detail.addEventListener("click",e=>{
   const s=e.target.closest("[data-step]");if(s){const r=roles.get(selected);procPick[r.id]=s.dataset.step;focusPick[r.id]=null;renderDetail();return;}

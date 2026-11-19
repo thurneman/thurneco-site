@@ -316,7 +316,6 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
   <aside class="roles" id="roles">
     <div class="todo-t" id="todo-t" hidden></div>
     <label class="showarch"><input type="checkbox" id="show-arch"> Visa arkiverade och passerade <span id="arch-note"></span></label>
-    <button class="tbtn" type="button" id="ark-antagna" hidden></button>
     <div class="roles-list" id="roles-list"></div>
   </aside>
   <section class="detail" id="detail"><div class="empty">Laddar uppdrag …</div></section>
@@ -383,7 +382,6 @@ function daysHTML(r){
 const partArk=r=>(andr.get(r.id)||{}).arkiverad===true;
 const effPrio=r=>{const a=andr.get(r.id)||{};return String(a.prioSattAt?(a.prio||""):(r.prio||""));};
 const hiddenRole=r=>ARCHIVED.has(r.status)||isPassed(r)||partArk(r);
-const antagenPasserad=r=>!ARCHIVED.has(r.status)&&!effDeadline(r).ymd&&/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")&&r.deadlineAntagen<todayYmd()&&!partArk(r);
 const kpv=(r,a,f)=>{const ra=r.kontaktSattAt||"",aa=a.kontaktSattAt||"";return String((ra&&ra>=aa?r[f]:a[f]!==undefined?a[f]:r[f])||"");};
 function refKey(r){const m=/^([A-Za-zÅÄÖåäö]+)\s*0*(\d+)(.*)$/.exec(String(r.ref||"").trim());return m?[0,m[1].toUpperCase(),+m[2],m[3]]:[1,"",Infinity,""];}
 function refCmp(a,b){const x=refKey(a),y=refKey(b);return(x[0]-y[0])||x[1].localeCompare(y[1])||(x[2]-y[2])||x[3].localeCompare(y[3])||(a.title||"").localeCompare(b.title||"","sv");}
@@ -663,7 +661,6 @@ function renderRoles(){
   const td=$("#todo-t");if(td){const items=todoHTML();td.hidden=!items.length;td.innerHTML=items.length?`<details class="todo-d" ${todoOpen?"open":""}><summary class="todo-h">Att göra nu <b>${items.length}</b></summary><div class="todo-b">${items.slice(0,8).map(i=>`<button type="button" class="todo-i ${i.k}" ${i.match?`data-openm="${esc(i.match)}"`:`data-openr="${esc(i.role)}" data-step="${esc(i.step||"")}"`}><span class="tt">${esc(i.txt)}</span><span class="ts">${esc(i.sub)}</span></button>`).join("")}${items.length>8?`<div class="todo-m">och ${items.length-8} till i uppdragslistan</div>`:""}</div></details>`:"";}
   const hidden=[...roles.values()].filter(hiddenRole).length;
   $("#arch-note").textContent=showArch?"(visas)":`(${hidden} dolda)`;
-  {const ap=[...roles.values()].filter(antagenPasserad),ab=$("#ark-antagna");if(ab){ab.hidden=!canWrite||!ap.length;if(!ab.dataset.arm)ab.textContent=`Arkivera ${ap.length} med antagen, passerad dag`;}}
   $("#roles-list").innerHTML=list.length?`<div class="group-label">Uppdrag · ${list.length}</div>`+list.map(r=>{const st=roleState(r);
     return`<button class="role" type="button" data-id="${esc(r.id)}" aria-current="${r.id===selected}"><span class="t">${r.ref?`<span class="rref">${t(r.ref)}</span>`:""}${t(r.title)}</span>${r.location?`<span class="m">${t(r.location)}</span>`:""}<span class="c">${daysHTML(r)}${ARCHIVED.has(r.status)?`<span class="pill">${esc(STATUS_LABEL[r.status]||r.status)}</span>`:""}${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:""}</span></button>`;}).join(""):`<div class="empty">${roles.size?"Inga uppdrag matchar sökningen eller filtret.":"Inga uppdrag delade än."}</div>`;
   $("#mobile-role").innerHTML=`<option value="">Välj uppdrag …</option>`+list.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?"selected":""}>${t([r.ref,r.title].filter(Boolean).join(" "))}</option>`).join("");
@@ -899,11 +896,6 @@ $("#roles-list").addEventListener("click",e=>{const b=e.target.closest(".role");
 $("#mobile-role").addEventListener("change",e=>{selected=e.target.value||null;$("#detail").scrollTop=0;render();});
 $("#show-arch").addEventListener("change",e=>{showArch=e.target.checked;renderRoles();});
 $("#btn-forslag").addEventListener("click",openForslag);
-$("#ark-antagna").addEventListener("click",async e=>{const b=e.currentTarget;const ap=[...roles.values()].filter(antagenPasserad);if(!ap.length||b.disabled)return;
-  if(!b.dataset.arm){b.dataset.arm="1";b.textContent=`Arkivera ${ap.length} uppdrag? Klicka igen`;setTimeout(()=>{if(b.dataset.arm){delete b.dataset.arm;render();}},5000);return;}
-  delete b.dataset.arm;b.disabled=true;b.textContent="Arkiverar …";let n=0;
-  for(const r of ap){const ok=await saveAndring(r.id,{arkiverad:true,arkiveradAt:nowIso(),arkiveradAv:userId,arkiveradAvNamn:userName});if(ok)n++;}
-  b.disabled=false;toast(`${n} uppdrag arkiverade. Bocka i Visa arkiverade för att ta fram dem igen.`);render();});
 const detail=$("#detail");
 detail.addEventListener("click",e=>{
   const s=e.target.closest("[data-step]");if(s){const r=roles.get(selected);procPick[r.id]=s.dataset.step;focusPick[r.id]=null;renderDetail();return;}
@@ -986,7 +978,7 @@ function openDeadlineEditor(el){
   const no=document.createElement("button");no.type="button";no.className="btn small light";no.textContent="Avbryt";
   pop.append(inp,ok,no);document.body.appendChild(pop);
   for(const ev of["click","mousedown","dblclick"])pop.addEventListener(ev,x=>x.stopPropagation());
-  let done=false;const finish=async save=>{if(done)return;done=true;pop.remove();if(save&&inp.value){const[Y,M,D]=inp.value.split("-").map(Number);const text=`${D} ${MONTHS[M-1]} ${Y}`;const okk=await saveAndring(r.id,{deadline:text,deadlineYmd:inp.value,deadlineSattAt:nowIso(),deadlineSattAv:userId,deadlineSattAvNamn:userName});if(okk)toast(`Sista inskickningsdag satt: ${text}. Synkas till huvudregistret inom en timme.`);render();}};
+  let done=false;const finish=async save=>{if(done)return;done=true;if(!(save&&inp.value)){pop.remove();return;}{const[Y,M,D]=inp.value.split("-").map(Number);const text=`${D} ${MONTHS[M-1]} ${Y}`;const okk=await saveAndring(r.id,{deadline:text,deadlineYmd:inp.value,deadlineSattAt:nowIso(),deadlineSattAv:userId,deadlineSattAvNamn:userName});if(!okk){done=false;return;}pop.remove();toast(`Sista inskickningsdag satt: ${text}. Synkas till huvudregistret inom en timme.`);render();}};
   ok.addEventListener("click",()=>finish(true));no.addEventListener("click",()=>finish(false));
   inp.addEventListener("keydown",ev=>{if(ev.key==="Enter"){ev.preventDefault();finish(true);}else if(ev.key==="Escape"){ev.preventDefault();finish(false);}});
   const away=ev=>{if(!pop.contains(ev.target)){document.removeEventListener("mousedown",away,true);finish(false);}};
@@ -1058,7 +1050,8 @@ function openBegar(r){
     catch(e){busy=false;fail(bg,"#b-send","Begär search",e.message||"Begäran sparades inte.");}
     render();});
 }
-function rapporteraFel(vad,e,dok){try{const RT=window.ATS_RUNTIME;if(RT&&RT.rpc)Promise.resolve(RT.rpc("ats_skrivfel",{p_vad:vad,p_kod:String((e&&e.code)||"fel"),p_fel:String((e&&e.message)||"").slice(0,400),p_dok:dok||null})).catch(()=>{});}catch(_){}}
+async function rapporteraFel(vad,e,dok){try{const RT=window.ATS_RUNTIME;if(!RT||!RT.rpc)return false;const r=await RT.rpc("ats_skrivfel",{p_vad:vad,p_kod:String((e&&e.code)||"fel"),p_fel:String((e&&e.message)||"").slice(0,400),p_dok:dok||null});return !!(r&&!r.error&&r.data&&r.data.sparat===true);}catch(_){return false;}}
+const rapportText=ok=>ok?" Felet är rapporterat.":" Felet gick inte att rapportera, säg till Filip.";
 async function setBedomning(matchId,val){
   const m=matches.get(matchId);if(!m||!db||!userId)return;
   const cur=bedOf(m);const nv=cur===val?"":val;
@@ -1066,7 +1059,7 @@ async function setBedomning(matchId,val){
   const doc={matchId,roleId:m.roleId,candId:m.candId,bedomning:nv,at:now,av:userId,avNamn:userName,synkad:false};
   bed.set(matchId,doc);renderDetail();
   try{await db.doc("bedomningar/"+matchId).set(doc);toast(nv==="ja"?"Intressant sparat. Klicka igen om du vill ångra.":nv==="nej"?"Inte aktuell sparat, kandidaten arkiveras i listan. Visa inte aktuella och klicka igen för att ångra.":"Bedömningen är borttagen.");}
-  catch(e){if(prev)bed.set(matchId,prev);else bed.delete(matchId);renderDetail();rapporteraFel("bedömning",e,doc);toast("Bedömningen kunde inte sparas ("+(e.code||"fel")+"). Felet är rapporterat.");}
+  catch(e){if(prev)bed.set(matchId,prev);else bed.delete(matchId);renderDetail();const rap=await rapporteraFel("bedömning",e,doc);toast("Bedömningen kunde inte sparas ("+(e.code||"fel")+")."+rapportText(rap));}
 }
 async function saveAndring(roleId,patch){
   if(!db||!userId)return false;
@@ -1074,7 +1067,7 @@ async function saveAndring(roleId,patch){
     if(s.exists)await ref.update(data);else await ref.set(data);
     const back=await ref.get();if(!back.exists)throw new Error("återläsning");
     andr.set(roleId,{id:roleId,...back.data()});return true;}
-  catch(e){rapporteraFel("ändring av uppdrag",e,{roleId,...patch});toast("Kunde inte spara ("+(e.code||e.message||"fel")+"). Felet är rapporterat.");return false;}
+  catch(e){const rap=await rapporteraFel("ändring av uppdrag",e,{roleId,...patch});toast("Kunde inte spara ("+(e.code||e.message||"fel")+")."+rapportText(rap)+" Det du skrev ligger kvar.");return false;}
 }
 async function saveContact(candId,field,value){
   if(!db||!userId||!canWrite)return;
