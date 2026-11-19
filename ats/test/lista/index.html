@@ -31,15 +31,16 @@ table{border-collapse:collapse;width:100%;font-size:14px}td,th{border-top:1px so
 details summary{cursor:pointer;font-weight:600}
 .liten{font-size:13px;color:var(--muted)}
 .upp{border-top:1px solid var(--line);padding:16px 0}.upp:first-child{border-top:0;padding-top:0}.rad{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:14px}.nej{color:var(--muted)}.namnlista{margin-top:14px;display:grid;gap:14px}.namnlista .kort{border:1px solid var(--line);border-radius:8px;padding:12px}
+.kryss{display:inline-flex;gap:8px;align-items:center;margin-top:12px}
 </style></head><body>
 <div id="ats-login" class="ats-login" hidden><div class="ats-login-kort" role="dialog" aria-labelledby="ats-login-rubrik"><h1 id="ats-login-rubrik">Logga in</h1><p>Logga in med din e-post. Du får en länk som loggar in dig, inget lösenord behövs.</p><form id="ats-login-form"><input id="ats-login-email" type="email" autocomplete="email" required placeholder="namn@exempel.se" aria-label="E-post"><button class="btn" id="ats-login-skicka" type="submit">Skicka inloggningslänk</button></form><p id="ats-login-info" aria-live="polite"></p><a href="#" id="ats-login-ut" class="ats-logout" hidden>Logga ut</a></div></div> <!-- supabase -->
 <div class="wrap">
 <h1>Dina uppdrag</h1>
-<p class="lead">Testvy. Så här ser partnerns lista ut. Ett tryck ger ett besked och går inte att ta tillbaka. Inget skickas till någon.</p>
+<p class="lead">Testvy. Så här ser partnerns lista ut. Ett tryck ger ett besked. Du kan ändra dig, och ett uppdrag med Nej går att hämta tillbaka. Inget skickas till någon.</p>
 <div id="app"><p class="liten">Läser…</p></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script>
 <script src="../config.js"></script>
 <script src="../ats-runtime.js?v=som1"></script>
-<script src="lista.js?v=1"></script>
+<script src="lista.js?v=2"></script>
 </body></html>

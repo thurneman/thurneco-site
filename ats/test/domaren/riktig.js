@@ -10,12 +10,18 @@
     var tratt = met.length ? "<table><thead><tr><th>Ursprung</th>" + STEG.map(function (s) { return "<th>" + esc(s[1]) + "</th>"; }).join("") + "<th>Nej</th><th>Utan besked</th></tr></thead><tbody>" +
       met.map(function (m) { var x = t[m]; return "<tr><td>" + esc(stor(m)) + "</td>" + STEG.map(function (s) { return "<td>" + esc(x[s[0]]) + "</td>"; }).join("") + "<td>" + esc(x.nej) + "</td><td>" + esc(x.utan_besked) + "</td></tr>"; }).join("") + "</tbody></table>"
       : '<p class="liten">Inga namn har visats än.</p>';
-    var rader = tr.length ? "<table><thead><tr><th>Tid</th><th>Slag</th><th>Uppdrag</th><th>Namn</th><th>Lista</th><th>Plats</th><th>Besked</th><th>Ursprung</th></tr></thead><tbody>" +
-      tr.slice().reverse().map(function (x) { return "<tr><td>" + esc(tid(x.at)) + "</td><td>" + esc(x.slag) + "</td><td>" + esc(x.uppdrag) + "</td><td>" + esc(x.namn || "") + "</td><td>" + esc(x.lista) + "</td><td>" + esc(x.plats) + "</td><td>" + esc(x.besked === "nej" ? "Nej" : "Satsa") + "</td><td>" + esc(x.ursprung ? stor(x.ursprung) : "") + "</td></tr>"; }).join("") + "</tbody></table>"
+    var v = d.verifierad || {};
+    var namn = d.namn || [];
+    var namnTab = namn.length ? "<table><thead><tr><th>Uppdrag</th><th>Namn</th><th>Ursprung</th><th>Första trycket</th><th>Nu</th><th>Tillsatt</th><th>Fakturerad</th></tr></thead><tbody>" +
+      namn.map(function (x) { return "<tr><td>" + esc(x.uppdrag) + "</td><td>" + esc(x.namn) + "</td><td>" + esc(stor(x.ursprung)) + "</td><td>" + esc(x.forsta === "nej" ? "Nej" : "Satsa") + "</td><td>" + esc(x.nu === "nej" ? "Nej" : "Satsa") + "</td><td>" + (x.tillsatt ? "Ja" : "") + '</td><td><input type="checkbox" data-fakt="' + esc(x.kort) + '"' + (x.fakturerad ? " checked" : "") + (x.tillsatt && x.nu === "satsa" ? "" : " disabled") + "></td></tr>"; }).join("") + "</tbody></table>"
+      : '<p class="liten">Inga namn har fått något tryck än.</p>';
+    var rader = tr.length ? "<table><thead><tr><th>Tid</th><th>Slag</th><th>Uppdrag</th><th>Namn</th><th>Lista</th><th>Plats</th><th>Besked</th><th>Händelse</th><th>Ursprung</th></tr></thead><tbody>" +
+      tr.slice().reverse().map(function (x) { return "<tr><td>" + esc(tid(x.at)) + "</td><td>" + esc(x.slag) + "</td><td>" + esc(x.uppdrag) + "</td><td>" + esc(x.namn || "") + "</td><td>" + esc(x.lista) + "</td><td>" + esc(x.plats) + "</td><td>" + esc(x.slag === "tillsatt" || x.slag === "fakturerad" ? (x.besked === "ja" ? "Kryssad" : "Avkryssad") : (x.besked === "nej" ? "Nej" : "Satsa")) + "</td><td>" + esc(x.slag === "tillsatt" || x.slag === "fakturerad" ? "kryss" : (x.forsta ? "första trycket" : "ändring")) + "</td><td>" + esc(x.ursprung ? stor(x.ursprung) : "") + "</td></tr>"; }).join("") + "</tbody></table>"
       : '<p class="liten">Inga tryck än.</p>';
-    return '<section class="ruta"><h2>Uppdrag</h2><div class="tal"><div><b>' + esc(u.visade) + "</b><span>visade</span></div><div><b>" + esc(u.satsa) + "</b><span>Satsa</span></div><div><b>" + esc(u.nej) + "</b><span>Nej</span></div><div><b>" + esc(u.utan_besked) + '</b><span>utan besked</span></div></div><p class="liten">Utan besked räknas inte som nej.</p></section>' +
-      '<section class="ruta"><h2>Var namnen faller bort</h2>' + tratt + '<div class="dom"><p class="slut">' + esc(d.dom && d.dom.slutsats) + '</p><p class="liten">' + esc(d.dom && d.dom.slutmatt) + "</p></div></section>" +
-      '<section class="ruta"><h2>Tryck</h2>' + rader + '<p class="liten">' + esc(d.visningar) + " visningar sparade.</p></section>";
+    return '<section class="ruta"><h2>Uppdrag</h2><div class="tal"><div><b>' + esc(u.visade) + "</b><span>visade</span></div><div><b>" + esc(u.satsa) + "</b><span>Satsa</span></div><div><b>" + esc(u.nej) + "</b><span>Nej</span></div><div><b>" + esc(u.utan_besked) + '</b><span>utan besked</span></div></div><p class="liten">Utan besked räknas inte som nej. Talen räknar det första trycket. ' + esc(u.andrade || 0) + " uppdrag har ändrats efteråt.</p></section>" +
+      '<section class="ruta"><h2>Var namnen faller bort</h2>' + tratt + '<p class="liten">Styrkta krav betyder kravstatus verifierad. I dag har ' + esc(v.partnerns_oppna_uppdrag) + " av " + esc(v.av_matchningar) + " matchningar på partnerns öppna uppdrag den statusen, och " + esc(v.hela_ats) + " i hela ATS:et.</p>" + '<div class="dom"><p class="slut">' + esc(d.dom && d.dom.slutsats) + '</p><p class="liten">' + esc(d.dom && d.dom.slutmatt) + "</p></div></section>" +
+      '<section class="ruta"><h2>Namn med tryck</h2>' + namnTab + '<p class="liten">Tillsatt kryssas i partnerns lista. Fakturerad kryssar du här, och det går först när namnet är tillsatt.</p></section>' +
+      '<section class="ruta"><h2>Tryck och ändringar</h2>' + rader + '<p class="liten">' + esc(d.visningar) + " visningar sparade.</p></section>";
   }
   async function las() {
     var el = document.getElementById("riktig"); if (!el) return;
@@ -23,6 +29,13 @@
     if (r.error) { var m = String(r.error.message || r.error.code || ""); el.innerHTML = '<p class="fel">' + esc(/does not exist|Could not find the function|PGRST202/i.test(m) ? "Listan är inte införd i databasen än." : "Trycken kunde inte läsas: " + m) + "</p>"; return; }
     el.innerHTML = r.data ? html(r.data) : '<p class="fel">Bara ägaren når den här delen.</p>';
   }
+  document.addEventListener("change", async function (e) {
+    var c = e.target; if (!c || !c.dataset || !c.dataset.fakt) return;
+    c.disabled = true;
+    var r = await window.ATS_RUNTIME.rpc("satsa_kryss", { p_kort: c.dataset.fakt, p_slag: "fakturerad", p_varde: c.checked });
+    await las();
+    if (r.error) { var el = document.getElementById("riktig"); el.insertAdjacentHTML("afterbegin", '<p class="fel">' + esc(String(r.error.message || r.error.code || "fel")) + "</p>"); }
+  });
   window.RIKTIG_TEST = { html: html };
   if (window.claude && window.claude.use) window.claude.use("user").then(function () { return las(); });
   document.addEventListener("visibilitychange", function () { if (!document.hidden) las(); });
