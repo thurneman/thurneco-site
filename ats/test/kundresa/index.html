@@ -552,10 +552,18 @@ function stat(b,utanKort){
     nytt_forsok:['Ett nytt försök pågår, utan ny startbetalning','Vi mejlar när det finns nya profiler'],
     vantar_startbetalning:utanKort?['Vi väntar på din startbetalning','Sedan får du tre exempelprofiler, och sökningen startar när du har svarat på dem']:['Vi väntar på din startbetalning','Så fort den är gjord kan vi gå vidare']
   }[b.status]||['Din beställning är registrerad','Vi hör av oss'];
+  /* Exemplen är inte besvarade och skickade än: då har sökningen inte startat, och statusraden säger inget om kö. */
+  if(['i_ko','soks','nytt_forsok'].indexOf(b.status)>-1&&exempelKvar())m=['Titta på exemplen','Sökningen startar när du har skickat dina svar'];
   /* Profiler finns: statusraden säger vad som väntar, och på vem. */
   var tur=b.status==='urval_klart'?dinTur():null;
   if(tur)m=tur;
   setStatus(m[0],m[1]);
+}
+/* Samma villkor som rubriken Sökningen har startat: sista rundan exempel har kort som inte är besvarade. */
+function exempelKvar(){
+  var exl=((S.prof&&S.prof.profiler)||[]).filter(function(p){return p.ar_exempel;});
+  var sist=exl[exl.length-1];if(!sist)return false;
+  return exl.some(function(p){return p.forsok_nr===sist.forsok_nr&&p.runda===sist.runda&&!p.svar;});
 }
 function betald(){return !!(S.prof&&S.prof.bestallning&&S.prof.bestallning.start_betald);}
 /* Rollens rubrik med möjlighet att ändra den. Står rubriken som null öppnas fältet direkt. */
