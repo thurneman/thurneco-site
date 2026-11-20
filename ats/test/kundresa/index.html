@@ -214,8 +214,35 @@ var SK_START={
 function fel(e){var m=(e&&e.message)||'';for(var n in FEL){if(m.indexOf(n)>-1)return FEL[n];}return 'Något gick fel. Försök igen.';}
 function ar(e,o){return !!(e&&e.message&&e.message.indexOf(o)>-1);}
 async function k(f){
-  try{var r=await f();return r||{data:null,error:{message:'natverk'}};}
+  try{var r=await f();if(r&&r.error&&String(r.error.message||'').indexOf('finns_inte')>-1)kollEfterFinnsInte();return r||{data:null,error:{message:'natverk'}};}
   catch(e){return {data:null,error:{message:'natverk'}};}
+}
+/* Inloggningen kan ha tagits bort på servern medan sidan har kvar en nyckel, till exempel när visningskunden
+   nollställs. Då frågar vi servern vem nyckeln gäller. Finns användaren inte loggar vi ut lokalt, så att nästa
+   inloggning blir en ny och hel inloggning. Ett nätverksfel loggar aldrig ut. */
+var UT_TEXT='Din inloggning gäller inte längre. Logga in igen.';
+async function inloggningKvar(){
+  if(!S.mejl)return true;
+  var u=await k(function(){return sb.auth.getUser();});
+  if(u&&u.data&&u.data.user)return true;
+  var e=(u&&u.error)||{},m=String(e.message||''),st=e.status||0,kod=String(e.code||'');
+  if(m==='natverk'||st===0||st>=500)return true;
+  if(st===401||st===403||kod==='user_not_found'||kod==='bad_jwt'||/sub claim|does not exist|user_not_found|invalid jwt/i.test(m)){
+    await k(function(){return sb.auth.signOut({scope:'local'});});
+    /* Profiler och beställning lämnas kvar tills nästa vy byggs, så att ett pågående steg inte går sönder. */
+    S.mejl=null;S.lage=null;S.vantande=null;S.godkMsg='';S.utkast=null;S.idem=null;S.idemKey='';S.redId=null;S.besked='';S.vakt=null;
+    return false;
+  }
+  return true;
+}
+var utKoll=false;
+async function kollEfterFinnsInte(){
+  if(utKoll||!S.mejl)return;utKoll=true;
+  try{
+    if(!(await inloggningKvar())){
+      closeAll();history.replaceState(null,'',location.pathname+location.search+'#vy=login');hdr();vyLogin(UT_TEXT);
+    }
+  }finally{utKoll=false;}
 }
 async function utskick(body){
   try{
@@ -495,6 +522,7 @@ function vyStart(){
     var key=JSON.stringify(v);
     if(key!==S.idemKey){S.idemKey=key;S.idem=uuid();}
     btn.disabled=true;
+    if(!(await inloggningKvar())){btn.disabled=false;hdr();skalBox.textContent='Din inloggning gäller inte längre. Tryck Fortsätt så får du en ny kod.';return;}
     var r=await k(function(){return sb.rpc('joy_start',{p_telefon:v.tel,p_foretag:v.foretag,p_egen_titel:v.titel||null,p_annons:v.annons||null,p_referensprofil:v.ref||null,p_notis_bada:v.bada,p_idem:S.idem});});
     btn.disabled=false;
     if(r.error){
@@ -642,6 +670,9 @@ async function route(){
     if(!vy||vy==='start'||vy==='ny')vyStart();else vyLogin();
     return;
   }
+  var giltig=await inloggningKvar();
+  if(rid!==S.rid)return;
+  if(!giltig){hdr();vyLogin(UT_TEXT);return;}
   var l=await k(function(){return sb.rpc('joy_lage');});
   if(rid!==S.rid)return;
   if(l.error){
@@ -904,6 +935,8 @@ async function omlad(){
   if(!r.error)S.prof=r.data;
   var l=await k(function(){return sb.rpc('joy_lage');});
   if(!l.error){S.lage=l.data;var b=(l.data.bestallningar||[]).filter(function(x){return x.id===S.best.id;})[0];if(b)S.best=b;}
+  /* Utloggad under tiden, till exempel för att inloggningen inte längre gäller: rita inte över inloggningen. */
+  if(!S.mejl)return;
   byggGranska(true);
   if($('#pd')&&$('#pd').open)fyllDialog();
 }
