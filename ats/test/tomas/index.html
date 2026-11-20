@@ -29,6 +29,21 @@ a{color:var(--blue-4)}
 .topbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-height:56px;padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));background:var(--deep);border-bottom:1px solid var(--line)}
 .brand{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.12em;white-space:nowrap}
 .brand span{font-weight:500;letter-spacing:0;color:var(--muted);margin-left:8px}
+/* Listan, nya designen */
+.ls{max-width:860px}.ls h2{margin:0 0 4px}.ls h3{margin:0 0 10px;font-size:17px}.ls h4{font-size:14px;margin:12px 0 4px}
+.ls-ruta{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}
+.ls-upp{border-top:1px solid var(--line);padding:14px 0}.ls-upp:first-child{border-top:0;padding-top:0}
+.ls-titel{font-weight:600;font-size:18px}.ls-rad{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:14px;margin-top:2px}
+.ls-knappar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.ls-besked{margin:10px 0 0;font-weight:600;color:var(--ok,#1E7B4A)}.ls-besked.nej{color:var(--muted)}
+.ls-namnlista{margin-top:14px;display:grid;gap:12px}
+.ls-kort{display:grid;grid-template-columns:44px 1fr;gap:12px;border:1px solid var(--line);border-radius:10px;padding:12px}
+.ls-ini{width:44px;height:44px;border-radius:50%;background:var(--blue-2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600}
+.ls-namn{font-weight:600;font-size:16px}.ls ul{margin:2px 0 0;padding-left:18px}
+.ls-kryss{display:inline-flex;gap:8px;align-items:center;margin-top:10px}
+.ls-liten{font-size:13px;color:var(--muted);margin:6px 0 0}.ls-fel{color:var(--warn);font-weight:600}
+.ls-lank{background:none;border:0;padding:0;margin-top:8px;color:var(--muted);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px}
+.ls-datumform{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:8px;font-size:14px}.ls-datumform label{display:grid;gap:2px}
 .nav{display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:3px}
 .nav button{border:0;background:none;border-radius:999px;padding:6px 16px;font-size:14px;font-weight:500;color:var(--muted);cursor:pointer}
 .nav button[aria-pressed="true"]{background:var(--blue-2);color:#fff}
@@ -302,10 +317,10 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 <style>
 .genrad{display:flex;flex-wrap:wrap;gap:8px 22px;margin:10px 0 0}.genb{display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap}.genb .gm{font-size:12px;color:var(--muted)}
 </style>
-<style>.ats-visa-som :is([data-gen],[data-bed],[data-inmail],[data-order],[data-arkiv],[data-prio],[data-ping],[data-reply],[data-reply-undo],[data-matcha],[data-begar],[data-askfor],[data-addcand],[data-kom],[data-comment],[data-cv],[data-foresla],[data-rolenote],[data-cfnote],[data-dl],#a-save,#b-send,#o-send,#f-save,#btn-forslag){pointer-events:none;opacity:.55}.ats-visa-som :is(textarea,input:not([type=search]):not(#ksok):not(#show-arch)){pointer-events:none}</style>
+<style>.ats-visa-som :is([data-gen],[data-bed],[data-inmail],[data-order],[data-arkiv],[data-prio],[data-ping],[data-reply],[data-reply-undo],[data-matcha],[data-begar],[data-askfor],[data-addcand],[data-kom],[data-comment],[data-cv],[data-foresla],[data-rolenote],[data-cfnote],[data-dl],[data-lbesked],[data-lkryss],[data-ldatum],[data-ldform] button,#a-save,#b-send,#o-send,#f-save,#btn-forslag){pointer-events:none;opacity:.55}.ats-visa-som :is(textarea,input:not([type=search]):not(#ksok):not(#show-arch)){pointer-events:none}</style>
 <header class="topbar">
   <div class="brand" title="Partnervyn. Huvudregistret heter ATS Filip.">ATS Tomas<span>Testversion, inget skickas</span></div>
-  <nav class="nav" aria-label="Vyer"><button type="button" data-view="uppdrag" aria-pressed="true">Uppdrag</button><button type="button" data-view="konsulter" aria-pressed="false">Konsulter</button><button type="button" data-view="sok" aria-pressed="false">Sök</button></nav>
+  <nav class="nav" aria-label="Vyer"><button type="button" data-view="lista" aria-pressed="true">Listan</button><button type="button" data-view="uppdrag" aria-pressed="false">Uppdrag</button><button type="button" data-view="konsulter" aria-pressed="false">Konsulter</button><button type="button" data-view="sok" aria-pressed="false">Sök</button></nav>
   <div class="spacer"></div>
   <span class="vyval" role="group" aria-label="Visa eller dölj delar av vyn"><button class="tbtn" type="button" data-dolj="roles" aria-pressed="true" title="Visa eller dölj uppdragslistan till vänster">☰ Uppdragslista</button><button class="tbtn" type="button" data-dolj="flist" aria-pressed="true" title="Visa eller dölj kandidatlistan inne på ett uppdrag">☰ Kandidatlista</button><button class="tbtn" type="button" data-dolj="kside" aria-pressed="true" title="Visa eller dölj sidospalten med uppdrag på en persons sida">☰ Sidospalt</button></span>
   <a href="#" id="ats-logout" class="ats-logout" hidden>Logga ut</a> <!-- supabase -->
@@ -350,7 +365,7 @@ const CF_EXTRA=[["linkedin","LinkedIn","url"],["tillganglig","Tillgänglig","tex
 const CF_LABEL={phone:"Telefon",email:"Mejl",linkedin:"LinkedIn",tillganglig:"Tillgänglighet",timpris:"Timpris",bolagsform:"Bolagsform",anteckning:"Anteckning"};
 const contactOf=c=>{const k=kuppg.get(c.id)||{};const v=f=>String(k[f]!=null&&k[f]!==""?k[f]:(c[f]||""));return{phone:v("phone"),email:v("email"),linkedin:v("linkedin"),tillganglig:v("tillganglig"),timpris:v("timpris"),bolagsform:v("bolagsform"),anteckning:String(k.anteckning||""),at:k.at,avNamn:k.avNamn};};
 let ordersState="laddar",ordersErr="";
-let view="uppdrag",selected=null,query="",sokQuery="",showArch=false,procPick={},focusPick={},fTab={id:null,tab:null},candSel=null,backView="konsulter";
+let view="lista",selected=null,query="",sokQuery="",showArch=false,procPick={},focusPick={},fTab={id:null,tab:null},candSel=null,backView="konsulter";
 const drafts={};   // utkast per matchning och uppdrag, töms först efter bekräftad sparning
 try{Object.assign(drafts,JSON.parse(sessionStorage.getItem("konsult.drafts")||"{}"));}catch{}
 const saveDrafts=()=>{try{sessionStorage.setItem("konsult.drafts",JSON.stringify(drafts));}catch{}};
@@ -366,12 +381,14 @@ const todayYmd=()=>new Intl.DateTimeFormat("sv-SE",{timeZone:TZ,year:"numeric",m
 const isPassed=r=>{const y=effDeadline(r).ymd;return !!y&&y<todayYmd();};
 function daysLeft(y){if(!y)return null;const a=new Date(todayYmd()+"T12:00:00Z"),b=new Date(y+"T12:00:00Z");return Math.round((b-a)/86400000);}
 function dayLabel(y){const[Y,M,D]=y.split("-").map(Number);return`${D} ${MONTHS[M-1].slice(0,3)}.`;}
+// Svarsdagen är låst för partnern. Förslag på annat datum görs under Listan och blir en åtgärd till Filip.
+const DATUM_LAST=true;
 function daysHTML(r){
   const d=effDeadline(r);const open=!ARCHIVED.has(r.status);
-  const edit=canWrite&&open?` data-dl="${esc(r.id)}" title="Sista inskickningsdag. Dubbelklicka för att ändra.${d.egen?" Din ändring, synkas till huvudregistret inom en timme.":""}"`:` title="Sista inskickningsdag"`;
+  const edit=canWrite&&open&&!DATUM_LAST?` data-dl="${esc(r.id)}" title="Sista inskickningsdag. Dubbelklicka för att ändra.${d.egen?" Din ändring, synkas till huvudregistret inom en timme.":""}"`:` title="Sista inskickningsdag"`;
   if(!d.ymd){
     const ay=/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")?r.deadlineAntagen:"";
-    if(open&&ay){const an=daysLeft(ay),al=dayLabel(ay);const at2=canWrite?` data-dl="${esc(r.id)}"`:"";
+    if(open&&ay){const an=daysLeft(ay),al=dayLabel(ay);const at2=canWrite&&!DATUM_LAST?` data-dl="${esc(r.id)}"`:"";
       return`<span class="pill antagen dl"${at2} title="Antagen sista inskickningsdag: publicering plus 7 dagar. Kundens datum saknas. Dubbelklicka för att sätta rätt dag.">${an<0?"antagen, passerad":an===0?"antagen, i dag":an===1?"antagen, 1 dag kvar":"antagen, "+an+" dagar kvar"} (${al})</span>`;}
     return open?`<span class="pill miss dl"${edit}>${d.text?esc(d.text)+", ":""}sätt deadline</span>`:"";}
   const n=daysLeft(d.ymd),lab=dayLabel(d.ymd),mark=d.egen?" ✎":"";
@@ -870,11 +887,49 @@ function renderDetail(){
   const ae=document.activeElement;
   if(ae&&d.contains(ae)&&ae.matches("textarea,input")){pendingRender=true;return;}
   pendingRender=false;
+  if(view==="lista")return renderLista(d);
   if(view==="konsulter")return renderKonsulter(d);
   if(view==="sok")return renderSok(d);
   if(view==="kandidat")return renderKandidat2(d);
   renderUppdrag(d);
 }
+/* ===== Listan: nya designen. Läser satsa_lista: fem uppdrag i taget, närmast svarsdag först, bara angiven svarsdag som inte har passerat.
+   Varje tryck sparas i Domarens tabeller via satsa_besked, satsa_kryss och satsa_datumforslag. Ett nekat tryck larmar i databasen. */
+let lsData=null,lsFel="",lsUpptagen=false,lsLaddad=false,lsDatumOppen=null;
+const LS_ORD={uppdrag:{satsa:"Vi kör",nej:"Hoppa över"},namn:{satsa:"Intressant",nej:"Inte aktuell"}};
+const lsDag=s=>{if(!s)return"";const d=new Date(s+"T12:00:00Z");return isNaN(d)?s:d.toLocaleDateString("sv-SE",{timeZone:TZ,day:"numeric",month:"long"});};
+function lsKnappar(k,slag){const o=LS_ORD[slag];const b=(v,l,h)=>`<button type="button" class="btn ${h?"blue":"light"} small" data-lbesked="${v}" data-lkort="${esc(k.kort)}">${esc(l)}</button>`;
+  if(!k.besked)return`<div class="ls-knappar">${b("satsa",o.satsa,true)}${b("nej",o.nej)}</div>`;
+  return`<p class="ls-besked${k.besked==="nej"?" nej":""}">${esc(o[k.besked])} sparat.</p><div class="ls-knappar">${k.besked==="satsa"?b("nej","Ändra till "+o.nej):b("satsa","Ändra till "+o.satsa)}</div>`;}
+function lsNamn(n){const u=n.underlag||{};const lista=(rub,a)=>Array.isArray(a)&&a.length?`<h4>${rub}</h4><ul>${a.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:"";
+  return`<div class="ls-kort"><div class="ls-ini" aria-hidden="true">${esc(u.initialer||"")}</div><div><div class="ls-namn">${esc(u.namn||"")}</div>${lista("Stöd mot kraven",u.stod)}${lista("Att stämma av",u.stam_av)}${lsKnappar(n,"namn")}${n.besked==="satsa"?`<label class="ls-kryss"><input type="checkbox" data-lkryss="tillsatt" data-lkort="${esc(n.kort)}"${n.tillsatt?" checked":""}> Tillsatt</label>`:""}</div></div>`;}
+function lsUpp(x){const u=x.underlag||{};const namn=x.namn||[];
+  const rad=[u.ort,u.omfattning,u.period,u.svarsdag?"Svar senast "+lsDag(u.svarsdag)+(u.svarstid?" kl "+u.svarstid:""):"",u.portal?u.portal+(u.annonsId?", annons "+u.annonsId:""):""].filter(Boolean);
+  const forslag=x.forslag?`<p class="ls-liten">Du har föreslagit ${esc(lsDag(x.forslag))}. Filip avgör, datumet ovan gäller tills vidare.</p>`:"";
+  const datum=lsDatumOppen===x.kort?`<form class="ls-datumform" data-ldform="${esc(x.kort)}"><label>Nytt datum<input type="date" name="d" required></label><label>Kommentar<input type="text" name="t" maxlength="300" placeholder="Valfritt"></label><button class="btn blue small" type="submit">Skicka förslaget till Filip</button><button class="btn light small" type="button" data-ldatum="">Avbryt</button></form>`:`<button type="button" class="ls-lank" data-ldatum="${esc(x.kort)}">Föreslå annat datum</button>`;
+  return`<div class="ls-upp"><div class="ls-titel">${esc(u.titel||"")}</div><div class="ls-rad">${rad.map(r=>`<span>${esc(r)}</span>`).join("")}</div>${forslag}${datum}${lsKnappar(x,"uppdrag")}${x.besked==="satsa"?(namn.length?`<div class="ls-namnlista">${namn.map(lsNamn).join("")}</div>`:`<p class="ls-liten">Inga namn finns på uppdraget än.</p>`):""}</div>`;}
+function lsNej(nej){if(!nej.length)return"";return`<section class="ls-ruta"><h3>Uppdrag du har hoppat över</h3>${nej.map(x=>`<div class="ls-upp"><div class="ls-titel">${esc(x.titel||"")}</div><div class="ls-rad">${[x.ort,x.svarsdag?"Svar senast "+lsDag(x.svarsdag):""].filter(Boolean).map(r=>`<span>${esc(r)}</span>`).join("")}</div><div class="ls-knappar"><button type="button" class="btn light small" data-lbesked="satsa" data-lkort="${esc(x.kort)}">Hämta tillbaka</button></div></div>`).join("")}</section>`;}
+function renderLista(d){
+  if(!lsLaddad){lsLaddad=true;lsLas();}
+  const upp=(lsData&&lsData.uppdrag)||[];
+  d.innerHTML=`<div class="ls"><h2>Dina uppdrag</h2><p class="ls-liten">Fem uppdrag i taget, det med närmast svarsdag först. Bara uppdrag med angiven svarsdag som inte har passerat. Ett tryck sparas direkt och går att ändra.</p>${lsFel?`<p class="ls-fel" role="alert">${esc(lsFel)}</p>`:""}${!lsData&&!lsFel?`<p class="ls-liten">Läser…</p>`:""}${lsData?`<section class="ls-ruta">${upp.length?upp.map(lsUpp).join(""):"<p>Inga uppdrag med svarsdag just nu.</p>"}</section>${lsNej(lsData.nej||[])}`:""}</div>`;}
+async function lsLas(){const RT=window.ATS_RUNTIME;if(!RT||!RT.rpc){lsFel="Listan går inte att läsa.";if(view==="lista")renderDetail();return;}
+  let r;try{r=await RT.rpc("satsa_lista",{});}catch(e){r={error:e};}
+  if(r.error){lsData=null;const m=String(r.error.message||r.error.code||"");lsFel=/does not exist|Could not find the function|PGRST202/i.test(m)?"Listan är inte införd i databasen än.":"Listan kunde inte läsas: "+m;}else{lsData=r.data;lsFel="";}
+  if(view==="lista")renderDetail();}
+async function lsAnrop(fn,args,vad){if(lsUpptagen)return;lsUpptagen=true;document.querySelectorAll(".ls button,.ls input").forEach(b=>b.disabled=true);let fel="";
+  try{const r=await window.ATS_RUNTIME.rpc(fn,args);
+    if(r.error){fel=String(r.error.message||r.error.code||"Det gick inte att spara.");await rapporteraFel(vad,r.error,args);}
+    else if(r.data&&r.data.nekad)fel=r.data.skal||"Trycket nekades.";
+    else if(r.data&&r.data.sparat===false)fel=r.data.skal||"Det gick inte att spara.";
+    else if(fn==="satsa_datumforslag"){lsDatumOppen=null;toast("Förslaget är skickat till Filip.");}
+  }catch(e){fel=String(e&&e.message||e);await rapporteraFel(vad,e,args);}
+  lsUpptagen=false;await lsLas();if(fel){lsFel=fel;toast(fel);if(view==="lista")renderDetail();}}
+document.addEventListener("click",e=>{const b=e.target.closest&&e.target.closest("[data-lbesked]");if(b&&!b.disabled){lsAnrop("satsa_besked",{p_kort:b.dataset.lkort,p_besked:b.dataset.lbesked},"listan: tryck");return;}
+  const dt=e.target.closest&&e.target.closest("[data-ldatum]");if(dt){lsDatumOppen=dt.dataset.ldatum||null;renderDetail();}});
+document.addEventListener("change",e=>{const c=e.target;if(!c||!c.dataset||!c.dataset.lkryss)return;lsAnrop("satsa_kryss",{p_kort:c.dataset.lkort,p_slag:c.dataset.lkryss,p_varde:c.checked},"listan: kryss");});
+document.addEventListener("submit",e=>{const f=e.target.closest&&e.target.closest("[data-ldform]");if(!f)return;e.preventDefault();lsAnrop("satsa_datumforslag",{p_kort:f.dataset.ldform,p_datum:f.elements.d.value,p_text:f.elements.t.value||null},"listan: datumförslag");});
+window.LISTAN_TEST={lsUpp,lsNamn,lsNej,lsKnappar,satt:d=>{lsData=d;lsLaddad=true;}};
 function render(){
   $("#main").classList.toggle("single",view!=="uppdrag");$("#roles").hidden=view!=="uppdrag";$("#mobile-pick").hidden=view!=="uppdrag";
   for(const b of document.querySelectorAll(".nav [data-view]"))b.setAttribute("aria-pressed",String(b.dataset.view===(view==="kandidat"?backView:view)));
@@ -1179,7 +1234,7 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   const w=user?await user.can("data.write"):null;canWrite=w!==false&&!!userId;
   assets=canWrite?await use("assets"):null;
   $("#who").textContent=userName?`Inloggad: ${userName}`:(isOwner?"Inloggad som ägare":"");
-  try{selected=localStorage.getItem("konsult.selected")||null;const v=localStorage.getItem("konsult.view");if(["uppdrag","konsulter","sok"].includes(v))view=v;}catch{}
+  try{selected=localStorage.getItem("konsult.selected")||null;const v=localStorage.getItem("konsult.view");if(["lista","uppdrag","konsulter","sok"].includes(v))view=v;}catch{}
   let got=0;const ALL=1|2|4;let deepDone="";const done=()=>{if((got&ALL)===ALL){setSync(`Synkad ${new Date().toLocaleTimeString("sv-SE",{timeZone:TZ,hour:"2-digit",minute:"2-digit"})}`);applyDeepLink();}};
   // Djuplänkar från Ping-budets mail: #uppdrag=<roleId> eller #kandidat=<roleId>__<candId>
   function applyDeepLink(){const mm=/^#(uppdrag|kandidat)=([A-Za-z0-9_\-]{1,160})$/.exec(location.hash||"");if(!mm||deepDone===location.hash)return;deepDone=location.hash;if(mm[1]==="kandidat"){if(matches.has(mm[2]))openMatch(mm[2]);else toast("Kandidaten finns inte i din vy.");}else{if(roles.has(mm[2]))openRole(mm[2]);else toast("Uppdraget finns inte i din vy.");}}
