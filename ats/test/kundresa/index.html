@@ -63,6 +63,8 @@ ol.steg{margin:0;padding-left:22px;display:grid;gap:8px}
 .var{display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:600}
 .prick{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--ink);margin-left:6px}.prick.nu{background:var(--ink)}.prick.vald{background:var(--ok);border-color:var(--ok)}
 .krav{list-style:none;margin:0;padding:0;display:grid;gap:6px}.krav li::before{content:'✓';display:inline-block;width:20px;font-weight:700;color:var(--ok)}
+.frivilligt summary{cursor:pointer;font-weight:600;padding:6px 0}.frivilligt[open] summary{margin-bottom:10px}
+.mark.tur{background:var(--ink);color:var(--bg)}
 .pagar{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
 .pagar::before{content:'';width:14px;height:14px;flex:none;border-radius:50%;border:2px solid var(--line);border-top-color:var(--ink);animation:snurr 1s linear infinite}
 @keyframes snurr{to{transform:rotate(360deg)}}
@@ -145,7 +147,7 @@ dialog::backdrop{background:rgba(10,16,30,.62)}
 'use strict';
 var ADR='https://bqzoyrsygkfxuvfbklac.supabase.co';
 var NYCKEL='sb_publishable_S85y21aHzodwXI_I-qrmhA_lc5CxxY5';
-var DEF={underlag_vikter:{annons:38,titel:37,referens:25},tider:{},bokningsbara_dagar_fram:21,farsk_kod_minuter:10,prov_brevlada_oppen:false,startbetalning_sek:490,namn_mot_kund:''};
+var DEF={underlag_vikter:{annons:38,titel:37,referens:25},tider:{},bokningsbara_dagar_fram:21,farsk_kod_minuter:10,prov_brevlada_oppen:false,startbetalning_sek:null,pris_bestamt:false,pris_text:'',andra_runda:'alltid',namn_mot_kund:''};
 var sb=null;
 try{sb=supabase.createClient(ADR,NYCKEL,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});}catch(e){sb=null;}
 var S={utk:{},cfg:DEF,mejl:null,lage:null,prof:null,best:null,vantande:null,idem:null,idemKey:'',rid:0,et:{},godkMsg:'',redId:null,besked:''};
@@ -472,8 +474,11 @@ function vyStart(){
   var skalBox=h('div',{class:'fel',role:'alert'});
   var btn=h('button',{class:'btn',type:'submit'},['Fortsätt']);
   var form=h('form',{class:'card big',novalidate:true},[
-    fM.wrap,fT.wrap,fF.wrap,fR.wrap,fA.wrap,fP.wrap,
-    h('p',{class:'sim'},['Profilen används bara som förebild. Personen kontaktas inte och visas inte för någon.']),
+    fM.wrap,fT.wrap,fF.wrap,fA.wrap,
+    h('details',{class:'frivilligt',open:(fR.inp.value||fP.inp.value)?true:null},[
+      h('summary',null,['Din titel och en förebild (frivilligt)']),
+      fR.wrap,fP.wrap,
+      h('p',{class:'sim'},['Förebilden används bara som exempel på vad du söker. Personen kontaktas inte och visas inte för någon.'])]),
     h('div',{class:'f'},[bar,lab]),
     h('label',{class:'chk',for:'s-bada'},[bada,'Notis på båda, mejl och sms']),
     h('div',{class:'f'},[andra,numBox]),
@@ -539,14 +544,17 @@ function vyStart(){
 /* ---------- beställning, status, profiler ---------- */
 function stat(b,utanKort){
   var m={
-    i_ko:['Din första sökning står i kö'+(b.koplats==null?'':', plats '+b.koplats),'Vi mejlar när det finns profiler att granska'],
+    i_ko:['Sökningen har startat'+(b.koplats==null?'':' och står i kö, plats '+b.koplats),'Vi mejlar när det finns profiler att granska'],
     soks:['Sökning pågår','Vi mejlar när det finns profiler att granska'],
-    urval_klart:['Du har profiler att granska','Nästa besked kommer när du har svarat'],
-    bokad:['Kandidaten har bekräftat en tid och väntar på godkännande','Du får ett mejl när mötet är bokat'],
+    urval_klart:['Du har profiler att granska','Säg Spara, Kanske eller Nej om varje profil'],
+    bokad:['Kandidaten har tackat ja','Vi bekräftar mötet och mejlar när det är bokat'],
     matchad:['Mötet är bokat','Inget mer behövs från dig just nu'],
     nytt_forsok:['Ett nytt försök pågår, utan ny startbetalning','Vi mejlar när det finns nya profiler'],
-    vantar_startbetalning:utanKort?['Vi väntar på din startbetalning','Sökningen startar när den är gjord']:['Vi väntar på din startbetalning','Så fort den är gjord kan vi gå vidare']
+    vantar_startbetalning:utanKort?['Vi väntar på din startbetalning','Sedan får du tre exempelprofiler, och sökningen startar när du har svarat på dem']:['Vi väntar på din startbetalning','Så fort den är gjord kan vi gå vidare']
   }[b.status]||['Din beställning är registrerad','Vi hör av oss'];
+  /* Profiler finns: statusraden säger vad som väntar, och på vem. */
+  var tur=b.status==='urval_klart'?dinTur():null;
+  if(tur)m=tur;
   setStatus(m[0],m[1]);
 }
 function betald(){return !!(S.prof&&S.prof.bestallning&&S.prof.bestallning.start_betald);}
@@ -659,25 +667,48 @@ function uppgifter(p){
   function v(x){return x&&String(x).trim()?x:'inte uppgivet';}
   return h('dl',null,[h('dt',null,['Löneanspråk']),h('dd',null,[v(p.loneansprak)]),h('dt',null,['Tillgänglighet']),h('dd',null,[v(p.tillganglighet)]),h('dt',null,['Parallella processer']),h('dd',null,[v(p.parallella_processer)])]);
 }
+/* Kunden ser två lägen för en bokning: Väntar på kandidaten och Mötet är bokat. Det interna godkännandet visas inte.
+   Har kandidaten tackat ja säger kortet det, men Mötet är bokat står först när bokningen är bekräftad. */
 function bokLage(b){
   if(b.match==='godkand')return 'Mötet är bokat';
-  if(b.match==='vantar_godkannare')return 'Väntar på godkännande';
-  if(b.match==='nekad')return 'Tiden godkändes inte';
-  if(b.status==='bekraftad')return 'Kandidaten har bekräftat tiden';
-  return 'Väntar på att kandidaten bekräftar';
+  if(b.match==='nekad'||b.status==='avbokad')return 'Tiden blev inte av. Vi hör av oss';
+  if(b.status==='bekraftad'||b.match==='vantar_godkannare')return 'Kandidaten har tackat ja. Vi bekräftar mötet';
+  return 'Väntar på kandidaten';
+}
+/* Profiler där kunden måste göra något. */
+function kundTur(p){
+  if(p.ar_exempel||p.bokning||!p.svar||p.svar.val!=='spara')return null;
+  return betald()?'Din tur: lås upp och boka':'Din tur: gör startbetalningen';
+}
+function dinTur(){
+  var pr=(S.prof&&S.prof.profiler)||[];
+  var t=pr.filter(function(p){return kundTur(p);});
+  if(t.length)return betald()?['Din tur','Välj Lås upp och boka på profilen du har sparat']:['Din tur','Gör startbetalningen för att låsa upp profilen du har sparat'];
+  var v=pr.filter(function(p){return p.bokning&&p.bokning.match!=='godkand'&&p.bokning.match!=='nekad'&&p.bokning.status!=='avbokad';});
+  if(v.length)return ['Väntar på kandidaten','Du behöver inte göra något just nu. Sidan uppdateras själv'];
+  return null;
 }
 function bokRad(p){
   var b=p.bokning;
   return h('div',{class:'note'},[h('b',null,[(S.et[p.id]||'Profil')+', '+String(p.titel||'')]),h('p',null,[bokLage(b)+'. '+fmtDag(b.dag)+' kl '+fmtTid(b.tid)+'.'])]);
 }
+/* Det enda beskedet om vad som händer efter exemplen. Det följer beställningens läge, så att det aldrig säger mer än systemet har gjort. */
+function sokRubrik(b){
+  if(b&&b.status==='soks')return 'Sökningen pågår';
+  if(b&&b.status==='nytt_forsok')return 'Vi söker igen';
+  return 'Sökningen har startat';
+}
 function sokningStartar(betaldRedan){
+  var b=(S.prof&&S.prof.bestallning)||S.best||{};
+  var plats=(S.best&&S.best.koplats!=null)?' Din sökning står i kö, plats '+S.best.koplats+'.':'';
   return h('div',{class:'stack',role:'status'},[
-    h('p',null,['Tack för dina svar. Nu startar vi sökningen efter personer som liknar det du har sparat.']),
+    h('p',null,['Tack för dina svar. Vi söker nu efter personer som liknar det du har sparat.'+plats]),
+    h('h2',null,['Så går det till härifrån']),
     h('ol',{class:'steg'},[
       h('li',null,['Vi letar och läser profilerna själva. Inga verkliga personer visas förrän vi har hittat några som passar.']),
-      h('li',null,['Du får ett mejl när det finns profiler att titta på. Logga in här och säg Spara, Kanske eller Nej om varje profil, på samma sätt som med exemplen.']),
-      h('li',null,[betaldRedan?'Vill du träffa någon bokar du en tid här. Startbetalningen är redan gjord.':'Vill du träffa någon gör du startbetalningen och bokar en tid här.']),
-      h('li',null,['Kandidaten bekräftar tiden. När vi har gått igenom matchningen står det Mötet är bokat.'])
+      h('li',null,['Du får ett mejl när det finns profiler att titta på. Säg Spara, Kanske eller Nej om varje profil, som med exemplen.']),
+      h('li',null,[betaldRedan?'Vill du träffa någon väljer du Spara och sedan Lås upp och boka. Startbetalningen är redan gjord.':'Vill du träffa någon väljer du Spara. Då gör du startbetalningen och väljer Lås upp och boka.']),
+      h('li',null,['Kandidaten bekräftar tiden. Då står det Mötet är bokat.'])
     ]),
     h('p',{class:'sim'},['Du behöver inte göra något just nu.'])
   ]);
@@ -721,6 +752,12 @@ function grupp(p){
   return (S.prof.profiler||[]).filter(function(x){return x.ar_exempel===p.ar_exempel&&x.forsok_nr===p.forsok_nr&&x.runda===p.runda;});
 }
 function valt(x){return x.svar?x.svar.val:(S.utk[x.id]&&S.utk[x.id].val)||null;}
+function paBegaran(g){return (S.cfg.andra_runda||'alltid')==='pa_begaran'&&g.length>0&&g[0].ar_exempel&&g[0].runda===0&&!(S.prof&&S.prof.bestallning&&S.prof.bestallning.fler_exempel);}
+function skickaKnappar(g,suffix){
+  if(!paBegaran(g))return [h('button',{class:'btn',type:'button',id:'skicka'+suffix,disabled:D.busy,onclick:function(){skicka(g);}},['Skicka svaren'])];
+  return [h('button',{class:'btn',type:'button',id:'skicka'+suffix,disabled:D.busy,onclick:function(){skicka(g);}},['Skicka och starta sökningen']),
+    h('button',{class:'btn2',type:'button',id:'fler'+suffix,disabled:D.busy,onclick:function(){skicka(g,true);}},['Skicka och visa tre exempel till'])];
+}
 function attSkicka(g){return g.length>0&&g.every(function(x){return !!valt(x);})&&g.some(function(x){return !x.svar;});}
 function kortEl(p,etikett){
   S.et[p.id]=etikett;
@@ -732,6 +769,7 @@ function kortEl(p,etikett){
     p.svar?h('span',{class:'mark'},['Ditt svar: '+(VAL[p.svar.val]||'')]):null,
     utk?h('span',{class:'mark'},['Valt: '+(VAL[utk.val]||'')+'. Inte skickat.']):null,
     p.bokning?h('span',{class:'mark'},[bokLage(p.bokning)]):null,
+    kundTur(p)?h('span',{class:'mark tur'},[kundTur(p)]):null,
     fakta(p)]);
 }
 function byggGranska(keep,p0){
@@ -753,7 +791,7 @@ function byggGranska(keep,p0){
     /* Alla kort i sista rundan är besvarade och ingen ny runda har kommit: sökningen startar. */
     var klar=main.length>0&&main.every(function(p){return !!p.svar;});
     if(klar){
-      rubrik='Sökningen startar';
+      rubrik=sokRubrik(S.prof&&S.prof.bestallning);
       ingress=null;
       klarText=sokningStartar(S.prof&&S.prof.bestallning&&S.prof.bestallning.start_betald);
       tidigare=tidigare.concat(main);main=[];
@@ -779,9 +817,9 @@ function byggGranska(keep,p0){
     h('h1',null,[rubrik]),ingress?h('p',null,[ingress]):null,
     klarText,
     klarText?null:(main.length?rad:h('p',{class:'sim'},['Inga profiler att visa ännu.'])),
-    (ex&&attSkicka(main))?h('button',{class:'btn',type:'button',id:'skicka-sida',onclick:function(){skicka(main);}},['Skicka svaren']):
+    (ex&&attSkicka(main))?h('div',{class:'row'},skickaKnappar(main,'-sida')):
       (main.length?h('button',{class:'btn',type:'button',onclick:function(){oppna((main.filter(function(x){return !valt(x);})[0]||main[0]).id);}},[ex?(main.some(valt)?'Fortsätt med nästa exempel':'Titta på första exemplet'):'Öppna första profilen']):null),
-    (ex&&main.length&&!klarText)?h('p',{class:'sim'},[main.filter(valt).length+' av '+main.length+' valda. Du kan ändra tills du trycker Skicka svaren.']):null,
+    (ex&&main.length&&!klarText)?h('p',{class:'sim'},[main.filter(valt).length+' av '+main.length+' valda. Du kan ändra tills du skickar.']):null,
     kravEl(best)
   ]);
   var bok=pr.filter(function(p){return p.bokning;});
@@ -845,7 +883,8 @@ async function bevaka(){
   var riktigaNu=(r.data.profiler||[]).filter(function(p){return !p.ar_exempel;}).length;
   var bokat=(r.data.profiler||[]).some(function(p){return p.bokning&&p.bokning.match==='godkand';})&&!((forr.profiler)||[]).some(function(p){return p.bokning&&p.bokning.match==='godkand';});
   var bekr=(r.data.profiler||[]).some(function(p){return p.bokning&&p.bokning.status==='bekraftad';})&&!((forr.profiler)||[]).some(function(p){return p.bokning&&p.bokning.status==='bekraftad';});
-  S.besked=riktigaNu>riktigaForr?'Nu finns det profiler att titta på.':bokat?'Mötet är bokat.':bekr?'Kandidaten har bekräftat tiden.':'';
+  S.besked=riktigaNu>riktigaForr?'Nu finns det profiler att titta på.':bokat?'Mötet är bokat.':bekr?'Kandidaten har tackat ja. Vi bekräftar mötet.':'';
+  if((bokat||bekr)&&typeof D!=='undefined'&&D&&!D.err)D.msg=bokat?'Mötet är bokat.':'Kandidaten har tackat ja. Vi bekräftar mötet.';
   await omlad();
   if(S.besked&&!(d&&d.open))window.scrollTo(0,0);
 }
@@ -862,13 +901,16 @@ async function omlad(){
 }
 
 /* ---------- startbetalning ---------- */
+/* Priset visas först när det är bestämt. Tills dess står bara ordet startbetalning och texten ur inställningen pris_text. */
+function prisBestamt(){return S.cfg.pris_bestamt===true&&Number(S.cfg.startbetalning_sek)>0;}
+function prisKr(){return Math.round(Number(S.cfg.startbetalning_sek))+' kr';}
+function prisRubrik(){return prisBestamt()?'Startbetalning '+prisKr():'Startbetalning';}
 function betalPanel(best,onDone,onBack){
-  var sek=S.cfg.startbetalning_sek;
   var vm=h('input',{type:'text',id:'vm',autocomplete:'organization',value:(S.lage&&S.lage.kund&&S.lage.kund.varumarke)||'','aria-describedby':'vm-e'});
   var vme=h('p',{class:'fel',id:'vm-e',role:'alert'});
   var rj=h('input',{type:'radio',name:'fa',value:'ja'}),rn=h('input',{type:'radio',name:'fa',value:'nej'});
   var re=h('p',{class:'fel',role:'alert'}),er=h('p',{class:'fel',role:'alert'});
-  var btn=h('button',{class:'btn',type:'submit'},['Betala '+sek+' kr']);
+  var btn=h('button',{class:'btn',type:'submit'},[prisBestamt()?'Betala '+prisKr():'Gå vidare']);
   return h('form',{class:'card big',novalidate:true,onsubmit:async function(ev){
     ev.preventDefault();vm.removeAttribute('aria-invalid');vme.textContent='';re.textContent='';er.textContent='';
     var v=vm.value.trim(),bad=false;
@@ -881,7 +923,8 @@ function betalPanel(best,onDone,onBack){
     if(r.error){er.textContent=fel(r.error);return;}
     onDone(r.data);
   }},[
-    h('h2',null,['Startbetalning '+sek+' kr']),
+    h('h2',null,[prisRubrik()]),
+    h('p',{class:'sim'},[String(S.cfg.pris_text||'')||(prisBestamt()?'Betalas en gång. Sedan kan du låsa upp profiler och boka möten i den här beställningen.':'Priset bestäms senare. Sedan kan du låsa upp profiler och boka möten i den här beställningen.')]),
     h('div',{class:'f'},[h('label',{for:'vm'},['Ditt varumärke']),vm,vme]),
     h('fieldset',null,[h('legend',null,['Får vi använda företaget du representerar i kommunikationen?']),
       h('div',{class:'rad'},[h('label',null,[rj,'Ja']),h('label',null,[rn,'Nej'])]),re]),
@@ -899,7 +942,7 @@ async function vyBetala(best,rid){
   if(!r.error&&r.data)S.prof=r.data;
   stat(best,utan);
   visa(h('div',{class:'stack'},[uppdragEl(best),h('h1',null,['Startbetalning behövs']),
-    h('p',null,[utan?'Startbetalningen behövs innan sökningen startar. När den är gjord startar vi sökningen och du får tre exempelprofiler.':'Du behöver göra startbetalningen för att vi ska kunna gå vidare med dina profiler.']),
+    h('p',null,[utan?'Det här är en ny beställning från samma företag, så startbetalningen görs först. Sedan får du tre exempelprofiler, och sökningen startar när du har svarat på dem.':'Du behöver göra startbetalningen för att vi ska kunna gå vidare med dina profiler.']),
     betalPanel(best,function(){route();})]));
 }
 
@@ -928,11 +971,15 @@ function valj(p,v){
   var g=grupp(p),nasta=g.filter(function(x){return !valt(x)&&x.ordning>p.ordning;})[0]||g.filter(function(x){return !valt(x);})[0];
   byggGranska(true);
   if(nasta){ga(nasta.id,'Valt på '+(S.et[p.id]||'exemplet').toLowerCase()+': '+VAL[v]+'. Här är nästa.');return;}
-  D.msg='Valt: '+VAL[v]+'. Alla är valda. Tryck Skicka svaren när du är nöjd.';D.err=false;fyllDialog();
+  D.msg='Valt: '+VAL[v]+'. Alla är valda. Du kan ändra tills du skickar.';D.err=false;fyllDialog();
 }
-async function skicka(g){
+async function skicka(g,fler){
   if(D.busy)return;
   D.busy=true;D.msg='Skickar';D.err=false;if($('#pd')&&$('#pd').open)fyllDialog();
+  if(fler){
+    var rf=await k(function(){return sb.rpc('joy_fler_exempel',{p_bestallning:S.best.id});});
+    if(rf.error){D.busy=false;D.msg=fel(rf.error);D.err=true;if($('#pd')&&$('#pd').open)fyllDialog();return;}
+  }
   var sist=null,kvar=g.filter(function(x){return !x.svar;}).sort(function(a,b){return a.ordning-b.ordning;});
   for(var i=0;i<kvar.length;i++){
     var x=kvar[i],u=S.utk[x.id];
@@ -976,14 +1023,14 @@ function hoger(p){
   var kan=!p.ar_exempel&&!p.bokning&&cur==='spara'&&betald();
   return h('div',{class:'card big'},[
     h('h3',null,['Vad tycker du?']),
-    h('p',{class:'sim'},['Skriv gärna en kommentar först. Tryck sedan på ditt val.']),
+    h('p',{class:'sim'},['Välj Spara, Kanske eller Nej. En kommentar är frivillig.']),
     h('div',{class:'f'},[h('label',{for:'kom'},['Kommentar ',h('span',{class:'hint'},['(frivilligt)'])]),ta]),
     h('div',{class:'row',role:'group','aria-label':'Ditt val'},knappar),
     h('p',{class:D.err?'fel':'ok',role:'status'},[D.msg]),
-    p.ar_exempel?h('p',{class:'sim'},[last?'Svaren är skickade och går inte att ändra.':'På exempel kostar inga val något. Du kan ändra ditt val tills du trycker Skicka svaren.']):null,
-    (p.ar_exempel&&attSkicka(gr))?h('button',{class:'btn',type:'button',id:'skicka',disabled:D.busy,onclick:function(){skicka(gr);}},['Skicka svaren']):null,
+    p.ar_exempel?h('p',{class:'sim'},[last?'Svaren är skickade och går inte att ändra.':'På exempel kostar inga val något. Du kan ändra ditt val tills du skickar.']):null,
+    (p.ar_exempel&&attSkicka(gr))?h('div',{class:'row'},skickaKnappar(gr,'')):null,
     p.bokning?bokRad(p):null,
-    kan?h('button',{class:'btn',type:'button',onclick:function(){D.mode='boka';D.dag=null;D.tider=null;D.msg='';fyllDialog();}},['Boka möte']):null
+    kan?h('button',{class:'btn',type:'button',onclick:function(){D.mode='boka';D.dag=null;D.tider=null;D.msg='';fyllDialog();}},['Lås upp och boka']):null
   ]);
 }
 async function svara(p,val){
@@ -1074,7 +1121,7 @@ async function boka(p,t){
     D.err=true;fyllDialog();return;
   }
   D.mode='val';D.err=false;
-  D.msg='Tiden väntar på kandidatens bekräftelse. '+fmtDag(d.dag)+' kl '+fmtTid(d.tid)+'.';
+  D.msg='Tiden är vald. Väntar på kandidaten. '+fmtDag(d.dag)+' kl '+fmtTid(d.tid)+'.';
   await omlad();
 }
 
