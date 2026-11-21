@@ -1,4 +1,5 @@
-<!doctype html><html><head><meta charset=utf8><meta name="robots" content="noindex,nofollow"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body> <!-- supabase -->
+<!doctype html><html><head><meta charset=utf8><meta name="robots" content="noindex,nofollow"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.shortlist{margin:16px 0;padding:16px;border:1px solid var(--line,#ddd);border-radius:12px}.shortlist h2,.process-heading{font-size:18px}.shortlist p{font-size:14px;margin:8px 0}.shortlist-rows{display:flex;flex-wrap:wrap;gap:8px}.shortlist-rows button{white-space:normal;text-align:left;max-width:100%}.process-heading{margin:16px 0 8px}
+</style></head><body> <!-- supabase -->
 <title>ATS Tomas</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -897,6 +898,24 @@ function cardHTML(m,idx,n){
     ${TABS.map(([k])=>`<div class="fpanel" role="tabpanel" id="panel-${k}" aria-labelledby="tab-${k}" tabindex="0" ${tab===k?"":"hidden"}>${panels[k]}</div>`).join("")}
   </article>`;
 }
+// ===== Shortlist: existing process facts, not a new matching score.
+function shortlistReason(m){
+  const matchReply=replyOf(m,null);
+  const orderReply=replyOf({},findOrder(m));
+  const hasNegativeReply=matchReply?.tolkning==="negativ"||orderReply?.tolkning==="negativ";
+  if(!roles.has(m.roleId)||!cands.has(m.candId)||m.dismissed||stageOf(m)==="avslutad"||m.result==="Tillsatt"||m.level==="DROP"||bedOf(m)==="nej"||hasStop(cands.get(m.candId),m)||hasNegativeReply)return null;
+  if(procOf(m)==="dialog")return{order:0,label:"I dialog"};
+  if(procOf(m)==="inskickad")return{order:1,label:"Hos kund"};
+  if(bedOf(m)==="ja")return{order:2,label:"Du markerade Intressant"};
+  return null;
+}
+function shortlistFor(roleId){
+  return linksForRole(roleId).map(m=>({m,reason:shortlistReason(m)})).filter(x=>x.reason).sort((a,b)=>a.reason.order-b.reason.order||((Number.isFinite(b.m.score)?b.m.score:-1)-(Number.isFinite(a.m.score)?a.m.score:-1))||String(a.m.candName||a.m.id).localeCompare(String(b.m.candName||b.m.id),"sv"));
+}
+function shortlistHTML(r){
+  const rows=shortlistFor(r.id);
+  return `<section class="shortlist" aria-label="Shortlist"><h2>Shortlist · ${rows.length}</h2><p>Dialog först. Urvalet bygger på registrerad process och dina Intressant-val.</p>${rows.length?`<div class="shortlist-rows">${rows.map(({m,reason})=>`<button type="button" class="btn" data-openm="${esc(m.id)}">${esc(cands.get(m.candId)?.name||m.candName||"Namnlös")} · ${esc(reason.label)}</button>`).join("")}</div>`:`<p>Ingen kandidat i shortlist ännu. Alla kandidater finns i processstegen nedan.</p>`}</section><h2 class="process-heading">Alla kandidater och process</h2>`;
+}
 function renderUppdrag(d){
   const r=roles.get(selected);
   if(!r){d.innerHTML=`<div class="empty">${roles.size?"Välj ett uppdrag i listan.":"Laddar uppdrag …"}</div>`;return;}
@@ -904,7 +923,7 @@ function renderUppdrag(d){
   const idx=list.findIndex(m=>m.id===cur),m=idx>=0?list[idx]:null;
   const keep=d.scrollTop,same=d.dataset.cur===String(cur);
   const step=procPick[r.id];
-  d.innerHTML=`${roleHeadHTML(r)}${procHTML(r)}
+  d.innerHTML=`${roleHeadHTML(r)}${shortlistHTML(r)}${procHTML(r)}
     <div class="focus"><aside class="flist" aria-label="Kandidater i steget"><div class="flist-head"><span>${esc((PSTEPS.find(s=>s[0]===step)||[])[1]||"")} · ${list.length}</span>${(()=>{const nn=linksForRole(r.id).filter(m=>procOf(m)===step&&isNej(m)).length;return(nn?`<button class="tbtn" type="button" data-shownej="${esc(r.id)}" style="font-size:11px;padding:2px 8px">${showNej[r.id]?"Dölj inte aktuella":"Visa inte aktuella"} (${nn})</button>`:"")+(canWrite&&step==="kontakt"&&!ARCHIVED.has(r.status)?`<button class="btn small" type="button" data-addcand="${esc(r.id)}" style="font-size:11px;padding:2px 10px" title="Lägg till en egen kandidat på uppdraget">Lägg till</button>`:"");})()}</div>${list.map((x,i)=>{const[s,k]=contactSub(x);return`<button class="frow ${isNej(x)?"nejrad":""} ${dlg30(cands.get(x.candId))?"dlg":""}" ${dlg30(cands.get(x.candId))?`title="Kontakt senaste 30 dagarna"`:""} type="button" data-pick="${esc(x.id)}" aria-current="${x.id===cur}"><span class="fi">${i+1}</span><span class="fn">${t(cands.get(x.candId)?.name||x.candName||"")}</span><span class="fs">${x.score!=null?`<span class="score ${scoreClass(x.score)}" title="${esc(scoreTitle(x))}">${x.score} %</span>`:""}</span><span class="fst ${k}">${t(s)}</span><span class="fj">${jnHTML(x,false)}</span></button>`;}).join("")||`<div class="empty" style="padding:16px">Inga kandidater i steget.</div>`}</aside>
     <div class="mobile-cand"><select id="mobile-cand" aria-label="Välj kandidat">${list.map((x,i)=>`<option value="${esc(x.id)}" ${x.id===cur?"selected":""}>${i+1}. ${t(cands.get(x.candId)?.name||x.candName||"")}${x.score!=null?` · ${x.score} %`:""}</option>`).join("")||`<option value="">Inga kandidater</option>`}</select></div>
     <section class="fprof" id="fprof">${m?cardHTML(m,idx,list.length):`<div class="empty">Inga kandidater i det här steget.</div>`}</section></div>`;
