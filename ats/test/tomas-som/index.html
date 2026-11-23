@@ -376,7 +376,11 @@ let svarP=new Map();const replyErr={};   // partnerns svar till kandidater som s
 // ===== Deadline = sista inskickningsdag, i svensk tid. Partnerns egen ändring (andringar) gäller före den synkade tills synken hämtat den.
 const MON={januari:1,februari:2,mars:3,april:4,maj:5,juni:6,juli:7,augusti:8,september:9,oktober:10,november:11,december:12};
 const pad=n=>String(n).padStart(2,"0");
-function ymdOf(s){s=String(s||"").toLowerCase();let m=s.match(/(\d{1,2})\s+([a-zåäö]+)\s+(\d{4})/);if(m&&MON[m[2]])return`${m[3]}-${pad(MON[m[2]])}-${pad(+m[1])}`;m=s.match(/(\d{4})-(\d{2})-(\d{2})/);return m?`${m[1]}-${m[2]}-${m[3]}`:null;}
+const monOf=t=>{const k=t&&t.length>=3?Object.keys(MON).find(n=>n.startsWith(t)):null;return k?MON[k]:0;};
+function ymdOf(s){s=String(s||"").toLowerCase();let m=s.match(/(\d{1,2})\s+([a-zåäö]+)\.?\s+(\d{4})/);if(m&&monOf(m[2]))return`${m[3]}-${pad(monOf(m[2]))}-${pad(+m[1])}`;m=s.match(/(\d{4})-(\d{2})-(\d{2})/);if(m)return`${m[1]}-${m[2]}-${m[3]}`;return ymdUtanAr(s);}
+// Datum utan årtal ("27 nov", "6 dec"): årtalet väljs så att månaden hamnar mellan 7 månader bakåt och 4 månader framåt räknat från innevarande månad i svensk tid (Filip 23 nov 11.48).
+function ymdUtanAr(s){const m=s.match(/(?:^|[^\d])(\d{1,2})\s+([a-zåäö]{3,})\.?(?![a-zåäö])(?!\s*\d)/);if(!m)return null;const d=+m[1],mo=monOf(m[2]);if(!mo||d<1||d>31)return null;const[ty,tm]=todayYmd().split("-").map(Number);
+  for(const y of[ty-1,ty,ty+1]){const diff=(y*12+mo)-(ty*12+tm);if(diff>=-7&&diff<=4)return`${y}-${pad(mo)}-${pad(d)}`;}return null;}
 function effDeadline(r){const a=andr.get(r.id);if(a&&a.deadline&&(a.synkad===false||(a.deadlineSattAt||"")>(r.deadlineSattAt||"")))return{text:a.deadline,ymd:ymdOf(a.deadline),egen:true,at:a.deadlineSattAt};return{text:r.deadline||"",ymd:ymdOf(r.deadline),egen:false};}
 const todayYmd=()=>new Intl.DateTimeFormat("sv-SE",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const isPassed=r=>{const y=effDeadline(r).ymd;return !!y&&y<todayYmd();};
