@@ -404,6 +404,9 @@ const kpv=(r,a,f)=>{const ra=r.kontaktSattAt||"",aa=a.kontaktSattAt||"";return S
 function refKey(r){const m=/^([A-Za-zÅÄÖåäö]+)\s*0*(\d+)(.*)$/.exec(String(r.ref||"").trim());return m?[0,m[1].toUpperCase(),+m[2],m[3]]:[1,"",Infinity,""];}
 function refCmp(a,b){const x=refKey(a),y=refKey(b);return(x[0]-y[0])||x[1].localeCompare(y[1])||(x[2]-y[2])||x[3].localeCompare(y[3])||(a.title||"").localeCompare(b.title||"","sv");}
 function deadlineSort(a,b){const x=effDeadline(a).ymd||a.deadlineAntagen||"9999",y=effDeadline(b).ymd||b.deadlineAntagen||"9999";return x.localeCompare(y)||refCmp(a,b);}
+// Uppdragslistan börjar med det som går att arbeta med: passerad sista dag, också antagen, läggs sist (Filip 23 nov 10.30). Bara ordningen ändras.
+const sistaDagPasserad=r=>isPassed(r)||(!effDeadline(r).ymd&&/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")&&r.deadlineAntagen<todayYmd());
+const listSort=(a,b)=>(sistaDagPasserad(a)-sistaDagPasserad(b))||deadlineSort(a,b);
 
 // ===== Process, samma stegindelning som huvudregistret. Stadier ändras inte här.
 const stageOf=m=>m.stage||"matchad";
@@ -659,7 +662,7 @@ function visibleRoles(){
   return[...roles.values()].filter(r=>{
     if(!showArch&&hiddenRole(r))return false;
     if(q){const hay=[r.title,r.ref,r.location].join(" ").toLowerCase();const ch=linksForRole(r.id).some(m=>(cands.get(m.candId)?.name||m.candName||"").toLowerCase().includes(q));if(!hay.includes(q)&&!ch)return false;}
-    return true;}).sort(deadlineSort);
+    return true;}).sort(listSort);
 }
 // Att göra nu för partnern (GPT-granskning via Filip 9 nov 15.46, punkt 3): kandidater att ta ställning till, nya svar, uppdrag nära deadline.
 function todoHTML(){
