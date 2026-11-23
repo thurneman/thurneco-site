@@ -67,6 +67,7 @@ a{color:var(--blue-4)}
 .role{display:grid;gap:4px;width:100%;text-align:left;background:none;border:0;border-left:3px solid transparent;padding:11px 14px 11px 13px;cursor:pointer;color:var(--fg)}
 .role:hover{background:var(--surface-2)}
 .role[aria-current="true"]{background:var(--blue-soft);border-left-color:var(--yellow)}
+.role.nedtonad{opacity:.55}.role.nedtonad[aria-current="true"]{opacity:1}
 .role .t{font-size:15px;line-height:1.35;font-weight:500}
 .rref{font-weight:600;color:var(--blue-4);margin-right:7px;font-size:13px;white-space:nowrap}
 .role .m{font-size:13px;color:var(--muted)}
@@ -411,6 +412,16 @@ function deadlineSort(a,b){const x=effDeadline(a).ymd||a.deadlineAntagen||"9999"
 // Uppdragslistan börjar med det som går att arbeta med: passerad sista dag, också antagen, läggs sist (Filip 23 nov 10.30). Bara ordningen ändras.
 const sistaDagPasserad=r=>isPassed(r)||(!effDeadline(r).ymd&&/^\d{4}-\d{2}-\d{2}$/.test(r.deadlineAntagen||"")&&r.deadlineAntagen<todayYmd());
 const listSort=(a,b)=>(sistaDagPasserad(a)-sistaDagPasserad(b))||deadlineSort(a,b);
+// Grupper i uppdragslistan (Filip 23 nov 12.20). Bara läge, kandidater och sista dag styr, aldrig lön eller pris.
+// 1 något att agera på (positivt svar, svar med fråga, intresserad kandidat eller inskickad), 2 kandidater eller matchningar i vyn, flest dagar kvar först,
+// 3 god tid men inga kandidater, 4 kort tid och inga kandidater (nedtonade), 5 passerad sista dag.
+const KORT_ARBDAGAR=2; // kort tid: färre än 2 arbetsdagar kvar efter i dag
+function arbDagarKvar(y){if(!y)return null;const t=todayYmd();if(y<t)return -1;let n=0;const d=new Date(t+"T12:00:00Z"),e=new Date(y+"T12:00:00Z");while(d<e){d.setUTCDate(d.getUTCDate()+1);const w=d.getUTCDay();if(w&&w<6)n++;}return n;}
+const aktivaMatch=r=>linksForRole(r.id).filter(m=>!m.dismissed&&stageOf(m)!=="avslutad");
+function rollGrupp(r){const c=roleState(r).cnt;if(c.pos||c.fraga||c.dialog||c.inskickad)return 1;if(sistaDagPasserad(r))return 5;if(aktivaMatch(r).length)return 2;
+  const ak=arbDagarKvar(effDeadline(r).ymd);return ak!=null&&ak<KORT_ARBDAGAR?4:3;}
+function gruppSortera(list){const g=new Map(list.map(r=>[r.id,rollGrupp(r)]));const dag=r=>{const y=effDeadline(r).ymd||r.deadlineAntagen||"";return y;};
+  return list.sort((a,b)=>{const x=g.get(a.id),y=g.get(b.id);if(x!==y)return x-y;if(x===2||x===3){const da=dag(a),db=dag(b);if(da!==db)return !da?1:!db?-1:db.localeCompare(da);return refCmp(a,b);}return deadlineSort(a,b);});}
 
 // ===== Process, samma stegindelning som huvudregistret. Stadier ändras inte här.
 const stageOf=m=>m.stage||"matchad";
@@ -663,10 +674,10 @@ function scoreTitle(m){const arr=v=>Array.isArray(v)?v:(v?[v]:[]);const L=[];if(
 const scoreClass=s=>s==null?"":s>=80?"hi":s>=60?"mid":"";
 function visibleRoles(){
   const q=query.trim().toLowerCase();
-  return[...roles.values()].filter(r=>{
+  return gruppSortera([...roles.values()].filter(r=>{
     if(!showArch&&hiddenRole(r))return false;
     if(q){const hay=[r.title,r.ref,r.location].join(" ").toLowerCase();const ch=linksForRole(r.id).some(m=>(cands.get(m.candId)?.name||m.candName||"").toLowerCase().includes(q));if(!hay.includes(q)&&!ch)return false;}
-    return true;}).sort(listSort);
+    return true;}));
 }
 // Att göra nu för partnern (GPT-granskning via Filip 9 nov 15.46, punkt 3): kandidater att ta ställning till, nya svar, uppdrag nära deadline.
 function todoHTML(){
@@ -676,7 +687,7 @@ function todoHTML(){
     const open=st.kont.filter(m=>!bedOf(m)&&!isNej(m)&&!findOrder(m)).length;
     if(open)items.push({k:"bedom",txt:`${open} att ta ställning till`,sub:`${r.ref||""} ${r.title}`,role:r.id,step:"kontakt",ord:1});
     for(const m of linksForRole(r.id)){const rp=replyOf(m,findOrder(m));if(rp&&rp.tolkning!=="negativ"&&Date.parse(rp.at||0)>lim)items.push({k:"svar",txt:`Svar ${rp.tolkning==="positiv"?"positivt":rp.tolkning==="fraga"?"med fråga":""}: ${cands.get(m.candId)?.name||m.candName||""}`,sub:`${r.ref||""} ${r.title}`,match:m.id,ord:0});}
-    const d=daysLeft(effDeadline(r).ymd);if(d!=null&&d>=0&&d<=3)items.push({k:"dl",txt:d===0?"Sista inskickningsdag i dag":d===1?"Sista inskickningsdag i morgon":`${d} dagar till sista inskickningsdag`,sub:`${r.ref||""} ${r.title}`,role:r.id,ord:d===0?0:2});
+    const d=daysLeft(effDeadline(r).ymd);if(d!=null&&d>=0&&d<=3&&aktivaMatch(r).length)items.push({k:"dl",txt:d===0?"Sista inskickningsdag i dag":d===1?"Sista inskickningsdag i morgon":`${d} dagar till sista inskickningsdag`,sub:`${r.ref||""} ${r.title}`,role:r.id,ord:d===0?0:2});
   }
   items.sort((a,b)=>a.ord-b.ord);
   return items;
@@ -687,7 +698,7 @@ function renderRoles(){
   const hidden=[...roles.values()].filter(hiddenRole).length;
   $("#arch-note").textContent=showArch?"(visas)":`(${hidden} dolda)`;
   $("#roles-list").innerHTML=list.length?`<div class="group-label">Uppdrag · ${list.length}</div>`+list.map(r=>{const st=roleState(r);
-    return`<button class="role" type="button" data-id="${esc(r.id)}" aria-current="${r.id===selected}"><span class="t">${r.ref?`<span class="rref">${t(r.ref)}</span>`:""}${t(r.title)}</span>${r.location?`<span class="m">${t(r.location)}</span>`:""}<span class="c">${daysHTML(r)}${ARCHIVED.has(r.status)?`<span class="pill">${esc(STATUS_LABEL[r.status]||r.status)}</span>`:""}${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:""}</span></button>`;}).join(""):`<div class="empty">${roles.size?"Inga uppdrag matchar sökningen eller filtret.":"Inga uppdrag delade än."}</div>`;
+    return`<button class="role${rollGrupp(r)===4?" nedtonad":""}" type="button" data-id="${esc(r.id)}" aria-current="${r.id===selected}"><span class="t">${r.ref?`<span class="rref">${t(r.ref)}</span>`:""}${t(r.title)}</span>${r.location?`<span class="m">${t(r.location)}</span>`:""}<span class="c">${daysHTML(r)}${ARCHIVED.has(r.status)?`<span class="pill">${esc(STATUS_LABEL[r.status]||r.status)}</span>`:""}${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:""}</span></button>`;}).join(""):`<div class="empty">${roles.size?"Inga uppdrag matchar sökningen eller filtret.":"Inga uppdrag delade än."}</div>`;
   $("#mobile-role").innerHTML=`<option value="">Välj uppdrag …</option>`+list.map(r=>`<option value="${esc(r.id)}" ${r.id===selected?"selected":""}>${t([r.ref,r.title].filter(Boolean).join(" "))}</option>`).join("");
 }
 // Generera kandidater: beställningar och antal kvar i dag (vyn v_generering, funktionerna ats_generera och ats_generera_kvar)
