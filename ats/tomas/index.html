@@ -444,6 +444,32 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 @media(max-width:760px){.px-shell .px-nav button{font-size:clamp(.76rem,3.55vw,.89rem)}.px-shell .px-top{min-height:54px}.px-shell .topbar .px-nav{gap:clamp(9px,2.8vw,20px)}
  .px-shell .px-top-card h3 button{min-height:40px}.px-shell .px-day .agd-recent-role{display:flex}.px-tools>button{min-height:44px}}
 @media(max-width:330px){.px-shell .topbar .px-nav{gap:7px;flex-wrap:wrap}}
+.px-shell {
+  --px-job-surface: #1b2b2f;
+  --px-person-surface: #222833;
+}
+
+.px-shell .px-j-card,
+.px-shell .px-day .px-top-card,
+.px-shell .px-role-detail > .px-d-pane,
+.px-shell .px-consult-detail .px-role-person {
+  background-color: var(--px-job-surface);
+}
+
+.px-shell .p12-consultant.item,
+.px-shell .px-role-detail .px-role-person,
+.px-shell .px-consult-detail .px-d-pane,
+.px-shell .px-match-detail > .px-d-pane,
+.px-shell .px-match-detail > .fcard {
+  background-color: var(--px-person-surface);
+}
+
+.px-req-list{list-style:none;padding:0}
+.px-req-row{display:flex;gap:.6rem;align-items:baseline;padding:.35rem 0;overflow-wrap:anywhere}
+.px-req-mark{color:var(--muted);flex:none}
+.px-req-mark.is-confirmed,.px-req-count{color:var(--accent2)}
+.px-req-count{font-size:1.12rem}
+.px-req-summary{color:var(--fg);font-weight:600}
 </style>
 <header class="topbar px-topbar">
   <div class="px-top">
@@ -1148,12 +1174,85 @@ function pxRoleRows(r,rows){
     const c=cands.get(m.candId),pending=!!m.egen;
     const name=pending?t(m.candName||"Namn saknas"):pxPersonLabel(c);
     const need=pending?"":pxShortNeed(m);
-    return `<article class="px-role-person"><div class="px-d-row"><h3>${name}</h3><span class="px-d-state">${esc(pxPairStatus(m))}</span></div>${need?`<p>${t(need)}</p>`:""}<div class="px-d-acts">${pending?`<button type="button" class="btn light small" data-px-own="${esc(m.id)}">Visa registrering</button>`:`<button type="button" class="btn blue small" data-openm="${esc(m.id)}">Öppna matchkort</button><button type="button" class="btn light small" data-opencand="${esc(c.id)}">Konsultkort</button>${pxPartnerButtons(m)}`}</div></article>`;
+    return `<article class="px-role-person"><div class="px-d-row"><h3>${name}</h3><span class="px-d-state">${esc(pxPairStatus(m))}</span></div>${pending?"":pxRequirementSummary(r,m)}${need?`<p>${t(need)}</p>`:""}<div class="px-d-acts">${pending?`<button type="button" class="btn light small" data-px-own="${esc(m.id)}">Visa registrering</button>`:`<button type="button" class="btn blue small" data-openm="${esc(m.id)}">Öppna matchkort</button><button type="button" class="btn light small" data-opencand="${esc(c.id)}">Konsultkort</button>${pxPartnerButtons(m)}`}</div></article>`;
   }).join("");
   const choices=filters.map(([id,label,include])=>`<button type="button" class="tbtn" data-px-filter="${id}" aria-pressed="${state.filter===id}">${label} · ${rows.filter(include).length}</button>`).join("");
   const page=pages>1?`<div class="px-d-acts"><button type="button" class="tbtn" data-px-step="-1" ${state.page===0?"disabled":""}>Föregående fem</button><span>${state.page+1} av ${pages}</span><button type="button" class="tbtn" data-px-step="1" ${state.page===pages-1?"disabled":""}>Nästa fem</button></div>`:"";
   return `<section class="px-d-pane" aria-labelledby="px-cands"><div class="px-d-row"><h2 id="px-cands">Kandidater för uppdraget</h2>${canWrite&&!hiddenRole(r)&&pxRoleDecisionAllowsGeneration(r)&&(!window.ATS_RUNTIME?.visaSom?.())?`<button type="button" class="tbtn" data-addcand="${esc(r.id)}">Lägg till kandidat</button>`:""}</div><div class="px-d-filters" aria-label="Filtrera kandidater">${choices}</div>${cards||'<p class="px-d-muted">Inga kandidater i det här urvalet.</p>'}${page}</section>`;
 }
+function pxRequirementKey(value){
+  return value.normalize("NFC").trim().replace(/\s+/g," ").replace(/[.]$/,"").toLocaleLowerCase("sv");
+}
+function pxListedRequirements(brief){
+  if(typeof brief!=="string")return [];
+  const heading=/^(?:ska(?:ll)?[ -]?krav(?:en)?|obligatoriska (?:krav|kvalifikationer)|mandatory (?:requirements|skills)|required (?:requirements|qualifications|skills)|must[ -]haves?)(?:\s*\((\d+)\))?\s*[:.]?$/i;
+  const boundary=/^(?:bör[ -]?krav|meriterande(?: (?:krav|kvalifikationer))?|önskvärda (?:krav|kvalifikationer)|arbetsuppgifter|övrigt|praktiska villkor|ansökan|nice[ -]to[ -]haves?|preferred qualifications|desired skills|responsibilities)\s*[:.]?$/i;
+  const incomplete=/(?:\.\.\.|…|se (?:även )?(?:bilaga|original|fullständig)|enligt (?:bilaga|bifogad)|separat (?:bilaga|kravlista)|övriga ska(?:ll)?[ -]?krav|fler (?:obligatoriska )?krav|inga (?:angivna|specificerade|obligatoriska)|framgår (?:ej|inte)|saknar underlag|(?:saknas|anges (?:ej|inte)|ej angivna)|see (?:annex|appendix|attachment)|additional requirements|not (?:specified|provided)|^[-–—]+$)/i;
+  const lines=brief.split(/\r?\n/).map(s=>s.trim().replace(/^#{1,6}\s+/,"").replace(/^\*\*(.+?)\*\*(:?)$/,"$1$2"));
+  const start=lines.findIndex(line=>heading.test(line));
+  if(start<0 || lines.slice(start+1).some(line=>heading.test(line)))return [];
+  const size=lines[start].match(heading)[1];
+  const rows=[],seen=new Set();
+  let style="";
+  for(const line of lines.slice(start+1)){
+    if(!line)continue;
+    if(boundary.test(line))break;
+    const item=line.match(/^(?:(\d+)[.)]\s+|([-•*–])\s+)?(.+)$/);
+    if(!item)return [];
+    const label=item[3].trim(),kind=item[1]?"number":item[2]?"bullet":"plain";
+    if(style && style!==kind || item[1] && Number(item[1])!==rows.length+1)return [];
+    if(incomplete.test(label) || label.endsWith(":") || /^\s*(?:bör[ -]?krav|meriterande|föredraget|nice[ -]to[ -]have|optional)\b/i.test(label))return [];
+    // Unmarked prose is ambiguous; accept only complete, individually punctuated statements.
+    if(kind==="plain" && !/[.!]$/.test(label))return [];
+    const key=pxRequirementKey(label);
+    if(!key || seen.has(key))return [];
+    style=kind;seen.add(key);rows.push(label);
+  }
+  return size!==undefined && Number(size)!==rows.length ? [] : rows;
+}
+function pxRequirementRows(role, match){
+  if(!role || match.roleId!==role.id)return [];
+  const assessment=pxAssessment(match);
+  const keys=items=>new Set(items.map(pxRequirementKey));
+  const yes=keys(assessment.evidence), no=keys(assessment.missing), pending=keys(assessment.verify);
+  return pxListedRequirements(role.brief).map(label=>{
+    const key=pxRequirementKey(label);
+    const overlap=Number(yes.has(key))+Number(no.has(key))+Number(pending.has(key));
+    let status="Att verifiera";
+    if(overlap>1)status="Motstridiga besked";
+    else if(no.has(key))status="Saknas enligt bedömningen";
+    else if(yes.has(key))status="Belagt";
+    return {label,status};
+  });
+}
+function pxRequirementCount(rows){
+  return rows.filter(row=>row.status==="Belagt").length;
+}
+function pxRequirementSummary(role, match){
+  const rows=pxRequirementRows(role, match);
+  if(!rows.length)return "";
+  return '<p class="px-req-summary">'+pxRequirementCount(rows)+' av '+rows.length+' listade skallkrav belagda</p>';
+}
+function pxRequirementChecklist(role,match){
+  const heading='<h2>Skallkrav för uppdraget</h2>';
+  const rows=pxRequirementRows(role,match);
+  if(!rows.length)return '<section class="px-d-pane px-req-check">'+heading+'<p>Skallkraven behöver förtydligas i uppdragets kravtext. Se tillgängligt underlag nedan.</p></section>';
+  function list(items){
+    const html=items.map(({label,status})=>{
+      const ok=status==="Belagt";
+      return '<li class="px-req-row"><span class="px-req-mark'+(ok?' is-confirmed':'')+'" aria-hidden="true">'+(ok?'☑':'☐')+'</span><span>'+t(label)+' <small class="px-d-muted">· '+status+'</small></span></li>';
+    });
+    return '<ul class="px-req-list">'+html.join("")+'</ul>';
+  }
+  const remaining=rows.length-6;
+  const more=remaining>0?'<details><summary>Visa '+remaining+' ytterligare skallkrav</summary>'+list(rows.slice(6))+'</details>':"";
+  const assessment=pxAssessment(match);
+  const known=new Set(rows.map(row=>pxRequirementKey(row.label)));
+  const unresolved=[...assessment.verify,...assessment.missing].some(note=>!known.has(pxRequirementKey(note)));
+  const caution=unresolved?'<p class="px-d-muted">Se även öppna frågor i kravunderlaget nedan.</p>':"";
+  return '<section class="px-d-pane px-req-check">'+heading+'<p class="px-req-count"><strong>'+pxRequirementCount(rows)+' av '+rows.length+' listade skallkrav belagda</strong></p>'+list(rows.slice(0,6))+more+caution+'</section>';
+}
+
 function pxProof(m){
   const evidence=pxAssessment(m);
   const section=(name,items)=>`<div><h3>${name} <small>${items.length}</small></h3>${items.length?`<ul>${items.map(s=>`<li>${t(s)}</li>`).join("")}</ul>`:'<p>Inga uppgifter registrerade.</p>'}</div>`;
@@ -1190,7 +1289,7 @@ function pxPairView(d,r){
   const next=(index,label)=>sequence[index]?`<button type="button" class="tbtn" data-openm="${esc(sequence[index].id)}">${label}</button>`:"";
   const nxt=pxShortNeed(m);
   const choice=pxPartnerButtons(m);
-  d.innerHTML=`<div class="px-match-detail"><div class="px-d-row"><button type="button" class="tbtn" data-openr="${esc(r.id)}">‹ Till uppdraget</button><div class="px-d-acts">${next(ix-1,"Föregående")}${next(ix+1,"Nästa kandidat")}</div></div><section class="px-d-pane px-pair-hero"><span class="px-d-kind">Kandidat för uppdraget</span><h1>${pxPersonLabel(c)}</h1><h2>${t(r.title)}</h2><div class="px-d-meta"><span>${esc(pxPairStatus(m))}</span><button type="button" class="tbtn" data-opencand="${esc(c.id)}">Öppna konsultkort</button></div>${nxt?`<p class="px-d-need">${t(nxt)}</p>`:""}${choice?`<div class="px-d-acts"><span>Ditt val för uppdraget</span>${choice}</div>`:""}</section>${pxProof(m)}${pxPairPreparation(m,c)}${cardHTML(m,ix,sequence.length)}</div>`;
+  d.innerHTML=`<div class="px-match-detail"><div class="px-d-row"><button type="button" class="tbtn" data-openr="${esc(r.id)}">‹ Till uppdraget</button><div class="px-d-acts">${next(ix-1,"Föregående")}${next(ix+1,"Nästa kandidat")}</div></div><section class="px-d-pane px-pair-hero"><span class="px-d-kind">Kandidat för uppdraget</span><h1>${pxPersonLabel(c)}</h1><h2>${t(r.title)}</h2><div class="px-d-meta"><span>${esc(pxPairStatus(m))}</span><button type="button" class="tbtn" data-opencand="${esc(c.id)}">Öppna konsultkort</button></div>${nxt?`<p class="px-d-need">${t(nxt)}</p>`:""}${choice?`<div class="px-d-acts"><span>Ditt val för uppdraget</span>${choice}</div>`:""}</section>${pxRequirementChecklist(r,m)}${pxProof(m)}${pxPairPreparation(m,c)}${cardHTML(m,ix,sequence.length)}</div>`;
 }
 function pxMovePair(direction){
   const r=roles.get(selected),m=matches.get(focusPick[selected]);
