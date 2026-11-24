@@ -335,6 +335,28 @@
     if (out) out.hidden = !(opts && opts.showLogout);
     if (info) info.textContent = msg || "";
   }
+  // Inloggningsmejlet innehåller en kod. Fältet visas när mejlet är skickat, så att den som bara får koden kommer in (23 november 2026).
+  function visaKodfalt(adr) {
+    var info = el("ats-login-info"); if (!info) return;
+    var kf = el("ats-login-kodform");
+    if (!kf) {
+      info.insertAdjacentHTML("afterend", '<form id="ats-login-kodform"><label for="ats-login-kod">Kod från mejlet</label><input type="text" id="ats-login-kod" inputmode="numeric" autocomplete="one-time-code" required placeholder="Siffrorna i mejlet"><button class="btn" id="ats-login-kodknapp" type="submit">Logga in med koden</button><p id="ats-login-kodinfo" role="status" aria-live="polite"></p></form>');
+      kf = el("ats-login-kodform");
+      kf.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var b = el("ats-login-kodknapp"), m = el("ats-login-kodinfo"), kod = (el("ats-login-kod").value || "").replace(/\D/g, "");
+        if (kod.length < 6) { m.textContent = "Skriv alla siffror i koden."; return; }
+        b.disabled = true; m.textContent = "Loggar in …";
+        try {
+          var r = await sb.auth.verifyOtp({ email: kf.dataset.adr, token: kod, type: "email" });
+          if (r.error) throw r.error;
+          location.reload();
+        } catch (err) { m.textContent = "Koden stämmer inte eller har gått ut. Be om ett nytt mejl och prova igen."; b.disabled = false; }
+      });
+    }
+    kf.dataset.adr = adr; kf.hidden = false;
+    var f = el("ats-login-kod"); if (f) { f.value = ""; f.focus(); }
+  }
   function wireLogin() {
     var form = el("ats-login-form"), email = el("ats-login-email"), btn = el("ats-login-skicka"), info = el("ats-login-info"), out = el("ats-login-ut");
     if (form) form.addEventListener("submit", async function (e) {
@@ -346,7 +368,8 @@
       try {
         var r = await sb.auth.signInWithOtp({ email: adr, options: { emailRedirectTo: location.origin + location.pathname, shouldCreateUser: false } });
         if (r.error) throw r.error;
-        info.textContent = "Klart. En inloggningslänk är skickad till " + adr + ". Öppna den på den här enheten. Länken gäller en gång.";
+        info.textContent = "Klart. Mejlet är skickat till " + adr + ". Klicka på länken i mejlet på den här enheten, eller skriv koden från mejlet här.";
+        visaKodfalt(adr);
       } catch (err) {
         var kod = (err && (err.code || err.error_code)) || "", txt = (err && err.message) || "fel";
         if (kod === "otp_disabled" || /signups not allowed/i.test(txt)) info.textContent = "Adressen " + adr + " har inget konto här. Använd exakt den adress du fick din inbjudan på. Har du bytt adress behöver Filip lägga upp den nya.";

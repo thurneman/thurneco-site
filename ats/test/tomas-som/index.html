@@ -518,7 +518,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=ac567cbe"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -537,7 +537,7 @@ const STATUS_LABEL={ny:"Ny",pagar:"Pågår",presenterad:"Presenterad",vunnen:"Vu
 const BOLAG={eget:"Eget bolag",anstalld:"Anställd",underkonsult:"Underkonsult"};
 const MONTHS=["januari","februari","mars","april","maj","juni","juli","augusti","september","oktober","november","december"];
 
-let db=null,assets=null,userId=null,userName="",isOwner=false,canAdmin=false,canWrite=false;
+let db=null,assets=null,userId=null,userEmail="",userName="",isOwner=false,canAdmin=false,canWrite=false;
 let roles=new Map(),cands=new Map(),matches=new Map(),comments=new Map(),orders={},andr=new Map(),cvs=new Map(),sreq=new Map(),bed=new Map(),kuppg=new Map(),egna=new Map(),pings=new Map(),mreq=new Map();
 // Kontaktuppgifter som partnern själv lagt in. Visas och skrivs här, synkas till huvudregistret. Huvudregistrets egna telefon och mejl synkas inte hit.
 const CF_EXTRA=[["linkedin","LinkedIn","url"],["tillganglig","Tillgänglig","text"],["timpris","Timpris","text"],["bolagsform","Bolagsform","text"]];
@@ -659,6 +659,8 @@ function contactSub(m){
   if(procOf(m)==="dialog")return[STAGE[stageOf(m)]||stageOf(m),""];
   return[STAGE[stageOf(m)]||stageOf(m),""];
 }
+const bedMap=s=>{const out=new Map();s.docs.filter(d=>d.exists).forEach(d=>{const x={id:d.id,...d.data(),_docId:d.id};const k=x.matchId||d.id;const f=out.get(k);if(!f||String(x.at||"")>String(f.at||""))out.set(k,x);});return out;};
+const kollegaBed=m=>{const a=m&&m.partnerBedomning&&m.partnerBedomning.alla;if(!a||typeof a!=="object")return[];return Object.keys(a).filter(k=>k.toLowerCase()!==userEmail&&a[k]&&(a[k].bedomning==="ja"||a[k].bedomning==="nej")).map(k=>({namn:a[k].avNamn||"Kollegan",b:a[k].bedomning}));};
 const bedOf=m=>{const b=bed.get(m.id);return b&&b.bedomning||"";};
 
 // ===== Läge per uppdrag: från Begär search till svar. Beräknas ur data, ingen egen statusmaskin.
@@ -970,7 +972,7 @@ function procHTML(r){
   return`<div class="proc" role="group" aria-label="Process"><div class="proc-main">${main.map(([k,l,n])=>`<button type="button" data-step="${k}" aria-pressed="${cur===k}"><b>${cnt(k)}</b><span>${n}. ${l}</span></button>`).join('<span class="psep" aria-hidden="true">›</span>')}</div><div class="proc-side"><span class="vlab">Övrigt</span>${side.map(([k,l])=>`<button type="button" data-step="${k}" aria-pressed="${cur===k}">${l} <b>${cnt(k)}</b></button>`).join("")}</div></div>`;
 }
 // I listan ligger raden i en knapp, och en knapp får inte innehålla knappar. Där används span med role button, i kortet riktiga knappar.
-const jnHTML=(m,big)=>{if(!canWrite||procOf(m)!=="kontakt"||m.egen)return"";const b=bedOf(m);const tag=big?"button":"span";const extra=big?' type="button"':' role="button" tabindex="0"';return`<span class="jn ${big?"big":""}" role="group" aria-label="Din bedömning"><${tag}${extra} class="ja" data-bed="${esc(m.id)}" data-val="ja" aria-pressed="${b==="ja"}" title="Intressant, värd att kontakta">Intressant</${tag}><${tag}${extra} class="nej" data-bed="${esc(m.id)}" data-val="nej" aria-pressed="${b==="nej"}" title="Inte aktuell för det här uppdraget, arkiveras i listan">Inte aktuell</${tag}></span>`;};
+const jnHTML=(m,big)=>{if(!canWrite||procOf(m)!=="kontakt"||m.egen)return"";const b=bedOf(m);const tag=big?"button":"span";const extra=big?' type="button"':' role="button" tabindex="0"';return`<span class="jn ${big?"big":""}" role="group" aria-label="Din bedömning"><${tag}${extra} class="ja" data-bed="${esc(m.id)}" data-val="ja" aria-pressed="${b==="ja"}" title="Intressant, värd att kontakta">Intressant</${tag}><${tag}${extra} class="nej" data-bed="${esc(m.id)}" data-val="nej" aria-pressed="${b==="nej"}" title="Inte aktuell för det här uppdraget, arkiveras i listan">Inte aktuell</${tag}></span>${kollegaBed(m).map(k=>` <span class="jn-kollega" style="font-size:12px;color:var(--muted)">${esc(k.namn)}: ${k.b==="ja"?"Intressant":"Inte aktuell"}</span>`).join("")}`;};
 const TABS=[["profil","Profil"],["dialog","Dialog"],["anteckningar","Kommentarer"]];
 const defaultTab=m=>["dialog","inskickad","klar"].includes(procOf(m))?"dialog":"profil";
 function prevHTML(m){
@@ -2494,10 +2496,10 @@ const rapportText=ok=>ok?" Felet är rapporterat.":" Felet gick inte att rapport
 async function setBedomning(matchId,val){
   const m=matches.get(matchId);if(!m||!db||!userId)return;
   const cur=bedOf(m);const nv=cur===val?"":val;
-  const prev=bed.get(matchId);const now=nowIso();
+  const prev=bed.get(matchId);const now=nowIso();const docId=(prev&&prev._docId)||(matchId+"~"+userId);
   const doc={matchId,roleId:m.roleId,candId:m.candId,bedomning:nv,at:now,av:userId,avNamn:userName,synkad:false};
-  bed.set(matchId,doc);renderDetail();
-  try{await db.doc("bedomningar/"+matchId).set(doc);toast(nv==="ja"?"Intressant sparat. Klicka igen om du vill ångra.":nv==="nej"?"Inte aktuell sparat, kandidaten arkiveras i listan. Visa inte aktuella och klicka igen för att ångra.":"Bedömningen är borttagen.");}
+  bed.set(matchId,{...doc,_docId:docId});renderDetail();
+  try{await db.doc("bedomningar/"+docId).set(doc);toast(nv==="ja"?"Intressant sparat. Klicka igen om du vill ångra.":nv==="nej"?"Inte aktuell sparat, kandidaten arkiveras i listan. Visa inte aktuella och klicka igen för att ångra.":"Bedömningen är borttagen.");}
   catch(e){if(prev)bed.set(matchId,prev);else bed.delete(matchId);renderDetail();const rap=await rapporteraFel("bedömning",e,doc);toast("Bedömningen kunde inte sparas ("+(e.code||"fel")+")."+rapportText(rap));}
 }
 async function saveAndring(roleId,patch){
@@ -2616,7 +2618,7 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   const use=n=>(window.claude&&typeof window.claude.use==="function")?window.claude.use(n):Promise.resolve(null);
   db=await use("db");const user=await use("user");
   if(!db){setSync("Ingen databas i den här vyn. Logga in eller öppna sidan på nytt.",true);$("#detail").innerHTML=`<div class="empty">Databasen kan inte nås i den här vyn.</div>`;return;}
-  try{userId=user?await user.id():null;isOwner=user?await user.isOwner():false;canAdmin=user&&typeof user.canEdit==="function"?await user.canEdit():false;const me=user?await user.me():null;userName=(me&&me.name)||"";if(userId && me?.id===userId && me.isOwner===false && me.canEdit===false && isOwner===false && canAdmin===false && await user.can("data.write")===true && !window.ATS_RUNTIME?.visaSom?.())arbetsdagActor=userId;}catch{}
+  try{userId=user?await user.id():null;isOwner=user?await user.isOwner():false;canAdmin=user&&typeof user.canEdit==="function"?await user.canEdit():false;const me=user?await user.me():null;userName=(me&&me.name)||"";userEmail=String((me&&me.email)||"").toLowerCase();if(userId && me?.id===userId && me.isOwner===false && me.canEdit===false && isOwner===false && canAdmin===false && await user.can("data.write")===true && !window.ATS_RUNTIME?.visaSom?.())arbetsdagActor=userId;}catch{}
   const w=user?await user.can("data.write"):null;canWrite=w!==false&&!!userId;
   assets=canWrite?await use("assets"):null;
   $("#who").textContent=userName?`Inloggad: ${userName}`:(isOwner?"Inloggad som ägare":"");
@@ -2637,7 +2639,7 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   db.collection("cv").onSnapshot(s=>{arbetsdagRead.add("CV");arbetsdagFailed.delete("CV");cvs=toMap(s);renderDetail();},fail("CV"));
   db.collection("searchbegaran").onSnapshot(s=>{sreq=toMap(s);render();},fail("searchbegäran"));
   genLadda();
-  db.collection("bedomningar").onSnapshot(s=>{arbetsdagRead.add("bedomningar");arbetsdagFailed.delete("bedomningar");bed=toMap(s);render();},fail("bedömningar"));
+  db.collection("bedomningar").onSnapshot(s=>{arbetsdagRead.add("bedomningar");arbetsdagFailed.delete("bedomningar");bed=bedMap(s);render();},fail("bedömningar"));
   db.collection("kontaktuppgifter").onSnapshot(s=>{kuppg=toMap(s);renderDetail();},fail("kontaktuppgifter"));
   db.collection("egna").onSnapshot(s=>{egna=toMap(s);render();},fail("egna kandidater"));
   db.collection("pingar").onSnapshot(s=>{pings=toMap(s);renderDetail();},()=>{});
