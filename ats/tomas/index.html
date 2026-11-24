@@ -1461,6 +1461,8 @@ function renderSok(d){
 
 let pendingRender=false,pointerDown=false;
 function renderDetail(){
+  const actor = pxTeamActor();
+  if (pxTeamState.actor !== actor || (actor && pxTeamState.phase === "idle")) void pxTeamLoad();
   document.body.dataset.pxView=view;
   const d=$("#detail");
   const ae=document.activeElement;
@@ -1634,10 +1636,17 @@ const Arbetsdag = (() => {
       for(const r of list){if(!limit)break;if(used.has(r.id))continue;
         result.top.push({...r,label,reason:reason(r)});used.add(r.id);limit--;}
     }
-    const base=[...roles].sort((a,b)=>byPrio(a,b)||b.chosen-a.chosen||a.deadline.localeCompare(b.deadline)||a.id.localeCompare(b.id));
+    const pool=input.teamRows ? roles.filter(r=>{
+      const row=input.teamRows.get(r.id);
+      return row?.for_me===true && row.owner_name===null && !row.owned_by_me;
+    }) : roles;
+    const base=[...pool].sort((a,b)=>byPrio(a,b)||b.chosen-a.chosen||a.deadline.localeCompare(b.deadline)||a.id.localeCompare(b.id));
     slot("Långt uppdrag",base.filter(r=>r.months>=6&&r.days>=7),3,r=>r.months+" månader enligt uppdragets period.");
     slot("Kort tid med potential",base.filter(r=>r.days<=2 && r.matches>0),1,r=>(r.days===0?"Sista dag i dag":r.days+" dagar kvar")+" och "+r.matches+" "+(r.matches===1?"aktiv matchning.":"aktiva matchningar."));
     slot("Stark helhet",base.filter(r=>r.chosen>0 && (r.positive>0 || r.prio===1)),1,r=>r.positive?"En vald kandidat är i dialog.":"Högsta prioritet och en kandidat du valt.");
+    if(input.teamRows && result.top.length<5){
+      slot("Föreslaget för dig",base,5-result.top.length,()=>"Ledigt uppdrag i teamets fördelning.");
+    }
     return result;
   }
   return {snapshot,latestCv,months,nameCardMatch};
@@ -1672,7 +1681,7 @@ function arbetsdagSnapshot(){
     const at=Date.parse(q.skickatAt||q.at);
     if(q.status==="skickat" && Number.isFinite(at))lastSent.set(m.id,Math.max(at,lastSent.get(m.id)||0));else unknownReply.add(m.id);
   }
-  const result=Arbetsdag.snapshot({catalog:()=>pxCatalogFacts(pairs),ownChoice:pxChoiceForDay,actor:userId,personal:!!arbetsdagActor && arbetsdagActor===userId && !visaSom && !isOwner && !canAdmin,
+  const result=Arbetsdag.snapshot({teamRows:pxTeamRows(),catalog:()=>pxCatalogFacts(pairs),ownChoice:pxChoiceForDay,actor:userId,personal:!!arbetsdagActor && arbetsdagActor===userId && !visaSom && !isOwner && !canAdmin,
     personPairs,rejectedCards:lsData?.nej,
     now:Date.now(),today:todayYmd(),cards:lsData?.uppdrag,
     loaded:["roles","candidates","matches","bedomningar","ändringar","CV","partnersvar"].every(k=>arbetsdagRead.has(k)) && !arbetsdagFailed.size,
@@ -1747,13 +1756,13 @@ function pxRankCard(r){
   const count=r.choicesKnown && Number.isSafeInteger(r.pickedForRole) && r.pickedForRole>=0
     ? `<span class="px-chosen"><i aria-hidden="true"></i>Valda att arbeta med: <b>${r.pickedForRole}</b></span>`
     : '<span class="px-count-unknown">Personliga kandidatval saknar bekräftat underlag.</span>';
-  return `<article class="px-top-card px-${category}"><span class="px-category">${esc(label)}</span><h3><button type="button" data-openr="${esc(r.id)}">${t(r.title)}</button></h3><p class="px-city">${place}Sista dag ${day}</p><p class="px-why">${why}</p>${count}</article>`;
+  return `<article class="px-top-card px-${category}"><span class="px-category">${esc(label)}</span><h3><button type="button" data-openr="${esc(r.id)}">${t(r.title)}</button></h3><p class="px-city">${place}Sista dag ${day}</p><p class="px-why">${why}</p>${count}${pxTeamControls(r.id)}</article>`;
 }
 function pxDayLists(){
   const sent=pxSubmitted();
   return `<aside class="px-tools" aria-label="Mina listor"><small>Mina listor</small><details class="px-submitted" ${pxListsOpen?"open":""}><summary>Inskickade${sent?" · "+sent.length:""}</summary>
     ${sent===null?'<p>Inskickade kunde inte bekräftas ännu.</p>':sent.length?`<ul>${sent.map(m=>`<li><button type="button" data-openm="${esc(m.id)}"><strong>${t(m.person)}</strong><span>${t(m.role)}</span></button></li>`).join("")}</ul>`:'<p>Inga kandidater i inskickat steg.</p>'}</details>
-    <button type="button" data-px-selections>Teamets uppdragsval</button></aside>`;
+    ${pxTeamOngoing()}<button type="button" data-px-selections>Teamets uppdragsval</button></aside>`;
 }
 function arbetsdagHTML(){
   const state=arbetsdagSnapshot(), pages=Math.ceil(state.actions.length/5);
@@ -1762,9 +1771,14 @@ function arbetsdagHTML(){
   const pager=pages>1?`<div class="agd-pages"><button type="button" class="btn light small" data-agd-page="-1" ${!arbetsdagPage?"disabled":""}>Föregående</button><span>Sida ${arbetsdagPage+1} av ${pages}</span><button type="button" class="btn light small" data-agd-page="1" ${arbetsdagPage===pages-1?"disabled":""}>Nästa</button></div>`:"";
   const row=a=>`<li><span class="px-action-for">${t(a.person)} · ${t(a.roleTitle)}</span><button type="button" data-openm="${esc(a.match)}">${t(a.title)}</button><p>${t(a.why)}</p></li>`;
   const unavailable=arbetsdagFailed.size?"Underlaget kunde inte läsas.":"Läser underlaget för arbetsdagen …";
+  const team=pxTeamRows();
+  const teamError=team && pxTeamState.phase==="error";
+  const emptyTop=state.blocked ? unavailable : teamError ? "Teamets fördelning kunde inte läsas."
+    : team && pxTeamState.phase==="loading" ? "Läser teamets fördelning …"
+    : team ? "Inga nya uppdrag föreslagna för dig just nu." : "Inga öppna uppdrag uppfyller villkoren för Topplistan.";
   const empty=state.blocked?unavailable:!state.personal?"Personliga kandidatåtgärder visas när du öppnar arbetsdagen med ditt partnerkonto.":ordersState==="fel"?"Beställningarnas status kunde inte läsas.":ordersState!=="ok"?"Läser beställningarnas status …":state.selected?"Inga öppna steg med bekräftat underlag. Välj en kandidat för ett uppdrag för att följa arbetet här.":"Välj först ett uppdrag att arbeta med. När du sedan väljer kandidater visas vad du behöver göra för var och en.";
   return `<section class="px-day" aria-label="Arbetsdag"><section class="px-toplist"><div class="px-section-head"><h2>Topplistan</h2><div class="px-skips"><a href="#agd-senast" data-agd-jump="recent">Senast inkomna</a><a href="#px-next" data-px-next>Till nästa steg</a></div></div>
-    ${state.top.map(pxRankCard).join("")||`<p class="px-none">${state.blocked?esc(unavailable):"Inga öppna uppdrag uppfyller villkoren för Topplistan."}</p>`}</section>
+    ${team && pxTeamState.phase==="ready" && state.top.length?'<p>Föreslagna för dig</p>':""}${state.top.map(pxRankCard).join("")||`<p class="px-none">${esc(emptyTop)}</p>`}${teamError?'<button class="px-j-button" type="button" data-team-refresh>Läs om fördelningen</button>':""}</section>
     <section class="px-actionlist"><h1 tabindex="-1" id="px-next">Nästa steg</h1>${actions.length?`<ul>${actions.map(row).join("")}</ul>${pager}`:`<div class="px-none"><p>${esc(empty)}</p>${!state.blocked && state.personal?'<button type="button" class="btn light" data-px-jobs>Välj uppdrag</button>':""}</div>`}
     ${state.unknownReplies||state.unlinked||state.unverifiedChoices?`<details><summary>Ofullständigt underlag</summary><p>${state.unknownReplies?"Svar med okänd status kan hålla tillbaka en åtgärd. ":""}${state.unlinked?esc(state.unlinked)+" uppdrag saknar en säker koppling till en kandidat. ":""}${state.unverifiedChoices?esc(state.unverifiedChoices)+" av dina valda uppdrag väntar på fullständigt underlag om teamets kandidatval. Öppna uppdragskortet för att arbeta vidare.":""}</p></details>`:""}</section>${recentHTML()}${pxDayLists()}</section>`;
 }
@@ -1893,6 +1907,154 @@ let pxRoleState={actor:null,phase:"idle",values:new Map()},pxRoleBusy=false;
 function pxWorkActor(){
   return userId && arbetsdagActor===userId && !isOwner && !canAdmin && canWrite===true && !window.ATS_RUNTIME?.visaSom?.() ? userId : null;
 }
+// Teamansvar gäller ett uppdrag. Kandidatbesked och uppföljningar har egna villkor.
+// Aktiveras i partnerklientens konfiguration efter serverlyft och provad teambehörighet.
+function pxTeamActor() {
+  return window.ATS_CONFIG?.TEAM_ARBETSDAG === true ? pxWorkActor() : null;
+}
+let pxTeamState = {actor:null, phase:"idle", rows:new Map()};
+let pxTeamWrite = null;
+function pxTeamReadData(data) {
+  if (typeof data?.enabled !== "boolean" || !Array.isArray(data.roles)) throw Error();
+  const rows = new Map();
+  if (!data.enabled && data.roles.length) throw Error();
+  for (const row of data.roles) {
+    if (typeof row?.role_id !== "string" || !row.role_id || rows.has(row.role_id) ||
+        typeof row.for_me !== "boolean" || typeof row.owned_by_me !== "boolean" ||
+        (row.owner_name !== null && !(typeof row.owner_name === "string" && row.owner_name.trim())) ||
+        (row.owned_by_me && !row.owner_name)) throw Error();
+    rows.set(row.role_id, row);
+  }
+  return {phase:data.enabled ? "ready" : "disabled", rows};
+}
+function pxTeamPaint() {
+  if (["lista","uppdrag","rollkort","matchning"].includes(view)) renderDetail();
+}
+function pxTeamRows() {
+  const actor = pxTeamActor();
+  if (!actor) return null;
+  if (pxTeamState.actor !== actor || ["idle","loading","error"].includes(pxTeamState.phase)) return new Map();
+  return pxTeamState.phase === "ready" ? pxTeamState.rows : null;
+}
+async function pxTeamLoad(force=false) {
+  const actor = pxTeamActor();
+  if (!actor) {
+    pxTeamState = {actor:null,phase:"idle",rows:new Map()};
+    return false;
+  }
+  const old = pxTeamState;
+  if (old.actor === actor && !force && old.phase !== "idle") return old.phase === "ready";
+  if (old.actor === actor && old.request && !force) return false;
+  const request = {};
+  const state = old.actor === actor ? old : {actor,phase:"idle",rows:new Map()};
+  if (state.phase === "idle") state.phase = "loading";
+  state.request = request;
+  pxTeamState = state;
+  const current = () => pxTeamState === state && state.request === request && pxTeamActor() === actor;
+  try {
+    const reply = await window.ATS_RUNTIME.rpc("partner_team_arbetsdag",{});
+    if (reply?.error) throw reply.error;
+    const data = pxTeamReadData(reply?.data);
+    if (!current()) return false;
+    const same = state.phase === data.phase && state.rows.size === data.rows.size &&
+      [...data.rows].every(([id,row]) => {
+        const prior = state.rows.get(id);
+        return prior && prior.for_me === row.for_me && prior.owner_name === row.owner_name && prior.owned_by_me === row.owned_by_me;
+      });
+    Object.assign(state,data);
+    if (!same) pxTeamPaint();
+    return data.phase === "ready";
+  } catch (err) {
+    if (current()) {
+      const unavailable = ["PGRST202","42883","42501"].includes(err?.code);
+      state.phase = unavailable ? "disabled" : "error";
+      state.rows = new Map();
+      pxTeamPaint();
+    }
+    return false;
+  } finally {
+    if (current()) state.request = null;
+  }
+}
+function pxTeamRow(id) {
+  if (!recentMayRead() || !pxVisibleCatalogRole(roles.get(id))) return null;
+  return pxTeamRows()?.get(id) || null;
+}
+function pxTeamControls(id) {
+  const row = pxTeamRow(id);
+  if (!row) return "";
+  const status = row.owned_by_me ? "Du ansvarar" : row.owner_name ? "Ansvarig: "+row.owner_name : "";
+  const mayTake = !row.owner_name && pxRoleWritable(id) && pxRoleChoice(id) !== "nej";
+  const button = row.owned_by_me || mayTake
+    ? '<button type="button" class="px-j-button" data-team-action="'+(row.owned_by_me?"release":"take")+
+      '" data-team-role="'+esc(id)+'"'+(pxTeamWrite?' disabled':'')+'>'+(row.owned_by_me?"Släpp ansvar":"Ta uppdraget")+'</button>' : "";
+  return '<div class="px-j-choices">'+(status?'<strong>'+esc(status)+'</strong>':"")+button+'</div>';
+}
+function pxTeamOngoing() {
+  const rows = pxTeamRows();
+  if (!rows || pxTeamState.phase !== "ready" || !recentMayRead()) return "";
+  const mine = [...rows.values()].filter(row => row.owned_by_me && pxTeamRow(row.role_id))
+    .map(row => roles.get(row.role_id)).filter(r => r.title)
+    .sort((a,b) => a.title.localeCompare(b.title,"sv") || a.id.localeCompare(b.id));
+  if (!mine.length) return "";
+  return '<section class="px-team-ongoing"><h3>Mina pågående uppdrag</h3><ul>'+mine.map(r=>
+    '<li><button type="button" data-openr="'+esc(r.id)+'">'+t(r.title)+'</button></li>').join("")+'</ul></section>';
+}
+function pxTeamRefreshOnVisit() {
+  const actor = pxTeamActor();
+  if (!actor) {
+    if (pxTeamState.actor) void pxTeamLoad();
+    return;
+  }
+  if (pxTeamState.actor !== actor) { void pxTeamLoad(); return; }
+  if (!pxTeamState.request && !pxTeamWrite && ["ready","error"].includes(pxTeamState.phase)) void pxTeamLoad(true);
+}
+document.addEventListener("visibilitychange",() => {
+  if (document.visibilityState === "visible") pxTeamRefreshOnVisit();
+});
+// Två kollegor kan ha samma arbetsdag öppen samtidigt.
+setInterval(() => {
+  if (document.visibilityState === "visible" && ["lista","uppdrag","rollkort","matchning"].includes(view) &&
+      pxTeamState.phase === "ready") pxTeamRefreshOnVisit();
+},30000);
+async function pxTeamChange(id, action) {
+  const actor = pxTeamActor(), row = pxTeamRow(id);
+  if (!actor || !row || pxTeamWrite || !["take","release"].includes(action)) return;
+  const take = action === "take";
+  if (take ? row.owner_name !== null || !pxRoleWritable(id) || pxRoleChoice(id) === "nej" : !row.owned_by_me) return;
+  const write = {actor,id};
+  pxTeamWrite = write;
+  pxTeamPaint();
+  try {
+    let reply;
+    try {
+      reply = await window.ATS_RUNTIME.rpc(take ? "partner_team_ta_uppdrag" : "partner_team_slapp_uppdrag",{p_role_id:id});
+    } catch { reply = null; }
+    if (pxTeamActor() !== actor) return;
+    const loaded = await pxTeamLoad(true);
+    if (pxTeamActor() !== actor) return;
+    const actual = loaded && pxTeamRow(id);
+    const receipt = reply?.data;
+    if (actual && !reply?.error && receipt?.role_id === id && receipt.owned_by_me === take &&
+        actual.owned_by_me === take && (take || receipt.owner_name === null)) {
+      toast(take ? "Du ansvarar nu för uppdraget." : "Du har släppt ansvaret för uppdraget.");
+    } else if (actual && actual.owner_name && !actual.owned_by_me) {
+      toast("Uppdraget har tagits av en kollega. Ansvarig visas på uppdraget.");
+    } else {
+      toast("Ändringen kunde inte bekräftas. Kontrollera uppdragets ansvar innan du försöker igen.");
+    }
+  } finally {
+    if (pxTeamWrite === write) pxTeamWrite = null;
+    pxTeamPaint();
+  }
+}
+document.addEventListener("click", event => {
+  const button = event.target.closest?.("button[data-team-action],button[data-team-refresh]");
+  if (!button || button.disabled || !pxTeamActor()) return;
+  if (button.hasAttribute("data-team-refresh")) { void pxTeamLoad(true); return; }
+  void pxTeamChange(button.dataset.teamRole, button.dataset.teamAction);
+});
+
 function pxTeamCard(id){
   if(!pxJobVisible(roles.get(id))||!lsData||lsFel||lsUpptagen)return null;
   const cards=[];
@@ -1963,6 +2125,9 @@ function pxRoleWritable(id){
     && ["ny","pagar","presenterad"].includes(r.status);
 }
 function pxRoleControls(id){
+  return pxTeamControls(id)+pxPersonalRoleControls(id);
+}
+function pxPersonalRoleControls(id){
   const info=pxRoleEvidence(id);
   if(!pxRoleWritable(id))return info.choice?'<p class="px-j-choice">'+(info.choice==="satsa"?"Arbetar med":"Avvisat")+(info.source==="team"?" · gemensamt val i Listan":"")+'</p>':"";
   const personal=pxRoleState.actor===pxWorkActor() && pxRoleState.phase==="ready";
@@ -2153,7 +2318,7 @@ function render(){
   for(const b of document.querySelectorAll(".nav [data-view]"))b.setAttribute("aria-pressed",String(b.dataset.view===pxNavView(view,backView)));
   renderDetail();
 }
-function setView(v){const menu=document.querySelector(".px-menu");if(menu)menu.open=false;view=v;try{localStorage.setItem("konsult.view",v==="kandidat"?backView:v);}catch{}const ae=document.activeElement;if(ae&&ae!==document.body&&ae.blur)ae.blur();render();if(v==="konsulter"||v==="sok")setTimeout(()=>$("#ksok")?.focus(),0);}
+function setView(v){if(["lista","uppdrag","rollkort"].includes(v))pxTeamRefreshOnVisit();const menu=document.querySelector(".px-menu");if(menu)menu.open=false;view=v;try{localStorage.setItem("konsult.view",v==="kandidat"?backView:v);}catch{}const ae=document.activeElement;if(ae&&ae!==document.body&&ae.blur)ae.blur();render();if(v==="konsulter"||v==="sok")setTimeout(()=>$("#ksok")?.focus(),0);}
 function openCand(candId){if(!cands.has(candId))return;if(view!=="kandidat")backView=view==="uppdrag"?"uppdrag":view;candSel=candId;view="kandidat";const ae=document.activeElement;if(ae&&ae!==document.body&&ae.blur)ae.blur();render();$("#detail").scrollTop=0;}
 function pick(id){const r=roles.get(selected);if(!r)return;focusPick[r.id]=id;renderDetail();}
 function nav(dlt){const r=roles.get(selected);if(!r)return;const list=listFor(r.id);const i=list.findIndex(m=>m.id===focusPick[r.id]);const j=i+dlt;if(j<0||j>=list.length)return;pick(list[j].id);}
