@@ -831,7 +831,7 @@ function renderKandidat2(d){
   d.innerHTML=`<div class="page kand kand2 px-consult-detail">
    <div class="kmain">
     <button class="tbtn" type="button" data-back>‹ ${backView==="matchning"?"Till matchkortet":backView==="rollkort"||backView==="uppdrag"?"Till uppdraget":"Tillbaka"}</button>
-    <section class="px-d-pane px-person-hero"><span class="px-d-kind">Konsultkort</span><h1>${t(c.name||"Namn saknas")}</h1>${partnerPublicProfileUrl(c)?`<a href="${esc(partnerPublicProfileUrl(c))}" data-ext target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>`:""}${lead?`<p>${t(lead)}</p>`:""}</section>
+    <section class="px-d-pane px-person-hero"><span class="px-d-kind">Konsultkort</span><h1>${t(c.name||"Namn saknas")}</h1>${partnerPublicProfileUrl(c)?`<a href="${esc(partnerPublicProfileUrl(c))}" data-ext target="_blank" rel="noopener noreferrer">LinkedIn ↗</a>`:""}${lead?`<p>${t(lead)}</p>`:""}${matchaHTML("kandidat",c.id,"")}</section>
     <section class="px-d-pane"><h2>Konsultens uppdrag · ${pagar.length}</h2>${pagar.length?pagar.map(rad).join(""):'<p>Inga pågående uppdrag i din vy.</p>'}</section>
     <details class="px-d-pane px-person-more"><summary>Kontakt, profil och historik</summary>${bellM?pingHTML("kandidat",bellM):""}
     <section class="fsec"><h3>Kontakt</h3><div class="flinks kfg"><span class="cf">${inp("phone","Telefon","tel")}${inp("email","Mejl","email")}${inp("linkedin","LinkedIn","url")}</span></div></section>
@@ -842,7 +842,7 @@ function renderKandidat2(d){
     <section class="fsec"><h3>Historik${hist.length?` · ${hist.length}`:""}</h3>${hist.length?`<ul class="thread">${hist.map(i=>`<li class="${i.cls||""}"><span class="w"><b>${esc(i.who)}</b>${i.kanal?" · "+esc(i.kanal):""}${i.at?" · "+fmt(i.at):" · datum saknas"}${i.roll?` <span class="hroll">· ${t(i.roll)}</span>`:""}</span>${i.text?`<span class="pre">${t(i.text)}</span>`:""}</li>`).join("")}</ul>`:`<p class="fempty">Ingen kontakt registrerad än.</p>`}</section>
     </details></div>
    <aside class="kside" aria-label="Uppdrag för personen">
-    <details class="pot"><summary>Möjliga uppdrag att granska <b>${pot.length}</b><span class="pnote">ordlikhet med profilen, ingen bedömning</span></summary>${matchaHTML("kandidat",c.id,"")}${potRows?`<div class="pot-list">${potRows}</div>`:`<p class="cnote" style="margin:6px 0 0">Inget öppet uppdrag i din vy liknar profilen tillräckligt.</p>`}</details>
+    <details class="pot"><summary>Möjliga uppdrag att granska <b>${pot.length}</b><span class="pnote">ordlikhet med profilen, ingen bedömning</span></summary>${potRows?`<div class="pot-list">${potRows}</div>`:`<p class="cnote" style="margin:6px 0 0">Inget öppet uppdrag i din vy liknar profilen tillräckligt.</p>`}</details>
     ${avsl.length?`<details class="pot"><summary>Avslutade och inte aktuella <b>${avsl.length}</b></summary><div class="plist" style="margin-top:8px">${avsl.map(rad).join("")}</div></details>`:""}
    </aside>
   </div>`;
@@ -875,9 +875,9 @@ function matchReqFor(typ,candId,roleId){return[...mreq.values()].filter(x=>x.typ
 function matchaHTML(typ,candId,roleId){
   if(!db||!userId)return"";
   const q=matchReqFor(typ,candId,roleId);
-  const label=typ==="kandidat"?"Matcha kandidaten mot öppna uppdrag":"Matcha uppdraget mot konsulterna";
+  const label=typ==="kandidat"?"Matcha mot öppna uppdrag":"Matcha uppdraget mot konsulterna";
   let st="";
-  if(q&&q.status==="ny")st=`<span class="cnote">Matchning begärd ${fmt(q.at)}, huvudregistret matchar inom en timme och resultatet syns här som förslag.</span>`;
+  if(q&&q.status==="ny")st=`<span class="cnote">Matchning begärd ${fmt(q.at)}. Resultatet visas här när det finns.</span>`;
   else if(q&&q.status==="pagar")st=`<span class="cnote">Matchning pågår sedan ${fmt(q.statusAt||q.at)}.</span>`;
   else if(q&&q.status==="klar")st=`<span class="cnote">Matchad ${fmt(q.statusAt||q.at)}: ${q.antal!=null?`${q.antal} förslag`:"klart"}${q.resultat?`. ${esc(q.resultat)}`:""}</span>`;
   else if(q&&q.status==="fel")st=`<span class="cnote" style="color:var(--bad)">Matchningen misslyckades: ${esc(q.fel||"okänt fel")}</span>`;
@@ -891,7 +891,7 @@ async function requestMatch(typ,candId,roleId){
     const c=candId?cands.get(candId):null;const r=roleId?roles.get(roleId):null;
     const id="mb_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);const now=nowIso();
     await db.doc("matchbegaran/"+id).set({typ,candId:candId||"",candName:c?.name||"",linkedin:c?.linkedin||"",roleId:roleId||"",ref:r?.ref||"",rollTitel:r?.title||"",av:userId,avNamn:userName||"partnern",vy:"ats-tomas",at:now,status:"ny",synkad:false});
-    toast(typ==="kandidat"?"Matchning beställd. Resultatet kommer inom en timme som förslag på kortet.":"Matchning beställd. Nya förslag kommer inom en timme i steg Kontakt.");
+    toast(typ==="kandidat"?"Matchning beställd. Resultatet visas på konsultkortet när det finns.":"Matchning beställd. Nya förslag kommer inom en timme i steg Kontakt.");
   }catch(e){toast("Kunde inte beställa matchning: "+(e.message||e.code));}
   finally{mreqBusy=false;}
 }
@@ -1625,7 +1625,7 @@ function pxPairView(d,r){
   const title=typeof pxRoleName==="function"?pxRoleName(r):[r.ref,r.title].filter(Boolean).join(" · ");
   const url=partnerPublicProfileUrl(c);
   const linked=url?`<a class="tbtn" href="${esc(url)}" target="_blank" rel="noopener noreferrer" data-ext>LinkedIn ↗</a>`:"";
-  d.innerHTML=`<div class="px-match-detail"><div class="px-d-row"><button type="button" class="tbtn" data-openr="${esc(r.id)}">‹ Till uppdraget</button><div class="px-d-acts">${next(ix-1,"Föregående")}${next(ix+1,"Nästa kandidat")}</div></div><section class="px-d-pane px-pair-hero"><span class="px-d-kind">Arbeta med matchningen</span><h1>${t(c.name||m.candName||"Namn saknas")}</h1><h2>${t(title)}</h2><div class="px-d-meta"><span>${day}</span><span>${count} ${count===1?"konsult":"konsulter"}</span><span>${esc(pxPairStatus(m))}</span>${linked}</div>${brief}${choice?`<div class="px-d-acts"><span>Ditt val för uppdraget</span>${choice}</div>`:""}</section>${cardHTML(m,ix,sequence.length)}</div>`;
+  d.innerHTML=`<div class="px-match-detail"><div class="px-d-row"><button type="button" class="tbtn" data-openr="${esc(r.id)}">‹ Till uppdraget</button><div class="px-d-acts">${next(ix-1,"Föregående")}${next(ix+1,"Nästa kandidat")}</div></div><section class="px-d-pane px-pair-hero"><span class="px-d-kind">Arbeta med matchningen</span><h1>${t(c.name||m.candName||"Namn saknas")}</h1><h2>${t(title)}</h2><div class="px-d-meta"><span>${day}</span><span>${count} ${count===1?"konsult":"konsulter"}</span><span>${esc(pxPairStatus(m))}</span><a class="tbtn" href="${esc(workHash("person",c.id))}" data-opencand="${esc(c.id)}">Öppna konsultkort</a>${linked}</div>${brief}${choice?`<div class="px-d-acts"><span>Ditt val för uppdraget</span>${choice}</div>`:""}</section>${cardHTML(m,ix,sequence.length)}</div>`;
 }
 function pxMovePair(direction){
   const r=roles.get(selected),m=matches.get(focusPick[selected]);
