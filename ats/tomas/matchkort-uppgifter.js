@@ -10,7 +10,7 @@ const TomasMatchkort = (() => {
       /^(?:(?:kandidatens|konsultens) )?(?:aktuellt cv|uppdaterat cv|cv|kontaktuppgifter|telefonnummer|e-postadress|mejladress)(?: till (?:kandidaten|konsulten))?$/,
       /^(?:cv|kontaktuppgifter|telefonnummer|e-postadress|mejladress) (?:ska|skall|måste) (?:vara (?:registrerade|registrerat|bifogat|uppdaterat)|finnas(?: registrerat)?|anges|bifogas|laddas upp)$/,
       /^(?:(?:ladda upp|bifoga|skicka in|lämna in|kontrollera|komplettera med) (?:ett |en |sitt |sina |kandidatens |konsultens )?)?(?:(?:aktuellt |uppdaterat |komplett )?cv(?:-fil(?:en)?)?|kontaktuppgifter|telefon(?:nummer)?(?: och (?:e-post|mejl)(?:adress)?)?|(?:e-post|mejl)(?:adress)?)(?: (?:krävs|ska (?:bifogas|laddas upp|anges)|finns|finns registrerat|för (?:presentation|inskick)))?$/,
-      /^(?:(?:kandidatens|konsultens) (?:ok|klartecken|godkännande|samtycke)(?: och timpris)?(?: (?:för|till|inför) (?:uppdraget|presentation(?:en)?|inskick))?|(?:kandidaten|konsulten) (?:har |ska ha )?(?:godkänt|gett sitt ok till) (?:presentationen|uppdraget))$/,
+      /^(?:(?:kandidatens|konsultens) (?:ok|klartecken|godkännande|samtycke|bekräftelse)(?: och timpris)?(?: (?:för|till|inför) (?:uppdraget|presentation(?:en)?|inskick))?|(?:kandidaten|konsulten) (?:har |ska ha )?(?:godkänt|gett sitt ok till) (?:presentationen|uppdraget))$/,
       /^(?:attach|upload|submit|provide) (?:an? |the |your )?(?:(?:updated |current )?(?:cv|résumé|resume)|contact details|phone number|email address)$/
     ];
     return admin.some(pattern => pattern.test(text));
@@ -29,8 +29,15 @@ const TomasMatchkort = (() => {
         latest = { at, time, text: text.trim(), sender, priority };
     }
     for (const contact of contacts) {
-      if (!contact || contact.roleId !== match.roleId || (contact.matchId ? contact.matchId !== match.id : !unambiguousPair) ||
+      if (!contact || contact.roleId !== match.roleId || (contact.matchId && contact.matchId !== match.id) ||
           (contact.candId && contact.candId !== candidate.id) || !["inmail", "mail", "sms"].includes(contact.kanal)) continue;
+      if (contact.partnerMeddelande && contact.kanal === "inmail" && contact.riktning === "ut") {
+        if (contact.partnerMeddelande.matchId === match.id) {
+          consider(contact.at, contact.partnerMeddelande.text, "Skickat via Recruiter", 2);
+        }
+        continue;
+      }
+      if (!contact.matchId && !unambiguousPair) continue;
       if (contact.riktning === "in") consider(contact.at, contact.text, candidate.name || "Kandidaten", 1);
       if (contact.riktning === "ut" && actorKeys.has(norm(contact.av))) consider(contact.at, contact.text, partner, 1);
     }

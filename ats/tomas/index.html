@@ -558,7 +558,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="/ats/tomas/matchkort-uppgifter.js"></script>
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=tb241124-matchkort-2"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -1434,7 +1434,8 @@ function pxRequirementSummary(role,match){
   const evidenced=rows.filter(row=>row.status==="Belagt").length;
   const confirmed=n-evidenced;
   const sources='Belagda i underlaget · '+evidenced+'<br>Bekräftade i samtal · '+(pxCommentsReady?confirmed:'Underlag saknas');
-  return '<div class="px-evidence"><strong>'+n+'/'+rows.length+' skallkrav styrkta</strong><small>'+sources+'</small></div>';
+  const percent=Math.round(100*n/rows.length);
+  return '<div class="px-evidence"><strong>'+percent+' % · '+n+' av '+rows.length+' skallkrav styrkta</strong><small>'+sources+'</small></div>';
 }
 function pxCallButton(m,label,own){
   if(!pxCanNote(m))return "";

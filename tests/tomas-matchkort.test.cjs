@@ -38,13 +38,33 @@ test("Uppdrag, kön, kommentarer, samtal, osäkra tidpunkter och instruktioner k
     assert.equal(last([], [{...sent,...delta}]), null);
   }
 });
+test("Kvitterade Recruiter-utskick använder partnerprojektionens match och brödtext", () => {
+  const outgoing={...incoming, riktning:"ut", av:"Kandidatkontakt (uppgift)", text:"En kvittensrad",
+    partnerMeddelande:{matchId:"pair",text:"Det här skickades faktiskt."}};
+  assert.equal(last([outgoing]).sender,"Skickat via Recruiter");
+  assert.equal(last([outgoing]).text,outgoing.partnerMeddelande.text);
+  assert.equal(last([outgoing, {...incoming,at:"2025-04-12T13:00:00Z"}]).text,incoming.text);
+  assert.equal(last([{...outgoing,partnerMeddelande:null}]),null);
+  assert.equal(last([{...outgoing,partnerMeddelande:{matchId:"annan",text:"Fel tråd"}}]),null);
+  assert.equal(last([{...outgoing,partnerMeddelande:{matchId:"pair",text:"   "}}]),null);
+  for (const directory of ["ats/tomas","ats/test/tomas-som"]) {
+    const code=fs.readFileSync(path.join(root,directory+"/ats-runtime.js"),"utf8");
+    const start=code.indexOf("function kontaktDoc(r) {"), end=code.indexOf("\n  function sortKontakter",start);
+    const map = new Function("PARTNER","isObj","hasOwn","tsOut",code.slice(start,end)+"\nreturn kontaktDoc;")(
+      true,x=>Boolean(x)&&typeof x==="object", (x,k)=>Object.prototype.hasOwnProperty.call(x,k), x=>x);
+    const raw={role_id:"role",kanal:"inmail",riktning:"ut",text:"En kvittensrad",av:"Kandidatkontakt (uppgift)",at:incoming.at};
+    assert.equal(last([map({...raw,partner_meddelande:outgoing.partnerMeddelande})]).text,"Det här skickades faktiskt.");
+    // Another partner's receipt is null on the server. A forged legacy extra cannot supply a message.
+    assert.equal(last([map({...raw,partner_meddelande:null,extra:{partnerMeddelande:outgoing.partnerMeddelande,brodtext:"Annan order"}})]),null);
+  }
+});
 test("Endast administrativa rader räknas bort", () => {
   for (const s of ["Bifoga ett aktuellt CV","Kontaktuppgifter","Kandidatens OK för uppdraget","CV ska bifogas.",
-    "Konsultens godkännande till presentation","Kandidatens OK och timpris för uppdraget"]) {
+    "Konsultens godkännande till presentation","Kandidatens OK och timpris för uppdraget","Kandidatens bekräftelse","Kandidatens bekräftelse för uppdraget"]) {
     assert.equal(helpers.isSubmissionTask(s), true);
   }
   for (const s of ["Verifierad erfarenhet av CV-granskning","Erfarenhet av telefonförsäljning",
-    "Tre års arbete med kundkontakt","CV ska visa minst två års erfarenhet av Java","Yrkesbevis ska bifogas"]) {
+    "Tre års arbete med kundkontakt","CV ska visa minst två års erfarenhet av Java","Yrkesbevis ska bifogas","Bekräftelse av betalningar i SAP"]) {
     assert.equal(helpers.isSubmissionTask(s), false);
   }
 });
@@ -68,14 +88,22 @@ for (const filename of ["ats/tomas/index.html", "ats/test/tomas-som/index.html"]
     const pair={id:"pair",roleId:"role"};
     const assess=()=>({evidence:["Java","Bifoga CV"],missing:[],verify:[]});
     const summary=build(helpers,assess,true,()=>[{kravSamtal:{krav:"Svenska"}}]);
-    assert.match(summary(role,pair),/2\/2 skallkrav styrkta/);
+    assert.match(summary(role,pair),/100 % · 2 av 2 skallkrav styrkta/);
     assert.match(summary(role,pair),/Belagda i underlaget · 1/);
     assert.match(summary(role,pair),/Bekräftade i samtal · 1/);
-    assert.match(build(helpers,assess,false,()=>[])(role,pair),/1\/2 skallkrav styrkta/);
-    assert.match(build(helpers,()=>({evidence:[],missing:[],verify:[]}),true,()=>[])(role,pair),/0\/2 skallkrav styrkta/);
-    assert.match(build(helpers,()=>({evidence:["Java"],missing:["Java"],verify:[]}),true,()=>[])(role,pair),/0\/2 skallkrav styrkta/);
+    assert.match(build(helpers,assess,false,()=>[])(role,pair),/50 % · 1 av 2 skallkrav styrkta/);
+    assert.match(build(helpers,()=>({evidence:[],missing:[],verify:[]}),true,()=>[])(role,pair),/0 % · 0 av 2 skallkrav styrkta/);
+    assert.match(build(helpers,()=>({evidence:["Java"],missing:["Java"],verify:[]}),true,()=>[])(role,pair),/0 % · 0 av 2 skallkrav styrkta/);
     assert.match(summary({id:"role",brief:"Skallkrav (6)\n- Java"},pair),/Underlag saknas/);
     assert.match(summary({id:"role",brief:"Skallkrav (2)\n- Bifoga CV\n- Kontaktuppgifter"},pair),/0 kompetenskrav/);
-    assert.match(summary({id:"role",brief:"Skallkrav (0)"},pair),/0 skallkrav/);
+    const unknown=summary({id:"role",brief:"Endast rollbeskrivning"},pair);
+    assert.match(unknown,/Underlag saknas/);
+    assert.ok(!unknown.includes("%"));
+    const zero=summary({id:"role",brief:"Skallkrav (0)"},pair);
+    assert.match(zero,/0 skallkrav/);
+    assert.ok(!zero.includes("%"));
+    const six={id:"role",brief:"Skallkrav (6)\n- Java\n- Svenska\n- SQL\n- Python\n- C#\n- Finska"};
+    const four=build(helpers,()=>({evidence:["Java","Svenska","SQL","Python"],missing:[],verify:[]}),true,()=>[]);
+    assert.match(four(six,pair),/67 % · 4 av 6 skallkrav styrkta/);
   });
 }
