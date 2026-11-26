@@ -99,7 +99,11 @@ body.ats-visa-som.px-shell .px-jobs input[data-px-jfilter]{pointer-events:auto}
 .case-tab [aria-current=page]{font-weight:750;text-decoration:underline;text-underline-offset:3px}
 .case-tab button{color:inherit;background:transparent;border:0;padding:0 .55rem;font:inherit;cursor:pointer}
 .case-tab:has([aria-current=page]){outline:1px solid currentColor;outline-offset:-1px}
-</style></head><body class="px-shell" data-px-view="lista"> <!-- supabase -->
+</style><style>
+.reply-bell{position:relative;margin:.35rem auto;max-width:85rem}.reply-bell summary{cursor:pointer;font-weight:600}.reply-events{display:grid;gap:.3rem;max-height:15rem;overflow:auto}.reply-events button{text-align:left}
+[data-bed][data-val="ja"]{background:var(--ok,#217849);color:var(--bg,#11212a)}[data-bed][data-val="nej"]{border-color:var(--bad,#ec847b);color:var(--bad,#ec847b)}
+</style>
+</head><body class="px-shell" data-px-view="lista"> <!-- supabase -->
 <title>ATS Tomas</title>
 <style>/* supabase: inloggning */ html:not(.ats-inne) body>*:not(#ats-login):not(script):not(style){visibility:hidden!important} .ats-login{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px;background:var(--bg);color:var(--fg)} .ats-login[hidden]{display:none!important} .ats-login-kort{width:100%;max-width:400px;box-sizing:border-box;background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r);padding:24px;display:grid;gap:12px} .ats-login-kort h1{font-size:18px;margin:0;font-weight:600} .ats-login-kort p{margin:0;color:var(--muted);font-size:14px;line-height:1.45} .ats-login-kort input{box-sizing:border-box;width:100%;background:var(--surface-2,var(--surface));color:var(--fg);border:1px solid var(--line-strong);border-radius:var(--r);padding:10px 12px;font:inherit} .ats-login-kort form{display:grid;gap:10px} .ats-login-kort .btn{justify-content:center} .ats-logout{font-size:12px;color:var(--muted);text-decoration:underline;white-space:nowrap;align-self:center} .ats-logout:hover{color:var(--fg)}</style> <!-- supabase -->
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -529,6 +533,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
     <button type="button" data-view="skapa" aria-pressed="false">Skapa nytt</button>
     <button type="button" data-view="sok" aria-pressed="false">Sök</button>
   </nav>
+  <details id="reply-bell" class="reply-bell" hidden></details>
   <nav id="case-tabs" class="case-tabs" aria-label="Öppna arbetsflikar" hidden></nav>
 </header>
 <div class="mobile-pick" id="mobile-pick"><select id="mobile-role" aria-label="Välj uppdrag"></select></div>
@@ -557,7 +562,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=tomas-l1-choice-reply-1"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -746,7 +751,7 @@ function lageHTML(r){
   const st=roleState(r);const c=st.cnt;
   const pills=[c.ja?`<span class="pill yel">${c.ja} ja</span>`:"",c.nej?`<span class="pill">${c.nej} nej</span>`:"",c.bestallt?`<span class="pill yel">${c.bestallt} beställda</span>`:"",c.skickat?`<span class="pill blue">${c.skickat} skickade</span>`:"",c.pos?`<span class="pill ok">${c.pos} positiva</span>`:"",c.fraga?`<span class="pill warn">${c.fraga} frågor</span>`:"",c.neg?`<span class="pill bad">${c.neg} negativa</span>`:"",c.dialog?`<span class="pill blue">${c.dialog} i dialog</span>`:"",c.inskickad?`<span class="pill ok">${c.inskickad} inskickade</span>`:""].filter(Boolean).join("");
   const canReq=canWrite&&!ARCHIVED.has(r.status)&&!st.s&&!isPassed(r);
-  const sendable=st.kont.filter(m=>bedOf(m)==="ja"&&!blockReason(m));
+  const sendable=st.kont.filter(m=>pxOwnChoiceCommitted(m)&&!blockReason(m));
   const btns=[canReq?`<button class="btn small ${linksForRole(r.id).length?"light":""}" type="button" data-begar="${esc(r.id)}">${linksForRole(r.id).length?"Begär ny search":"Begär search"}</button>`:"",
     canWrite&&sendable.length?`<button class="btn small" type="button" data-inmail="${esc(r.id)}">Skicka InMail till ${sendable.length} ja</button>`:""].filter(Boolean).join("");
   return`<div class="lage"><span class="fl">Läge</span>${st.main?`<span class="pill ${st.main[1]}">${esc(st.main[0])}</span>`:`<span class="ftxt">Ingen search begärd</span>`}<span class="cnts">${pills}</span><span class="grow"></span>${btns}</div>`;
@@ -761,7 +766,7 @@ function pingHTML(typ,m,q,r){
   if(!db||!userId)return"";
   const key=pingKey(typ,m,q,r);const a=activePing(key);const mine=a&&a.fran===userId;
   const title=a?(mine?`Du pingade ${fmt(a.at)}${a.status==="skickad"?", mail skickat":", mail går inom kort"}. Klicka för att ta tillbaka.`:`Pingad av ${esc(a.franNamn||"partnern")} ${fmt(a.at)}`):typ==="kommentar"?"Pinga huvudregistret om den här kommentaren, mail går med länk hit":typ==="uppdrag"?"Pinga huvudregistret om uppdraget, mail går med länk hit":"Pinga huvudregistret om kandidaten, mail går med länk hit";
-  return`<button type="button" class="ping ${a?"on":""}" data-ping="${esc(key)}" data-typ="${typ}" data-role="${esc(r?r.id:(m?m.roleId:""))}" data-match="${esc(m?m.id:"")}" data-cand="${esc(m?m.candId:"")}" data-kom="${esc(q?q.id:"")}" aria-pressed="${!!a}" title="${title}" ${canWrite?"":"disabled"}>${BELL}</button>`;
+  return`<button type="button" class="ping ${a?"on":""}" data-ping="${esc(key)}" data-typ="${typ}" data-role="${esc(r?r.id:(m?m.roleId:""))}" data-match="${esc(m?m.id:"")}" data-cand="${esc(m?m.candId:"")}" data-kom="${esc(q?q.id:"")}" aria-pressed="${!!a}" title="${title}" aria-label="Pinga Filip" ${canWrite?"":"disabled"}>${BELL}<span> Pinga Filip</span></button>`;
 }
 let pingBusy=false;
 async function togglePing(el){
@@ -1051,14 +1056,18 @@ function egenCardHTML(m,idx,n){
 }
 const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
 const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
+function pxOwnChoiceCommitted(m) {
+  return Boolean(m && !m.egen && canWrite && userId && pxOwnCandidate(m)==="ja" && !pxSavingChoice.has(m.id) && !window.ATS_RUNTIME?.visaSom?.());
+}
 function pxMatchOrder(m,c){
   if(!m || m.egen || !c || !pxVisibleDetailRole(m.roleId))return "";
   const o=findOrder(m);
   if(window.ATS_RUNTIME?.visaSom?.())return o?.status==="angerfrist"?fristHTML(o,key(m)):"";
   if(o?.status!=="angerfrist" && pxClosedPair(m))return "";
   const blocked=blockReason(m,c);
+  if(!blocked && !pxOwnChoiceCommitted(m))return '<button type="button" class="btn light small" disabled title="Välj Gå vidare på kandidaten först.">Skicka InMail</button>';
   return ordersState==="ok"&&o&&o.status==="angerfrist"?fristHTML(o,key(m)):ordersState!=="ok"?`<button class="btn light small" type="button" disabled>${ordersState==="fel"?"Beställningsstatus kunde inte läsas":"Läser beställningar …"}</button>`
-    :!canWrite||!userId?"":procOf(m)==="kontakt"?`<button class="btn ${blocked||bedOf(m)!=="ja"?"light":""} small" type="button" data-order="${esc(m.id)}" title="${blocked?"Visar varför InMail inte kan beställas":bedOf(m)==="ja"?"Beställ InMail med uppdragets fasta text":"Sätt Ja först om du vill att personen kontaktas. Knappen fungerar ändå."}">${blocked?"Visa kontaktstatus":"Skicka InMail"}</button>`:"";
+    :!canWrite||!userId?"":procOf(m)==="kontakt"?`<button class="btn ${blocked||bedOf(m)!=="ja"?"light":""} small" type="button" data-order="${esc(m.id)}" title="${blocked?"Visar varför InMail inte kan beställas":bedOf(m)==="ja"?"Beställ InMail med uppdragets fasta text":"Gå vidare på kandidaten först."}">${blocked?"Visa kontaktstatus":"Skicka InMail"}</button>`:"";
 }
 function cardHTML(m,idx,n){
   if(m.egen)return egenCardHTML(m,idx,n);
@@ -1074,7 +1083,7 @@ function cardHTML(m,idx,n){
   const li=c.linkedin?`<a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>`:"";
   const orderBtn=pxMatchOrder(m,c);
   const bedomBox=pingHTML("kandidat",m);
-  const items=roleContacts(c,m).map(k=>({at:k.at,who:(k.riktning==="in"||k.typ==="svar")?"Svar från kandidaten":"Kontaktanteckning",inn:(k.riktning==="in"||k.typ==="svar"),kanal:k.kanal==="inmail"?"InMail":k.kanal==="mail"?"Mejl":k.kanal==="telefon"?"Telefon":k.kanal==="kommentar-tomas"?"Kommentar":(k.kanal||""),text:k.text}));
+  const items=roleContacts(c,m).map(k=>({contactId:k.contactId,at:k.at,who:(k.riktning==="in"||k.typ==="svar")?"Svar från kandidaten":k.kanal==="inmail"&&k.riktning==="ut"?"Skickat till kandidaten":"Kontaktanteckning",inn:(k.riktning==="in"||k.typ==="svar"),kanal:k.kanal==="inmail"?"InMail":k.kanal==="mail"?"Mejl":k.kanal==="telefon"?"Telefon":k.kanal==="kommentar-tomas"?"Kommentar":(k.kanal||""),text:k.text}));
   const sortAt=(a,b)=>{const x=Date.parse(a.at),y=Date.parse(b.at);return(isNaN(x)||isNaN(y))?0:y-x;};
   items.sort(sortAt);
   const comm=[...comments.values()].filter(q=>q.matchId===m.id).sort(sortAt);
@@ -1082,7 +1091,7 @@ function cardHTML(m,idx,n){
   const sameDay=(a,b)=>String(a||"").slice(0,10)===String(b||"").slice(0,10);
   const tl=items.map(i=>({...i,cls:i.inn?"in":""}));
   if(o&&o.at)tl.push({at:o.at,who:"InMail beställd",kanal:o.bestallareNamn||"",text:o.instruktion?"Extra fråga: "+o.instruktion:"",cls:"ord"});
-  if(o&&o.kvittens&&!items.some(i=>i.kanal==="InMail"&&!i.inn&&sameDay(i.at,o.kvittens)))tl.push({at:o.kvittens,who:"InMail skickad",kanal:"",text:"",cls:"ord"});
+  if(o&&o.kvittens&&!items.some(i=>i.kanal==="InMail"&&!i.inn&&sameDay(i.at,o.kvittens)))tl.push({at:o.kvittens,who:"InMail skickat",kanal:"Kvitterat",text:"Den skickade meddelandetexten saknas i historiken.",cls:"ord"});
   if(o&&(o.status==="avvisad"||o.status==="vantar-godkannande"||o.status==="vantar_godkannande")&&o.fel)tl.push({at:o.statusAt||o.at,who:"Beställningen väntar",kanal:"",text:o.fel,cls:"prop"});
   if(rp&&rp.at&&!items.some(i=>i.inn&&sameDay(i.at,rp.at)))tl.push({at:rp.at,who:"Svar från kandidaten",kanal:(TOLK[rp.tolkning]||TOLK.okand)[0],text:rp.text||"",cls:"in"});
   comm.forEach(q=>{if(q.av!=="system")tl.push({at:q.at,who:who0(q),kanal:"Kommentar",text:q.text,cls:"kom",comment:q});});
@@ -1115,7 +1124,7 @@ function cardHTML(m,idx,n){
   const svarBox=rp?`<div class="fnext svar ${rp.tolkning==="negativ"?"neg":""}"><span class="fl">${esc((TOLK[rp.tolkning]||TOLK.okand)[0])}</span><span class="fnt">${rp.at?fmt(rp.at)+". ":""}${rp.text?t(rp.text):"Svaret är registrerat i huvudregistret."}</span>${canWrite&&userId?(pend?`<span class="ftxt">Svar i kö</span>`:`<button class="btn small" type="button" data-goreply>Svara</button>`):""}</div>`:"";
   const pDialog=`<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
     ${replyHTML}
-    <section class="fsec"><h3>Tidslinje${tl.length?` · ${tl.length}`:""}</h3>${tl.length?`<ul class="thread">${tl.map(i=>`<li class="${i.cls||""}"><span class="w"><b>${esc(i.who)}</b>${i.kanal?" · "+esc(i.kanal):""}${i.at?" · "+fmt(i.at):i.cls==="next"?"":" · datum saknas"}${i.comment?pingHTML("kommentar",m,i.comment):""}</span>${i.text?`<span class="pre">${t(i.text)}</span>`:""}</li>`).join("")}</ul>`:`<p class="fempty">Inget har hänt på det här uppdraget än.</p>`}</section>`;
+    <section class="fsec"><h3>Tidslinje${tl.length?` · ${tl.length}`:""}</h3>${tl.length?`<ul class="thread">${tl.map(i=>`<li class="${i.cls||""}" ${i.contactId?'tabindex="-1" data-contact-event="'+esc(i.contactId)+'"':""}><span class="w"><b>${esc(i.who)}</b>${i.kanal?" · "+esc(i.kanal):""}${i.at?" · "+fmt(i.at):i.cls==="next"?"":" · datum saknas"}${i.comment?pingHTML("kommentar",m,i.comment):""}</span>${i.text?`<span class="pre">${i.contactId?esc(i.text):t(i.text)}</span>`:""}</li>`).join("")}</ul>`:`<p class="fempty">Inget har hänt på det här uppdraget än.</p>`}</section>`;
   const pNotes=`
     ${canWrite&&userId?`<form class="compose" data-comment="${esc(m.id)}"><label for="ctext">Ny kommentar</label><textarea id="ctext" name="text" maxlength="2000" placeholder="Till exempel: ringt, tillgänglig från 1 december, timpris 950 kr">${esc(drafts[m.id]||"")}</textarea>${commentErr[m.id]?`<p class="cerr" role="alert">${esc(commentErr[m.id])}</p>`:""}<div class="acts"><button class="btn small blue" type="submit">Spara kommentar</button><button class="tbtn" type="button" data-copy="${esc(m.id)}">Kopiera kandidatunderlag</button></div><p class="cnote">Utkastet ligger kvar tills kommentaren är sparad.</p></form>`:`<p class="cnote">Du kan läsa men inte skriva kommentarer i den här vyn.</p>`}`;
   const r=roles.get(m.roleId)||{};
@@ -1204,7 +1213,7 @@ function pxPartnerButtonsBas(m){
   }
   if(own==="nej")return button("aterstall-nej","Återställ");
   if(own==="ja")return '<strong class="px-choice-mark">Vald</strong>'+button("aterstall-ja","Ångra val")+button("nej","Avvisa");
-  return button("ja","Välj")+button("nej","Avvisa");
+  return button("ja","Gå vidare")+button("nej","Avvisa");
 }
 function pxPairStatus(m){
   if(m.egen)return "Väntar på registrering";
@@ -1263,12 +1272,12 @@ function pxPairBrief(r,m,c,card=false){
   const raw=[...notes.missing,...notes.verify].find(v=>!known.has(pxRequirementKey(v)));
   if(open){
     const conflict=open.status==="Motstridiga besked";
-    const canConfirm=!conflict && !open.spoken.some(q=>q.av===userId) && pxCanNote(m);
+    const canConfirm=!conflict && pxOwnChoiceCommitted(m) && !open.spoken.some(q=>q.av===userId) && pxCanNote(m);
     task((conflict?"Red ut: ":"Verifiera: ")+oneLine(open.label,125),canConfirm?pxCallButton(m,open.label,false):jump("krav","Visa underlag"));
   }else if(raw)task("Kontrollera: "+oneLine(raw,125),jump("krav","Visa underlag"));
   else if(!rows.length && !pxExplicitZero(r.brief))task("Klargör uppdragets skallkrav",jump("krav","Visa kravtext"));
   const cv=Arbetsdag.latestCv(c,m,cvs.get(c.id),Date.now(),linksForCand(c.id).filter(x=>pxVisibleDetailRole(x.roleId)));
-  const actor=canWrite && userId && arbetsdagActor===userId && !window.ATS_RUNTIME?.visaSom?.();
+  const actor=pxOwnChoiceCommitted(m) && arbetsdagActor===userId;
   if(cv!=="finns"){
     const upload=assets && actor?`<label class="btn light small px-upload"><input type="file" accept=".pdf,.doc,.docx,application/pdf" data-cv="${esc(c.id)}">Ladda upp CV</label>`:"";
     task(cv==="saknas"?"Aktuellt CV saknas":"Kontrollera CV-filen",upload || jump("historik","Öppna historik"));
@@ -1917,6 +1926,7 @@ function renderDetail(){
   const actor = pxTeamActor();
   if (pxTeamState.actor !== actor || (actor && pxTeamState.phase === "idle")) void pxTeamLoad();
   drawWorkTabs();
+  drawReplyBell();
   document.body.dataset.pxView=view;
   const d=$("#detail");
   const ae=document.activeElement;
@@ -2867,6 +2877,61 @@ function selectTab(k,focus){const card=$(".fcard");if(!card)return;fTab={id:card
 function openMatch(id){const m=matches.get(id);if(!m||!pxVisibleDetailRole(m.roleId)||!cands.has(m.candId))return;prepareWorkTab("match",id);selected=m.roleId;procPick[m.roleId]=procOf(m);focusPick[m.roleId]=m.id;if(hiddenRole(roles.get(m.roleId)||{})){showArch=true;$("#show-arch").checked=true;}try{localStorage.setItem("konsult.selected",selected);}catch{}setView("matchning");restoreWorkPosition();}
 function openRole(id){if(!recentMayRead()||!pxJobVisible(roles.get(id)))return;prepareWorkTab("role",id);selected=id;setView("rollkort");restoreWorkPosition();}
 
+
+const locallyReadReplies = new Set();
+function replyReadKey(actor, id) {
+  return "ats/tomas/reply/v1/"+encodeURIComponent(actor)+"/"+encodeURIComponent(id);
+}
+function replyRead(actor,id) {
+  const key=replyReadKey(actor,id);
+  try{return locallyReadReplies.has(key)||localStorage.getItem(key)==="1";}catch{return locallyReadReplies.has(key);}
+}
+function markReplyRead(actor,id) {
+  const key=replyReadKey(actor,id); locallyReadReplies.add(key);
+  try{localStorage.setItem(key,"1");}catch{}
+}
+function unreadReplyEvents() {
+  if (!userId || !recentMayRead() || window.ATS_RUNTIME?.visaSom?.()) return [];
+  const found=new Map();
+  for (const m of matches.values()) {
+    const c=cands.get(m.candId);
+    if(!c || !pxVisibleDetailRole(m.roleId))continue;
+    for(const k of roleContacts(c,m)) {
+      if(k.kanal!=="inmail" || k.riktning!=="in" || !k.contactId)continue;
+      const id=String(k.contactId);
+      if(!found.has(id) && !replyRead(userId,id))found.set(id,{id,matchId:m.id,candId:m.candId,roleId:m.roleId,at:k.at});
+    }
+  }
+  return [...found.values()].sort((a,b)=>(Date.parse(b.at)||0)-(Date.parse(a.at)||0)||a.id.localeCompare(b.id));
+}
+function drawReplyBell() {
+  const node=document.getElementById("reply-bell");
+  if(!node)return;
+  node.hidden=!userId || !recentMayRead() || Boolean(window.ATS_RUNTIME?.visaSom?.());
+  if(node.hidden){node.open=false;node.innerHTML="";delete node.dataset.signature;return;}
+  const events=unreadReplyEvents();
+  const rows=events.map(e=>{
+    const c=cands.get(e.candId),r=roles.get(e.roleId);
+    return '<button type="button" class="tbtn" data-read-reply="'+esc(e.id)+'">'+t(c?.name||"Konsult")+' · '+t(r?.ref||r?.title||"Uppdrag")+(e.at?' · '+fmt(e.at):'')+'</button>';
+  }).join("");
+  const html='<summary>InMail-svar ('+events.length+')</summary><div class="reply-events">'+(rows||'<span>Inga olästa svar</span>')+'</div>';
+  if(node.dataset.signature!==html){node.innerHTML=html;node.dataset.signature=html;}
+}
+document.getElementById("reply-bell").addEventListener("click", e=>{
+  const button=e.target.closest?.("[data-read-reply]"); if(!button)return;
+  const hit=unreadReplyEvents().find(item=>item.id===button.dataset.readReply);
+  if(!hit){drawReplyBell();return;}
+  openMatch(hit.matchId);
+  const card=document.querySelector(".fcard"); if(!card || card.dataset.id!==hit.matchId)return;
+  selectTab("dialog",true);
+  const target=[...card.querySelectorAll("[data-contact-event]")].find(el=>el.dataset.contactEvent===hit.id);
+  if(!target)return;
+  target.scrollIntoView({block:"center"});target.focus({preventScroll:true});
+  markReplyRead(userId,hit.id);
+  document.getElementById("reply-bell").open=false;drawReplyBell();
+});
+window.addEventListener("storage", e=>{if(e.key?.startsWith("ats/tomas/reply/"))drawReplyBell();});
+
 // ===== Händelser
 document.querySelector(".nav").addEventListener("click",e=>{const b=e.target.closest("[data-view]");if(b)setView(b.dataset.view);});
 let todoOpen=true;try{todoOpen=localStorage.getItem("konsult.todo")!=="0";}catch{}
@@ -2914,7 +2979,7 @@ detail.addEventListener("click",e=>{
   const af=e.target.closest("[data-askfor]");if(af){const ta=document.getElementById("rtext");if(ta){const add=af.dataset.text||"";if(add&&!ta.value.includes(add)){ta.value=(ta.value.trim()?ta.value.replace(/\s+$/,"")+"\n\n":"")+add;drafts["reply:"+af.dataset.askfor]=ta.value;saveDrafts();}ta.focus();}return;}
   const tb=e.target.closest('[role="tab"][data-tab]');if(tb){selectTab(tb.dataset.tab,false);return;}
   const o=e.target.closest("[data-order]");if(o){const m=matches.get(o.dataset.order);if(m)openOrder([m]);return;}
-  const im=e.target.closest("[data-inmail]");if(im){const r=roles.get(im.dataset.inmail);if(r)openOrder(roleState(r).kont.filter(m=>bedOf(m)==="ja"&&!blockReason(m)));return;}
+  const im=e.target.closest("[data-inmail]");if(im){const r=roles.get(im.dataset.inmail);if(r)openOrder(roleState(r).kont.filter(m=>pxOwnChoiceCommitted(m)&&!blockReason(m)));return;}
   const bg=e.target.closest("[data-begar]");if(bg){const r=roles.get(bg.dataset.begar);if(r)openBegar(r);return;}
   const cp=e.target.closest("[data-copy]");if(cp){const m=matches.get(cp.dataset.copy);if(m)copyUnderlag(m);return;}
   if(e.target.closest("[data-ext]"))return;
@@ -3014,6 +3079,7 @@ function openOrder(list){
   const r=roles.get(list[0].roleId)||{};
   if(list.length===1){const m=list[0];const c=cands.get(m.candId)||{name:m.candName};const blocked=blockReason(m,c);const o=findOrder(m);const os=orderStatus(o,m);
     if(blocked){modal("Kontaktstatus",`<dl class="kv"><dt>Kandidat</dt><dd><b>${t(c.name||m.candName||"")}</b></dd><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd></dl><div class="ordbox ${os&&os.k==="ok"?"ok":"blue"}"><p>${esc(blocked)}</p>${os?`<p><b>${esc(os.t)}</b>${o.at?`, beställt ${fmt(o.at)}`:""}</p>`:""}</div><div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Stäng</button></div>`);return;}}
+  if(list.some(m=>!pxOwnChoiceCommitted(m))){toast("Välj Gå vidare på varje kandidat först.");return;}
   const names=list.map(m=>(cands.get(m.candId)||{}).name||m.candName||"");
   const sugg=list.length===1?suggestQuestion(list[0]):"";
   const {bg}=modal(list.length===1?"Skicka InMail":`Skicka InMail till ${list.length} kandidater`,`<dl class="kv"><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd><dt>Till</dt><dd>${list.length===1?`<b>${t(names[0])}</b>`:`<ul class="plain">${names.map(n=>`<li>${t(n)}</li>`).join("")}</ul>`}</dd><dt>Text</dt><dd>Uppdragets fasta InMail-text, med en kort rad om kandidatens bakgrund</dd><dt>Avsändare</dt><dd>Thurnes Recruiter-konto</dd></dl>
@@ -3034,6 +3100,8 @@ function openOrder(list){
 }
 async function placeOrder(m,c,instr,annons){
   if(!db||!userId)return{ok:false,msg:"Ingen inloggad identitet, beställningen går inte att knyta till dig."};
+  if(!pxOwnChoiceCommitted(m))return{ok:false,msg:"Välj Gå vidare på kandidaten först."};
+  const stop=blockReason(m,c);if(stop)return{ok:false,msg:stop};
   const k=key(m);const ref=db.doc("kontaktbestallningar/"+userId);
   try{
     const snap=await ref.get();
