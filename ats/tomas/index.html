@@ -662,7 +662,7 @@ function listFor(id,all){if(!procPick[id])procPick[id]=defaultStep(id);const k=p
 // ===== Kontaktbeställningar. Partnern läser bara sitt eget dokument, ägaren och redaktörer läser alla.
 const OPEN=new Set(["angerfrist","bestalld","utkast","vantar-godkannande","vantar_godkannande","pagar","godkand","vantar-text"]);
 const key=m=>m.roleId+"__"+m.candId;
-const fristKvar=till=>{if(isNaN(till))return"Ångerfrist pågår";const s=Math.max(0,Math.round((till-Date.now())/1000));return s>0?`Skickas om ${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`:"Fristen är ute, går till utskick";};
+const fristKvar=till=>{if(isNaN(till))return"Ångerfrist pågår";const s=Math.max(0,Math.round((till-Date.now())/1000));return s>0?`Du kan ångra i ${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`:"Ångerfristen är slut. Väntar på kvittens.";};
 const fristHTML=(o,k)=>{const till=Date.parse(o.fristTill||"");const egen=!!userId&&o.uid===userId&&!(window.ATS_RUNTIME&&window.ATS_RUNTIME.visaSom&&window.ATS_RUNTIME.visaSom());return`<span class="frist" data-frist="${esc(o.fristTill||"")}" style="display:inline-flex;gap:8px;align-items:center"><b data-frist-kvar>${esc(fristKvar(till))}</b>${egen?`<button class="btn light small" type="button" data-angra="${esc(k)}"${till>Date.now()?"":" disabled"}>Ångra</button>`:""}</span>`;};
 setInterval(()=>{document.querySelectorAll("[data-frist]").forEach(el=>{const till=Date.parse(el.dataset.frist);const b=el.querySelector("[data-frist-kvar]");if(b)b.textContent=fristKvar(till);const a=el.querySelector("[data-angra]");if(a&&!(till>Date.now())&&!a.dataset.busy)a.disabled=true;});},1000);
 document.addEventListener("click",async e=>{const b=e.target.closest&&e.target.closest("[data-angra]");if(!b||b.disabled)return;b.disabled=true;b.dataset.busy="1";b.textContent="Ångrar …";const k=b.dataset.angra;
@@ -681,7 +681,7 @@ function orderStatus(o,m){
   if(!o)return null;
   const rp=m?replyOf(m,o):null;
   if(rp){const[l,k]=TOLK[rp.tolkning]||TOLK.okand;return{t:`${l}${rp.at?" "+fmt(rp.at):""}`,k};}
-  if(o.status==="angerfrist"){const till=Date.parse(o.fristTill||"");return{t:isNaN(till)?"Ångerfrist pågår":till>Date.now()?`Ångerfrist, skickas efter ${fmt(new Date(till).toISOString())}`:"Ångerfristen är ute, går till utskick",k:"warn"};}
+  if(o.status==="angerfrist"){const till=Date.parse(o.fristTill||"");return{t:isNaN(till)?"Ångerfrist pågår":till>Date.now()?`Du kan ångra till ${fmt(new Date(till).toISOString())}`:"Ångerfristen är slut. Väntar på kvittens.",k:"warn"};}
   if(o.status==="angrad")return{t:"Ångrad"+(o.angradAt?" "+fmt(o.angradAt):"")+". Inget skickas.",k:""};
   if(o.status==="kontrolleras")return{t:"Utskicket behöver kontrolleras. Inget nytt försök görs.",k:"bad"};
   if(o.status==="skickat")return o.kvittens?{t:`InMail skickat ${fmt(o.kvittens)}, kvitterat`,k:"ok"}:{t:"Markerad skickad men kvittens saknas, inte bekräftad",k:"warn"};
@@ -691,7 +691,7 @@ function orderStatus(o,m){
   if(o.status==="vantar-text")return{t:"Väntar på att uppdragets InMail-text skrivs",k:"warn"};
   if(o.status==="utkast")return{t:"Utkast klart, väntar på godkännande",k:"warn"};
   if(o.status==="vantar-godkannande"||o.status==="vantar_godkannande"||(o.status==="bestalld"&&o.kravGodkannande!==false))return{t:"Beställd, väntar på godkännande",k:"warn"};
-  if(o.status==="bestalld"||o.status==="godkand")return{t:"InMail beställt, skickas vid nästa körning",k:"warn"};
+  if(o.status==="bestalld"||o.status==="godkand")return{t:"InMail beställt. Väntar på utföraren.",k:"warn"};
   return{t:"Status: "+(o.status||"okänd"),k:""};
 }
 const roleContacts=(c,m)=>(c.kontakter||[]).filter(k=>k&&k.roleId===m.roleId);
@@ -3083,19 +3083,19 @@ function openOrder(list){
   const names=list.map(m=>(cands.get(m.candId)||{}).name||m.candName||"");
   const sugg=list.length===1?suggestQuestion(list[0]):"";
   const {bg}=modal(list.length===1?"Skicka InMail":`Skicka InMail till ${list.length} kandidater`,`<dl class="kv"><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd><dt>Till</dt><dd>${list.length===1?`<b>${t(names[0])}</b>`:`<ul class="plain">${names.map(n=>`<li>${t(n)}</li>`).join("")}</ul>`}</dd><dt>Text</dt><dd>Uppdragets fasta InMail-text, med en kort rad om kandidatens bakgrund</dd><dt>Avsändare</dt><dd>Thurnes Recruiter-konto</dd></dl>
-    <div class="ordbox"><p><b>Ditt klick är ett godkännande.</b> Har du ångerfrist visas en nedräkning och knappen Ångra direkt efter klicket. Annars går InMailen ut vid kontaktkedjans nästa körning, normalt inom en timme på vardagar. Här visas "InMail skickat" först när utföraren lämnat kvittens. Svar visas på kortet när de lästs in.</p></div>
+    <div class="ordbox"><p><b>Beställningen läggs i kontaktkön.</b> Vid ångerfrist kan du ångra tills tiden är slut. Kortet visar när utföraren har kvitterat utskicket och när ett svar har lästs in.</p></div>
     <label for="o-instr">Något särskilt att stämma av i InMailen? Valfritt${list.length>1?", gäller alla":""}</label><textarea id="o-instr" maxlength="600" placeholder="Skriv en egen fråga eller lämna tomt">${esc(sugg)}</textarea>
     <p class="cnote" style="margin-top:10px">${r.published?"Annonsen ligger på thurneco.se, länken läggs sist i InMailen.":"Uppdraget har ingen annons på thurneco.se, InMailen går i varianten utan länk."}</p>
-    <div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Avbryt</button><button class="btn" type="button" id="o-send">Skicka InMail${list.length>1?` (${list.length})`:""}</button></div>`);
+    <div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Avbryt</button><button class="btn" type="button" id="o-send">Beställ InMail${list.length>1?` (${list.length})`:""}</button></div>`);
   let placing=false;
   bg.querySelector("#o-send").addEventListener("click",async()=>{if(placing)return;placing=true;bg.dataset.busy="1";const btn=bg.querySelector("#o-send");btn.disabled=true;btn.textContent="Registrerar …";
     const instr=bg.querySelector("#o-instr").value.trim();const okList=[],bad=[];const annons=r.published?"ja":"nej";
     const frist=[];
     for(const m of list){const c=cands.get(m.candId)||{name:m.candName};const res=await placeOrder(m,c,instr,annons);if(res.ok){okList.push(c.name||m.candName);if(res.entry&&res.entry.status==="angerfrist")frist.push([c.name||m.candName,res.entry,key(m)]);}else bad.push(`${c.name||m.candName}: ${res.msg}`);}
     if(frist.length){try{const s=await db.doc("kontaktbestallningar/"+userId).get();if(s.exists)orders[userId]=s.data();}catch(_){}}
-    if(frist.length&&frist.length===okList.length)receipt(bg,"InMail beställt",[`<b>Skickas om fem minuter. Du kan ångra fram till dess.</b>`,...frist.map(([n,en,k])=>`${esc(n)}: ${fristHTML({...en,uid:userId},k)}`),`När fristen är ute går InMailet till utskick. Här visas "InMail skickat" först när utföraren har kvitterat.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
-    else if(okList.length)receipt(bg,"InMail beställt",[`<b>${okList.length===1?"Beställningen":okList.length+" beställningar"} registrerad${okList.length===1?"":"e"} ${fmt(nowIso())} med ditt godkännande, återläst från databasen.</b>`,`Går ut vid nästa körning. Inget är skickat ännu.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
-    else{placing=false;fail(bg,"#o-send","Skicka InMail",bad.join("; ")||"Inget registrerades.");}
+    if(frist.length&&frist.length===okList.length)receipt(bg,"InMail beställt",[`<b>Beställningen är registrerad. Du kan ångra under tiden nedan.</b>`,...frist.map(([n,en,k])=>`${esc(n)}: ${fristHTML({...en,uid:userId},k)}`),`Efter ångerfristen väntar beställningen på utföraren. Leveranskvittensen visas på matchkortet.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
+    else if(okList.length)receipt(bg,"InMail beställt",[`<b>${okList.length===1?"Beställningen":okList.length+" beställningar"} registrerad${okList.length===1?"":"e"} ${fmt(nowIso())} med ditt godkännande, återläst från databasen.</b>`,`Beställningen ligger i kontaktkön. Följ status och kvittens på matchkortet.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
+    else{placing=false;fail(bg,"#o-send","Beställ InMail",bad.join("; ")||"Inget registrerades.");}
     renderDetail();});
 }
 async function placeOrder(m,c,instr,annons){
