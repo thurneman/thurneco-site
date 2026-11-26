@@ -15,8 +15,12 @@ const TomasManual = (function installManualRegistration() {
     <label>Sista svarsdag<input type="date" name="deadline"></label>
     <label>Uppdragsbeskrivning och krav<textarea name="brief" rows="5" maxlength="8000"></textarea></label>`;
 
+  function enabled() {
+    return window.ATS_CONFIG?.MANUELL_REGISTRERING === true;
+  }
+
   function allowed() {
-    return partnerCanCreate() && typeof window.ATS_RUNTIME?.rpc === "function";
+    return enabled() && partnerCanCreate() && typeof window.ATS_RUNTIME?.rpc === "function";
   }
 
   function renderCreate(container) {
@@ -32,7 +36,7 @@ const TomasManual = (function installManualRegistration() {
     if (!allowed() || cands.get(person.id) !== person) return "";
     return `<section class="px-d-pane"><h2>Arbeta med konsulten</h2>
       <button type="button" class="btn small" data-manual-link="${esc(person.id)}">Koppla till uppdrag</button>
-      ${matchaHTML("kandidat", person.id, "")}</section>`;
+      </section>`;
   }
 
   function message(form, value) {
@@ -161,5 +165,5 @@ const TomasManual = (function installManualRegistration() {
     if (button.hasAttribute("data-manual-new")) newRecord(button.dataset.manualNew);
     else linkRecord(button.dataset.manualLink);
   });
-  return Object.freeze({renderCreate, candidateActions});
+  return Object.freeze({enabled, renderCreate, candidateActions});
 })();
