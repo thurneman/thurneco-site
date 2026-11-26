@@ -1200,6 +1200,25 @@ function updateKoCount(){const n=[...koPosts.values()].filter(k=>KO_OPEN.has(k.s
 function scrollToProfile(){const d=$("#detail"),f=$("#fprof");if(!d||!f)return;const st=d.querySelector(".rh-sticky");const off=st?st.offsetHeight:0;const top=f.getBoundingClientRect().top-d.getBoundingClientRect().top+d.scrollTop-off;if(d.scrollTop>top)d.scrollTop=Math.max(0,top);}
 function sizeFlist(){const d=$("#detail");if(!d)return;const st=d.querySelector(".rh-sticky");d.style.setProperty("--dh",d.clientHeight+"px");d.style.setProperty("--sticky",(st?st.offsetHeight:0)+"px");}
 window.addEventListener("resize",sizeFlist);
+// Visa på hemsidan (Filips beslut 25 november 2026). Sajten visar bara rubrik, ort, område och sista dag. Systemet föreslår, Filips kryss godkänner.
+const HS_OMR=["IT & data","Teknik & industri","Projektledning & verksamhet","HR & administration","Vård"];
+const hemsidaBox=r=>`<div class="hemsida-box" data-hemsida="${esc(r.id)}" style="border:1px solid var(--line,#ddd);border-radius:.6rem;padding:.6rem .8rem;margin:.6rem 0"><b>Hemsidan</b> <span data-hs-ut>Läser förslaget …</span></div>`;
+async function hemsidaFyll(box){const id=box.dataset.hemsida,RT=window.ATS_RUNTIME,ut=box.querySelector("[data-hs-ut]");
+  if(!RT||!RT.rpc){ut.textContent="Kopplingen saknas.";return;}
+  const res=await RT.rpc("ats_hemsida_forslag",{p_role:id});if(res.error){ut.textContent="Förslaget gick inte att läsa ("+(res.error.code||"fel")+").";return;}
+  const f=res.data||{},g=f.godkant||{},godk=g.visa===true,visa=godk||(g.visa!==false&&f.standard===true);const rub=godk?g.rubrik:(f.rubrik||""),omr=godk?g.omrade:(f.omrade||"");
+  const hinder=[f.hinderRubrik?"Föreslagen rubrik: "+f.hinderRubrik:"",f.hinderOrt?"Ort: "+f.hinderOrt:"",!f.ort?"Uppdraget saknar ort.":"",!f.sistaDag?"Sista dag saknar källa, annonsen visas inte.":""].filter(Boolean);
+  ut.innerHTML=`<label style="display:inline-flex;gap:.35rem;align-items:center;margin-left:.5rem"><input type="checkbox" data-hs-visa ${visa?"checked":""} ${canWrite?"":"disabled"}> Visa på hemsidan</label>
+   <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem"><label>Rubrik <input type="text" data-hs-rubrik value="${esc(rub)}" maxlength="70" size="34"></label>
+   <label>Område <select data-hs-omrade><option value="">Välj</option>${HS_OMR.map(o=>`<option ${o===omr?"selected":""}>${esc(o)}</option>`).join("")}</select></label></div>
+   <p style="margin:.35rem 0;font-size:.85rem">Ort: <b>${esc(f.ort||"saknas")}</b> · Sista dag: <b>${esc(f.sistaDag||"saknas")}</b>${godk?` · Godkänd ${esc(fmtDate(g.godkandAt))}`:visa?" · Ikryssad som standard med systemets förslag. Kryssa ur för att ta bort, eller ändra och kryssa om för att godkänna din egen rubrik.":" · Förslag från systemet, ditt kryss godkänner"}</p>
+   ${hinder.length?`<p class="cerr" style="font-size:.85rem;margin:.2rem 0">${hinder.map(esc).join(" ")}</p>`:""}`;
+  const spara=async v=>{const b=box.querySelector("[data-hs-visa]");b.disabled=true;
+    const r2=await RT.rpc("ats_hemsida_satt",{p_role:id,p_visa:v,p_rubrik:box.querySelector("[data-hs-rubrik]").value,p_omrade:box.querySelector("[data-hs-omrade]").value});
+    if(r2.error){toast(r2.error.message||"Gick inte att spara.");b.checked=!v;b.disabled=false;return;}
+    const d=r2.data||{};toast(!v?"Borttagen från hemsidan.":d.synsPaSajten?"Godkänd. Annonsen syns på hemsidan.":"Godkänd, men syns inte förrän sista dag med källa finns.");hemsidaFyll(box);};
+  box.querySelector("[data-hs-visa]").addEventListener("change",e=>spara(e.target.checked));}
+new MutationObserver(()=>document.querySelectorAll(".hemsida-box:not([data-fylld])").forEach(b=>{b.dataset.fylld="1";hemsidaFyll(b);})).observe(document.documentElement,{childList:true,subtree:true});
 function renderDetail(){
   const detail=$("#detail");
   const prevMainScroll=detail.scrollTop;   // läses innan scrollytan nollställs
@@ -1266,7 +1285,7 @@ function renderDetail(){
     ${headHTML}
     <div class="role-head compact">
       ${actionsHTML}
-      <div class="role-more" id="role-more" ${roleMoreOpen?"":"hidden"}><h2 class="rm-h">Rolldetaljer</h2>${metaHTML}${controlsHTML}${prioLine}${notesHTML}<div class="role-tail">${tail}</div></div>
+      <div class="role-more" id="role-more" ${roleMoreOpen?"":"hidden"}><h2 class="rm-h">Rolldetaljer</h2>${metaHTML}${controlsHTML}${hemsidaBox(r)}${prioLine}${notesHTML}<div class="role-tail">${tail}</div></div>
     </div>
     ${procHTML(r.id)}
     <div class="focus ${listHidden?"nolist":""}" id="columns">
@@ -1295,7 +1314,7 @@ function renderDetail(){
   ${headHTML}
   <div class="role-head compact">
     ${actionsHTML}
-    <div class="role-more" id="role-more" ${roleMoreOpen?"":"hidden"}><h2 class="rm-h">Rolldetaljer</h2>${metaHTML}${controlsHTML}${prioLine}${notesHTML}<div class="role-tail">${tail}</div></div>
+    <div class="role-more" id="role-more" ${roleMoreOpen?"":"hidden"}><h2 class="rm-h">Rolldetaljer</h2>${metaHTML}${controlsHTML}${hemsidaBox(r)}${prioLine}${notesHTML}<div class="role-tail">${tail}</div></div>
   </div>
   <div class="board ${boardMode==="kolumner"?"kolumner":"bred"}"><div class="columns" id="columns">${STAGES.map(([key,label])=>{
     const items=linksForRole(r.id).filter(m=>stageOf(m)===key).sort((a,b)=>boardMode==="kolumner"?(b.stageAt||b.updatedAt||b.runAt||"").localeCompare(a.stageAt||a.updatedAt||a.runAt||""):((b.spets?1:0)-(a.spets?1:0))||((b.score??-1)-(a.score??-1)));

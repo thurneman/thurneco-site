@@ -1117,6 +1117,7 @@
   };
   // Mappningsfunktionerna exponeras för test och felsökning (inga nycklar eller data)
   window.ATS_RUNTIME = Object.freeze({
+    rpc: function (namn, arg) { return sb.rpc(namn, arg); },
     vy: VY,
     mappning: { MAP: MAP, mappedRow: mappedRow, mappedDoc: mappedDoc, rowCandidates: rowCandidates, rowKo: rowKo, docKo: docKo, kontaktRow: kontaktRow, kontaktDoc: kontaktDoc, genericRow: function (id, d) { return genericRow(ctx || { uid: null, email: null }, id, d); }, genericDoc: genericDoc, logRow: logRow, logDoc: logDoc, applyPatch: applyPatch }
   });
