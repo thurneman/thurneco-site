@@ -524,7 +524,11 @@
     krows.forEach(function (k) { var a = by.get(k.cand_id); if (!a) by.set(k.cand_id, a = []); a.push(k); });
     rows.forEach(function (r) {
       var doc = self.toDoc(r), ks = sortKontakter(by.get(r.id) || []);
-      if (ks.length) doc.kontakter = ks.map(kontaktDoc);
+      if (ks.length) doc.kontakter = ks.map(function (k) {
+        var item = kontaktDoc(k);
+        if (PARTNER && k.id != null) item.contactId = String(k.id);
+        return item;
+      });
       m.set(r.id, { doc: doc, version: r.version, sig: ks.map(function (k) { return k.id; }).sort().join(",") });
     });
     return m;
