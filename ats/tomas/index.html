@@ -1083,7 +1083,7 @@ function cardHTML(m,idx,n){
   const li=c.linkedin?`<a href="${esc(c.linkedin)}" target="_blank" rel="noopener">LinkedIn ↗</a>`:"";
   const orderBtn=pxMatchOrder(m,c);
   const bedomBox=pingHTML("kandidat",m);
-  const items=roleContacts(c,m).map(k=>({contactId:k.contactId,at:k.at,who:(k.riktning==="in"||k.typ==="svar")?"Svar från kandidaten":k.kanal==="inmail"&&k.riktning==="ut"?"Skickat till kandidaten":"Kontaktanteckning",inn:(k.riktning==="in"||k.typ==="svar"),kanal:k.kanal==="inmail"?"InMail":k.kanal==="mail"?"Mejl":k.kanal==="telefon"?"Telefon":k.kanal==="kommentar-tomas"?"Kommentar":(k.kanal||""),text:k.text}));
+  const items=roleContacts(c,m).map(k=>({contactId:k.contactId,at:k.at,who:(k.riktning==="in"||k.typ==="svar")?"Svar från kandidaten":k.kanal==="inmail"&&k.riktning==="ut"?"Registrerad utgående kontakttext":"Kontaktanteckning",inn:(k.riktning==="in"||k.typ==="svar"),kanal:k.kanal==="inmail"?"InMail":k.kanal==="mail"?"Mejl":k.kanal==="telefon"?"Telefon":k.kanal==="kommentar-tomas"?"Kommentar":(k.kanal||""),text:k.text}));
   const sortAt=(a,b)=>{const x=Date.parse(a.at),y=Date.parse(b.at);return(isNaN(x)||isNaN(y))?0:y-x;};
   items.sort(sortAt);
   const comm=[...comments.values()].filter(q=>q.matchId===m.id).sort(sortAt);
@@ -1091,7 +1091,7 @@ function cardHTML(m,idx,n){
   const sameDay=(a,b)=>String(a||"").slice(0,10)===String(b||"").slice(0,10);
   const tl=items.map(i=>({...i,cls:i.inn?"in":""}));
   if(o&&o.at)tl.push({at:o.at,who:"InMail beställd",kanal:o.bestallareNamn||"",text:o.instruktion?"Extra fråga: "+o.instruktion:"",cls:"ord"});
-  if(o&&o.kvittens&&!items.some(i=>i.kanal==="InMail"&&!i.inn&&sameDay(i.at,o.kvittens)))tl.push({at:o.kvittens,who:"InMail skickat",kanal:"Kvitterat",text:"Den skickade meddelandetexten saknas i historiken.",cls:"ord"});
+  if(o&&o.kvittens)tl.push({at:o.kvittens,who:"Leverans kvitterad",kanal:"InMail",text:"Kvittensen innehåller ingen kopia av texten som kandidaten fick.",cls:"ord"});
   if(o&&(o.status==="avvisad"||o.status==="vantar-godkannande"||o.status==="vantar_godkannande")&&o.fel)tl.push({at:o.statusAt||o.at,who:"Beställningen väntar",kanal:"",text:o.fel,cls:"prop"});
   if(rp&&rp.at&&!items.some(i=>i.inn&&sameDay(i.at,rp.at)))tl.push({at:rp.at,who:"Svar från kandidaten",kanal:(TOLK[rp.tolkning]||TOLK.okand)[0],text:rp.text||"",cls:"in"});
   comm.forEach(q=>{if(q.av!=="system")tl.push({at:q.at,who:who0(q),kanal:"Kommentar",text:q.text,cls:"kom",comment:q});});
@@ -2892,17 +2892,20 @@ function markReplyRead(actor,id) {
 }
 function unreadReplyEvents() {
   if (!userId || !recentMayRead() || window.ATS_RUNTIME?.visaSom?.()) return [];
-  const found=new Map();
+  const found=new Map(),ambiguous=new Set();
   for (const m of matches.values()) {
     const c=cands.get(m.candId);
-    if(!c || !pxVisibleDetailRole(m.roleId))continue;
+    if(!c || !m.roleId || !pxVisibleDetailRole(m.roleId))continue;
     for(const k of roleContacts(c,m)) {
       if(k.kanal!=="inmail" || k.riktning!=="in" || !k.contactId)continue;
       const id=String(k.contactId);
-      if(!found.has(id) && !replyRead(userId,id))found.set(id,{id,matchId:m.id,candId:m.candId,roleId:m.roleId,at:k.at});
+      if(replyRead(userId,id))continue;
+      const prior=found.get(id);
+      if(prior && prior.matchId!==m.id)ambiguous.add(id);
+      else if(!prior)found.set(id,{id,matchId:m.id,candId:m.candId,roleId:m.roleId,at:k.at});
     }
   }
-  return [...found.values()].sort((a,b)=>(Date.parse(b.at)||0)-(Date.parse(a.at)||0)||a.id.localeCompare(b.id));
+  return [...found.values()].filter(e=>!ambiguous.has(e.id)).sort((a,b)=>(Date.parse(b.at)||0)-(Date.parse(a.at)||0)||a.id.localeCompare(b.id));
 }
 function drawReplyBell() {
   const node=document.getElementById("reply-bell");
@@ -2914,7 +2917,7 @@ function drawReplyBell() {
     const c=cands.get(e.candId),r=roles.get(e.roleId);
     return '<button type="button" class="tbtn" data-read-reply="'+esc(e.id)+'">'+t(c?.name||"Konsult")+' · '+t(r?.ref||r?.title||"Uppdrag")+(e.at?' · '+fmt(e.at):'')+'</button>';
   }).join("");
-  const html='<summary>InMail-svar ('+events.length+')</summary><div class="reply-events">'+(rows||'<span>Inga olästa svar</span>')+'</div>';
+  const html='<summary>InMail-svar på synliga uppdrag ('+events.length+')</summary><div class="reply-events">'+(rows||'<span>Inga olästa svar</span>')+'</div>';
   if(node.dataset.signature!==html){node.innerHTML=html;node.dataset.signature=html;}
 }
 document.getElementById("reply-bell").addEventListener("click", e=>{
