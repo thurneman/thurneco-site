@@ -2485,14 +2485,15 @@ function pxTeamRow(id) {
   if (!recentMayRead() || !pxVisibleCatalogRole(roles.get(id))) return null;
   return pxTeamRows()?.get(id) || null;
 }
-function pxTeamControls(id) {
+function pxTeamControls(id, inJobs=false) {
   const row = pxTeamRow(id);
   if (!row) return "";
   const status = row.owned_by_me ? "Du ansvarar" : row.owner_name ? "Ansvarig: "+row.owner_name : "";
-  const mayTake = !row.owner_name && pxRoleWritable(id) && pxRoleChoice(id) !== "nej";
+  const mayTake = !row.owner_name && pxRoleWritable(id) && pxRoleChoice(id) !== "nej" &&
+    (!inJobs || pxListChoice(roles.get(id)).value !== "nej");
   const button = row.owned_by_me || mayTake
     ? '<button type="button" class="px-j-button" data-team-action="'+(row.owned_by_me?"release":"take")+
-      '" data-team-role="'+esc(id)+'"'+(pxTeamWrite?' disabled':'')+'>'+(row.owned_by_me?"Släpp ansvar":"Ta uppdraget")+'</button>' : "";
+      '" data-team-role="'+esc(id)+'"'+(pxTeamWrite?' disabled':'')+'>'+(row.owned_by_me?"Släpp ansvar":inJobs?"Välj uppdrag":"Ta uppdraget")+'</button>' : "";
   return '<div class="px-j-choices">'+(status?'<strong>'+esc(status)+'</strong>':"")+button+'</div>';
 }
 function pxTeamOngoing() {
@@ -2526,7 +2527,7 @@ async function pxTeamChange(id, action) {
   const actor = pxTeamActor(), row = pxTeamRow(id);
   if (!actor || !row || pxTeamWrite || !["take","release"].includes(action)) return;
   const take = action === "take";
-  if (take ? row.owner_name !== null || !pxRoleWritable(id) || pxRoleChoice(id) === "nej" : !row.owned_by_me) return;
+  if (take ? row.owner_name !== null || !pxRoleWritable(id) || pxRoleChoice(id) === "nej" || pxListChoice(roles.get(id)).value === "nej" : !row.owned_by_me) return;
   const write = {actor,id};
   pxTeamWrite = write;
   pxTeamPaint();
@@ -2632,7 +2633,7 @@ function pxRoleWritable(id){
 function pxRoleControls(id){
   return pxTeamControls(id)+pxPersonalRoleControls(id);
 }
-function pxPersonalRoleControls(id){
+function pxPersonalRoleControls(id, inJobs=false){
   const info=pxRoleEvidence(id);
   if(!pxRoleWritable(id))return info.choice?'<p class="px-j-choice">'+(info.choice==="satsa"?"Arbetar med":"Avvisat")+(info.source==="team"?" · gemensamt val i Listan":"")+'</p>':"";
   const personal=pxRoleState.actor===pxWorkActor() && pxRoleState.phase==="ready";
@@ -2643,7 +2644,8 @@ function pxPersonalRoleControls(id){
   const choice=personal?(info.source==="personal"?info.choice:""):info.choice;
   const team=pxTeamCard(id);
   const control=(value,label)=>'<button type="button" class="px-j-button" data-px-role-choice="'+value+'" data-px-role="'+esc(id)+'" '+(busy?"disabled":"")+'>'+label+'</button>';
-  return '<div class="px-j-choices">'+(choice==="satsa"?'<span class="px-j-choice">Arbetar med</span>':control("satsa",choice==="nej"?"Ta upp uppdraget igen":"Fortsätt jobba med"))+
+  const keep=choice==="nej"?control("satsa","Ta upp uppdraget igen"):inJobs?"":control("satsa","Fortsätt jobba med");
+  return '<div class="px-j-choices">'+(choice==="satsa"?'<span class="px-j-choice">Arbetar med</span>':keep)+
     (choice==="nej"?'<span class="px-j-choice">Avvisat</span>':control("nej","Avvisa uppdrag"))+
     (personal?'<small>Ditt uppdragsval</small>':'<small>Gemensamt val i Listan</small>')+'</div>'+
     (info.stale?'<p class="px-j-muted">'+(pxRoleVersion(id)===null?'Kravversion saknas. Det sparade valet behöver kontrolleras.':'Kraven har ändrats. Välj på nytt för den aktuella versionen.')+'</p>':'')+
@@ -2675,15 +2677,36 @@ async function pxSetRoleChoice(id,choice){
   finally{pxRoleBusy=false;pxPaintChoices();}
 }
 
-const pxJobsList={group:"ongoing",page:0,search:"",area:"",withCandidates:false,archive:false};
+const pxJobsList={group:"ongoing",page:0,search:"",area:"",withCandidates:false,archive:false,sort:"default"};
 const pxJobPagesize=10;
 const pxJobGroups={ongoing:"Pågående",choose:"Att välja bland",reject:"Avvisade"};
 // Omstart av kön 26 november 2026 (Filips beslut 12.08). Pågående är eget aktivt arbete, Att välja bland är öppna uppdrag med sista svarsdag minst tre svenska kalenderdagar fram. Varje uppdrag i en grupp.
 const pxSvIdag=()=>new Intl.DateTimeFormat("sv-SE",{timeZone:"Europe/Stockholm",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const pxSvPlus=(ymd,n)=>{const[y,m,d]=ymd.split("-").map(Number);const x=new Date(Date.UTC(y,m-1,d+n));return x.toISOString().slice(0,10);};
 const pxSvarsdag=r=>{const y=(effDeadline(r).ymd||r.deadlineAntagen||"");return /^\d{4}-\d{2}-\d{2}$/.test(y)?y:"";};
-function pxEgenBestallning(roleId){for(const[id,m]of matches){if(!m||m.id!==id||m.roleId!==roleId)continue;const o=findOrder(m);if(o&&o.uid===userId&&!["avvisad","angrad","vantar-godkannande"].includes(o.status))return true;}return false;}
-function pxPagaende(row){const st=row.counts.steps||{};return row.claim?.owned_by_me===true||row.chosen==="ja"||row.counts.selected>0||!!st.dialog||!!st.submitted||pxEgenBestallning(row.role.id);}
+function pxListChoice(role){
+  const info=pxRoleEvidence(role.id),actor=pxWorkActor(),saved=pxRoleState.values.get(role.id);
+  // A saved choice without a known version can sort the personal list only.
+  // Existing controls still require their own version and permission checks.
+  if(info.choice!=="nej"&&actor&&pxRoleState.actor===actor&&pxRoleState.phase==="ready"&&saved?.version===null&&role.kravVersion==null)
+    return {value:saved.choice,personal:true};
+  return {value:info.choice,personal:info.source==="personal"&&info.current===true};
+}
+function pxPersonalActivity(row){
+  if(row.claim?.owned_by_me===true||row.personal&&row.chosen==="satsa"||row.counts.selected>0)return true;
+  const actor=pxWorkActor();if(!actor)return false;
+  return row.counts.pairs.some(({m})=>{
+    if(pxClosedPair(m))return false;
+    const order=findOrder(m);
+    const ownOrder=order?.uid===actor;
+    if(ownOrder&&OPEN.has(order.status)&&!["vantar-godkannande","vantar_godkannande"].includes(order.status))return true;
+    if(ownOrder&&replyOf(m,order))return true;
+    if(!["dialog","inskickad"].includes(procOf(m)))return false;
+    // A delivery receipt is personal evidence only alongside a still active dialog/submission.
+    return pxOwnCandidate(m)==="ja"||Boolean(ownOrder&&["skickat","svar"].includes(order.status));
+  });
+}
+function pxPagaende(row){const st=row.counts.steps||{};return row.chosen==="satsa"||row.ownActivity||!!st.dialog||!!st.submitted;}
 let pxSvDag=pxSvIdag();setInterval(()=>{const d=pxSvIdag();if(d!==pxSvDag){pxSvDag=d;try{render();}catch(_){}}},60000);
 const pxJobStages={suggested:"Förslag",applied:"Ansökningar",contact:"Kontaktade",dialog:"I dialog",submitted:"Inskickade",filled:"Tillsatta",closed:"Avslutade",unknown:"Steg saknas"};
 function pxJobVisible(r){
@@ -2714,8 +2737,36 @@ function pxGroupOK(key,row){
   if(key==="reject")return row.chosen==="nej";
   if(row.chosen==="nej")return false;
   if(key==="ongoing")return pxPagaende(row);
-  if(key==="choose"){const d=pxSvarsdag(row.role);return !pxPagaende(row)&&!!d&&d>=pxSvPlus(pxSvIdag(),3);}
+  if(key==="choose"){
+    if(pxPagaende(row))return false;
+    const d=pxSvarsdag(row.role),today=pxSvIdag();
+    return pxJobsList.archive||Boolean(d&&d>=(pxJobsList.search.trim()?today:pxSvPlus(today,3)));
+  }
   return false;
+}
+function pxJobOrder(a,b,today){
+  const tie=()=>a.title.localeCompare(b.title,"sv")||a.id.localeCompare(b.id,"sv");
+  if(pxJobsList.sort!=="default"||pxJobsList.group==="reject"){
+    if(a.stamp===null||b.stamp===null)return Number(a.stamp===null)-Number(b.stamp===null)||tie();
+    return (pxJobsList.sort==="oldest"?a.stamp-b.stamp:b.stamp-a.stamp)||tie();
+  }
+  const left=pxSvarsdag(a.role),right=pxSvarsdag(b.role);
+  // Today and upcoming dates first, then missing dates, then newest past deadline.
+  const bucket=date=>!date?1:date<today?2:0;
+  return bucket(left)-bucket(right)||(bucket(left)===2?right.localeCompare(left):left.localeCompare(right))||tie();
+}
+function pxJobSummary(row){
+  const {counts}=row,steps=counts.steps;
+  if(row.chosen==="nej"||partArk(row.role)||["tillsatt","stoppad"].includes(row.role.status))
+    return counts.total+" kopplad"+(counts.total===1?" kandidat":"e kandidater");
+  if(steps.submitted)return steps.submitted+(steps.submitted===1?" inskickad":" inskickade")+" · Följ upp kundbesked";
+  if(steps.dialog)return steps.dialog+" i dialog · Läs senaste kontakten";
+  if(counts.selected)return counts.selected+(counts.selected===1?" vald":" valda")+" av dig · Granska nästa kandidat";
+  if(steps.applied)return steps.applied+(steps.applied===1?" ansökan":" ansökningar")+" · Granska underlaget";
+  if(steps.contact)return steps.contact+(steps.contact===1?" kontaktad":" kontaktade")+" · Kontrollera senaste kontakten";
+  if(steps.suggested)return steps.suggested+" kandidatförslag · Granska förslagen";
+  if(!counts.total)return "Inga kandidater kopplade";
+  return counts.total+(counts.total===1?" kopplad kandidat":" kopplade kandidater");
 }
 function pxListPeople(pairs){
   if(!pairs.length)return "";
@@ -2728,10 +2779,16 @@ function pxJobBody(){
   const sources=["roles","matches","candidates","ändringar"];
   if(sources.some(k=>arbetsdagFailed.has(k)))return '<p role="alert">Uppdrag eller kandidater kunde inte läsas.</p>';
   if(!sources.every(k=>arbetsdagRead.has(k)))return '<p role="status">Läser uppdrag och kandidater …</p>';
-  const now=Date.now(),index=pxJobIndex(),visible=r=>pxJobVisible(r)&&(pxJobsList.archive||!hiddenRole(r));
-  const sorted=SenastInkomna.entries(roles,now,visible);
-  const all=[...sorted.known,...sorted.unknown].map(item=>({...item,role:roles.get(item.id),chosen:pxRoleChoice(item.id),
-    claim:pxTeamRow(item.id),counts:index.get(item.id)||{total:0,selected:0,steps:{},pairs:[]}}));
+  const now=Date.now(),index=pxJobIndex();
+  const sorted=SenastInkomna.entries(roles,now,pxJobVisible);
+  const all=[...sorted.known,...sorted.unknown].map(item=>{
+    const role=roles.get(item.id),choice=pxListChoice(role);
+    const row={...item,role,chosen:choice.value,personal:choice.personal,claim:pxTeamRow(item.id),
+      counts:index.get(item.id)||{total:0,selected:0,steps:{},pairs:[]}};
+    row.ownActivity=pxPersonalActivity(row);
+    return row;
+  }).filter(row=>pxJobsList.archive||!hiddenRole(row.role)&&!sistaDagPasserad(row.role)||
+    row.ownActivity&&!partArk(row.role)&&["ny","pagar","presenterad","utgangen"].includes(row.role.status));
   const terms=pxSearchText(pxJobsList.search).trim().split(/\s+/).filter(Boolean);
   const filtered=all.filter(row=>{
     if(pxJobsList.area && row.role.category!==pxJobsList.area || pxJobsList.withCandidates&&!row.counts.total)return false;
@@ -2742,32 +2799,37 @@ function pxJobBody(){
   const populated=all.filter(row=>row.counts.total).length;
   const idag=pxSvIdag();
   const visibleRows=filtered.filter(row=>pxGroupOK(pxJobsList.group,row));
-  if(pxJobsList.group==="ongoing"||pxJobsList.group==="choose")visibleRows.sort((a,b)=>{const da=pxSvarsdag(a.role),db=pxSvarsdag(b.role);if(!da!==!db)return da?-1:1;if(da!==db)return da.localeCompare(db);return String(a.role.ref||"").localeCompare(String(b.role.ref||""),"sv");});
+  visibleRows.sort((a,b)=>pxJobOrder(a,b,idag));
   const max=Math.max(0,Math.ceil(visibleRows.length/pxJobPagesize)-1);
   const page=pxJobsList.page=Math.min(max,Math.max(0,pxJobsList.page));
   const list=visibleRows.slice(page*pxJobPagesize,(page+1)*pxJobPagesize);
-  const personal=!!pxWorkActor() && arbetsdagRead.has("bedomningar") && !arbetsdagFailed.has("bedomningar");
   const card=row=>{
     const {role:r,counts}=row;
     const stages=Object.entries(pxJobStages).filter(([key])=>counts.steps[key]).map(([key,label])=>'<span><b>'+counts.steps[key]+'</b> '+label+'</span>').join("");
     return '<article class="px-j-card" data-px-role-row="'+esc(r.id)+'"><div class="px-j-head"><div><h2><button type="button" class="px-role-title" data-openr="'+esc(r.id)+'">'+t(pxRoleName(r))+'</button></h2>'+
       '<p>'+[r.location,r.category].filter(Boolean).map(t).join(" · ")+'</p></div><p class="px-j-deadline">'+pxRoleDaysHTML(r)+'</p></div>'+
-      (pxJobsList.group==="ongoing"&&pxSvarsdag(r)===idag?'<p class="px-j-idag" style="font-weight:700;color:#8a2c0d;background:#fff1e8;border-radius:.4rem;padding:.3rem .5rem;margin:.3rem 0">Sista svarsdag i dag, skicka in kandidaten nu</p>':'')+
-      (pxJobsList.group==="ongoing"&&!pxSvarsdag(r)?'<p class="px-j-muted"><b>Svarsdag okänd</b></p>':'')+
-      '<p class="px-job-owner">'+t(pxRoleOwner(r))+'</p><p>'+esc(pxRoleCountsText(pxRoleCounts(r,counts.pairs)))+
-      (personal && counts.selected?' · '+counts.selected+' valda av dig':'')+'</p>'+pxListPeople(counts.pairs)+
-      (stages?'<div class="px-j-stages" aria-label="Kandidater per steg">'+stages+'</div>':'')+
-      (row.stamp!==null?'<p class="px-j-muted">Inkom '+esc(SenastInkomna.format(row.stamp))+'</p>':'')+pxRoleControls(r.id)+'</article>';
+      '<p>'+esc(pxJobSummary(row))+'</p>'+
+      (counts.total?'<details><summary>Visa kandidater ('+counts.total+')</summary>'+pxListPeople(counts.pairs)+
+        '<div class="px-j-stages" aria-label="Kandidater per steg">'+stages+'</div></details>':'')+
+      (row.stamp!==null?'<small>Inkom '+esc(SenastInkomna.format(row.stamp))+'</small>':'')+
+      pxTeamControls(r.id,true)+pxPersonalRoleControls(r.id,true)+'</article>';
   };
   const controls=Object.entries(pxJobGroups).map(([key,label])=>'<button type="button" class="px-j-button" data-px-jgroup="'+key+'" aria-pressed="'+String(key===pxJobsList.group)+'">'+label+' ('+groups[key]+')</button>').join("");
   const pages=max?'<div class="px-j-pages"><button type="button" class="px-j-button" data-px-jpage="-1" '+(page===0?"disabled":"")+'>Föregående</button><span>Sida '+(page+1)+' av '+(max+1)+'</span><button type="button" class="px-j-button" data-px-jpage="1" '+(page===max?"disabled":"")+'>Nästa</button></div>':'';
   const teamUnavailable=pxJobsList.group==="ongoing";
   const claimState=teamUnavailable && pxTeamState.phase!=="ready"?
     '<p role="status">'+(pxTeamState.phase==="loading"?"Läser uppdragsansvar …":"Uppdragsansvar saknar bekräftat underlag för den här inloggningen.")+'</p>':"";
-  return '<div class="px-j-totals"><p><strong>'+all.length+'</strong> uppdrag · <strong>'+populated+'</strong> med konsulter</p></div>'+
-    '<div class="px-j-tabs" aria-label="Uppdragsurval">'+controls+'</div>'+claimState+
+  const claimHint=pxJobsList.group==="choose"&&list.some(row=>!row.claim)&&pxWorkActor()?
+    '<p class="px-j-muted">Välj uppdrag visas när du kan ta ansvar. Öppna titeln för att granska övriga uppdrag.</p>':"";
+  const ownNames=new Set([...(pxTeamRows()?.values()||[])].filter(row=>row.owned_by_me&&row.owner_name).map(row=>row.owner_name.trim()));
+  const account=ownNames.size===1?'<p class="px-j-muted">Arbetslista för '+esc([...ownNames][0])+'</p>':"";
+  return '<div class="px-j-totals"><p><strong>'+all.length+'</strong> uppdrag · <strong>'+populated+'</strong> med konsulter</p>'+account+'</div>'+
+    '<div class="px-j-tabs" aria-label="Uppdragsurval">'+controls+'</div>'+claimState+claimHint+
     (pxWorkActor() && pxRoleState.phase==="error"?'<button type="button" class="px-j-button" data-px-jretry>Läs om uppdragsval</button>':'')+
-    '<p class="px-j-muted" id="px-j-page-start" tabindex="-1">'+visibleRows.length+' uppdrag visas · '+(pxJobsList.group==="choose"?'Sista svarsdag tidigast '+esc(pxSvPlus(idag,3))+', närmast först':pxJobsList.group==="ongoing"?'Närmast svarsdag först':'Senast inkomna först')+'</p><div class="px-j-grid">'+(list.map(card).join("")||'<p>Inga uppdrag i det här urvalet.</p>')+'</div>'+pages;
+    '<div class="px-j-head"><p class="px-j-muted" id="px-j-page-start" tabindex="-1">'+visibleRows.length+' uppdrag'+
+    (pxJobsList.group==="choose"?' · '+(pxJobsList.archive?'Alla svarsdagar, även arkiverade':pxJobsList.search.trim()?'Svarsdag från i dag':'Svarsdag från '+esc(pxSvPlus(idag,3))):'')+
+    '</p><label>Sortera <select data-px-jsort>'+Object.entries({default:pxJobsList.group==="reject"?'Standard':'Aktuella svarsdagar först',newest:'Senast inkomna',oldest:'Tidigast inkomna'}).map(([key,label])=>
+    '<option value="'+key+'"'+(pxJobsList.sort===key?' selected':'')+'>'+label+'</option>').join("")+'</select></label></div><div class="px-j-grid">'+(list.map(card).join("")||'<p>Inga uppdrag i det här urvalet.</p>')+'</div>'+pages;
 }
 function renderPxJobs(d){
   if(!lsLaddad && recentMayRead()){lsLaddad=true;void lsLas();}
@@ -2785,6 +2847,10 @@ document.addEventListener("input",e=>{
   const out=document.getElementById("px-j-results");if(out)out.innerHTML=pxJobBody();
 });
 document.addEventListener("change",e=>{
+  if(view==="uppdrag" && e.target.matches?.("[data-px-jsort]") && ["default","newest","oldest"].includes(e.target.value)){
+    pxJobsList.sort=e.target.value;pxJobsList.page=0;
+    const out=document.getElementById("px-j-results");if(out){out.innerHTML=pxJobBody();out.querySelector("[data-px-jsort]")?.focus();}return;
+  }
   if(view==="uppdrag" && e.target.matches?.("[data-px-jarea]")){
     pxJobsList.area=e.target.value;pxJobsList.page=0;
     const out=document.getElementById("px-j-results");if(out)out.innerHTML=pxJobBody();return;
