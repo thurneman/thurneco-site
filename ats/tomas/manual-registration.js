@@ -83,7 +83,7 @@ const TomasManual = (function installManualRegistration() {
     return data;
   }
 
-  async function showRecord(bg, collection, id, kind, hasAccess, title) {
+  async function showRecord(bg, collection, id, kind, hasAccess, title, existing) {
     const drawer = bg.querySelector(".drawer");
     drawer.innerHTML = `<h2>${esc(title)}</h2><p role="status">Hämtar kortet …</p><div class="acts">
       <button type="button" class="btn" data-manual-open>Öppna kortet</button>
@@ -101,11 +101,11 @@ const TomasManual = (function installManualRegistration() {
         map.set(id, {...snapshot.data(), id});
         render();
         if (!workLabel(kind, id)) throw Error();
-        status.textContent = "Kortet är sparat och synligt i ditt register.";
+        status.textContent = existing ? "Det befintliga kortet finns i ditt register." : "Kortet är sparat och synligt i ditt register.";
         button.textContent = "Öppna kortet";
         if (navigate) { bg.remove(); visitWorkTab({kind, id}); }
       } catch {
-        status.textContent = "Sparningen är kvitterad. Kortet kunde inte läsas tillbaka.";
+        status.textContent = existing ? "Kortet finns redan, men kunde inte läsas tillbaka." : "Sparningen är kvitterad. Kortet kunde inte läsas tillbaka.";
         button.textContent = "Hämta kortet igen";
       } finally { button.disabled = false; }
     }
@@ -131,7 +131,7 @@ const TomasManual = (function installManualRegistration() {
         {p_request_id: requestId, ...args});
       if (!hasAccess()) { bg.remove(); return; }
       await showRecord(bg, consultant ? "candidates" : "roles", result.id, consultant ? "person" : "role", hasAccess,
-        consultant ? "Konsultkort sparat" : "Uppdrag sparat");
+        result.created ? (consultant ? "Konsultkort sparat" : "Uppdrag sparat") : (consultant ? "Konsultkortet finns redan" : "Uppdraget finns redan"), !result.created);
     });
   }
 
@@ -155,7 +155,7 @@ const TomasManual = (function installManualRegistration() {
         const result = await rpc("ats_partner_manual_koppla", {p_cand_id: id, p_role_id: roleId});
         if (result.cand_id !== id || result.role_id !== roleId) throw Error("Kvittensen avser inte den valda kopplingen.");
         if (!hasAccess()) { bg.remove(); return; }
-        await showRecord(bg, "matches", result.id, "match", hasAccess, result.created ? "Konsult kopplad" : "Kopplingen finns redan");
+        await showRecord(bg, "matches", result.id, "match", hasAccess, result.created ? "Konsult kopplad" : "Kopplingen finns redan", !result.created);
       });
   }
 
