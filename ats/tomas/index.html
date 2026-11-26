@@ -556,6 +556,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
+<script src="/ats/tomas/matchkort-uppgifter.js"></script>
 <script src="config.js"></script> <!-- supabase -->
 <script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
 <script>
@@ -1060,6 +1061,15 @@ function pxMatchOrder(m,c){
   return ordersState==="ok"&&o&&o.status==="angerfrist"?fristHTML(o,key(m)):ordersState!=="ok"?`<button class="btn light small" type="button" disabled>${ordersState==="fel"?"Beställningsstatus kunde inte läsas":"Läser beställningar …"}</button>`
     :!canWrite||!userId?"":procOf(m)==="kontakt"?`<button class="btn ${blocked||bedOf(m)!=="ja"?"light":""} small" type="button" data-order="${esc(m.id)}" title="${blocked?"Visar varför InMail inte kan beställas":bedOf(m)==="ja"?"Beställ InMail med uppdragets fasta text":"Sätt Ja först om du vill att personen kontaktas. Knappen fungerar ändå."}">${blocked?"Visa kontaktstatus":"Skicka InMail"}</button>`:"";
 }
+function pxLatestMessageHTML(m,c){
+  const latest=TomasMatchkort.latestMessage({
+    match:m,candidate:c,contacts:roleContacts(c,m),replies:svarP.values(),
+    unambiguousPair:linksForCand(m.candId).filter(pair=>pair.roleId===m.roleId).length===1,
+    actorId:userId,actorEmail:userEmail,actorName:userName,preview:!!window.ATS_RUNTIME?.visaSom?.(),now:Date.now()
+  });
+  const value=latest?'<p><strong>'+t(latest.sender)+'</strong> · '+esc(fmt(latest.at))+'</p><p class="pre">'+t(latest.text)+'</p>':'<p class="fempty">Inget skickat eller mottaget meddelande med verifierad text och tid.</p>';
+  return '<section class="fsec"><h3>Senaste meddelande</h3>'+value+'</section>';
+}
 function cardHTML(m,idx,n){
   if(m.egen)return egenCardHTML(m,idx,n);
   const c=cands.get(m.candId)||{id:m.candId,name:m.candName,kontakter:[]};
@@ -1113,7 +1123,7 @@ function cardHTML(m,idx,n){
   tl.sort(sortAt);if(m.nextStep&&tl.length>1){const ni=tl.findIndex(i=>i.cls==="next");if(ni>0)tl.unshift(tl.splice(ni,1)[0]);}
   const replyHTML=`<section class="fsec"><h3>Svara kandidaten</h3><div class="rlist">${myReplies.filter(q=>q.status!=="aterkallad").map(q=>{const s=RS[q.status]||[q.status||"Okänd status",""];return`<div class="ordbox ${s[1]}"><p><b>${esc(s[0])}</b>${q.status==="skickat"&&q.skickatAt?" · "+fmt(q.skickatAt):q.at?" · skrivet "+fmt(q.at):""}${q.status==="bestalld"&&canWrite&&userId?` <button class="tbtn" type="button" data-reply-undo="${esc(q.id)}">Återkalla</button>`:""}</p><p class="pre">${t(q.text)}</p>${q.fel?`<p class="cerr">${t(q.fel)}</p>`:""}</div>`;}).join("")}</div>${!harSvar?`<p class="fempty">Du kan svara här när kandidaten har svarat på InMailet.</p>`:pend?`<p class="cnote">Ett svar ligger i kö. Återkalla det om du vill skriva ett nytt.</p>`:last?`<p class="cnote">${last.status==="skickas"?"Svaret skickas just nu.":"Ett svar behöver kontrolleras av Filip innan du kan lägga ett nytt i kö."}</p>`:canWrite&&userId?`<form class="compose" data-reply="${esc(m.id)}"><label for="rtext">Ditt svar till ${t(fornamn)}</label><textarea id="rtext" name="text" maxlength="1500" placeholder="Till exempel: Tack för svaret. Jag heter Tomas och håller i uppdraget tillsammans med Filip. Har du tid för ett kort samtal i morgon? Du når mig på ...">${esc(drafts["reply:"+m.id]||"")}</textarea>${replyErr[m.id]?`<p class="cerr" role="alert">${esc(replyErr[m.id])}</p>`:""}${saknas.length?`<div class="acts askrow"><span class="cnote">Saknas på kortet: ${esc(saknas.map(x=>x[0]).join(", "))}.</span><button class="tbtn" type="button" data-askfor="${esc(m.id)}" data-text="${esc(askText)}">Be om det i svaret</button></div>`:""}${redan.length?`<p class="cnote">Nämns i dialogen: ${esc(redan.join(", "))}.</p>`:""}${stam.length?`<p class="cnote">Kvar att stämma av: ${stam.map(x=>t(x)).join(" · ")}</p>`:""}<div class="acts"><button class="btn small" type="submit">Lägg svaret i kö</button></div><p class="cnote">Passa på att få med så mycket som möjligt i samma meddelande. Svaret går ut i samma InMail-tråd, från Filips konto, med nästa runda (en gång i timmen, vardagar). Skriv under med ditt namn så att kandidaten vet vem som svarar. Inga kundnamn och inga interna nummer.</p></form>`:`<p class="cnote">Du kan läsa men inte svara i den här vyn.</p>`}</section>`;
   const svarBox=rp?`<div class="fnext svar ${rp.tolkning==="negativ"?"neg":""}"><span class="fl">${esc((TOLK[rp.tolkning]||TOLK.okand)[0])}</span><span class="fnt">${rp.at?fmt(rp.at)+". ":""}${rp.text?t(rp.text):"Svaret är registrerat i huvudregistret."}</span>${canWrite&&userId?(pend?`<span class="ftxt">Svar i kö</span>`:`<button class="btn small" type="button" data-goreply>Svara</button>`):""}</div>`:"";
-  const pDialog=`<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
+  const pDialog=`${pxLatestMessageHTML(m,c)}<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
     ${replyHTML}
     <section class="fsec"><h3>Tidslinje${tl.length?` · ${tl.length}`:""}</h3>${tl.length?`<ul class="thread">${tl.map(i=>`<li class="${i.cls||""}"><span class="w"><b>${esc(i.who)}</b>${i.kanal?" · "+esc(i.kanal):""}${i.at?" · "+fmt(i.at):i.cls==="next"?"":" · datum saknas"}${i.comment?pingHTML("kommentar",m,i.comment):""}</span>${i.text?`<span class="pre">${t(i.text)}</span>`:""}</li>`).join("")}</ul>`:`<p class="fempty">Inget har hänt på det här uppdraget än.</p>`}</section>`;
   const pNotes=`
@@ -1355,7 +1365,7 @@ function pxKravUnderlag(brief){
   }
   return declared!==undefined && Number(declared)!==rows.length?unknown:{status:"lista",rows};
 }
-function pxListedRequirements(brief){return pxKravUnderlag(brief).rows;}
+function pxListedRequirements(brief){return pxKravUnderlag(brief).rows.filter(label=>!TomasMatchkort.isSubmissionTask(label));}
 function pxEmptyRequirementText(brief){
   return pxKravUnderlag(brief).status==="noll"?"Uppdragets underlag anger uttryckligen 0 skallkrav.":"Antalet skallkrav är okänt. Kontrollera uppdragsunderlaget.";
 }
@@ -1412,21 +1422,19 @@ function pxRequirementRows(role, match){
 function pxRequirementCount(rows){
   return rows.filter(row=>row.status==="Belagt" || row.status==="Bekräftat i samtal").length;
 }
-function pxRequirementSummary(role, match){
+function pxRequirementSummary(role,match){
   const rows=pxRequirementRows(role,match);
-  if(!rows.length)return pxExplicitZero(role.brief)?'<p class="px-d-muted">0 skallkrav enligt uppdragstexten.</p>':'<p class="px-d-muted">Skallkravens täckning är oklar.</p>';
+  if(!rows.length){
+    const source=pxKravUnderlag(role?.brief);
+    if(source.status==="noll")return '<p class="px-d-muted">0 skallkrav enligt uppdraget.</p>';
+    if(source.status==="lista" && role.id===match.roleId)return '<p class="px-d-muted">0 kompetenskrav i uppdragets kravlista.</p>';
+    return '<p class="px-d-muted">Underlag saknas</p>';
+  }
   const n=pxRequirementCount(rows);
-  const profile=rows.filter(row=>row.status==="Belagt").length;
-  const spoken=rows.filter(row=>row.status==="Bekräftat i samtal").length;
-  const assessment=pxAssessment(match);
-  const listed=new Set(rows.map(row=>pxRequirementKey(row.label)));
-  const exactEvidence=[...assessment.evidence,...assessment.missing,...assessment.verify].some(item=>listed.has(pxRequirementKey(item)));
-  if(!n && !exactEvidence)return '<p class="px-d-muted">'+rows.length+' listade skallkrav · Underlag för bedömning saknas eller behöver kopplas till kraven.</p>';
-  const rawEvidence=assessment.evidence.some(item=>!listed.has(pxRequirementKey(item)));
-  if(rawEvidence && !n)return '<p class="px-d-muted">Det finns underlag som behöver kopplas till rätt skallkrav. Täckningen är oklar.</p>';
-  const sources=`Belagt i underlaget: ${profile} · Bekräftat i samtal: ${spoken}${rawEvidence?" · Övriga belägg behöver kopplas till krav.":""}`;
-  if(!pxCommentsReady)return `<p>Belagt i underlaget: ${profile} av ${rows.length}. Samtalsunderlag kan inte bekräftas ännu.</p>`;
-  return `<div class="px-evidence"><meter min="0" max="${rows.length}" value="${n}" aria-label="Skallkrav med belägg eller samtalsbekräftelse">${n} av ${rows.length}</meter><span>${n} av ${rows.length} täckta · ${rows.length-n} återstår</span><small>${sources}</small></div>`;
+  const evidenced=rows.filter(row=>row.status==="Belagt").length;
+  const confirmed=n-evidenced;
+  const sources='Belagda i underlaget · '+evidenced+'<br>Bekräftade i samtal · '+(pxCommentsReady?confirmed:'Underlag saknas');
+  return '<div class="px-evidence"><strong>'+n+'/'+rows.length+' skallkrav styrkta</strong><small>'+sources+'</small></div>';
 }
 function pxCallButton(m,label,own){
   if(!pxCanNote(m))return "";
@@ -1435,7 +1443,7 @@ function pxCallButton(m,label,own){
 function pxRequirementChecklist(role,match){
   const heading='<h4>Skallkrav i uppdragstexten</h4>';
   const rows=pxRequirementRows(role,match);
-  if(!rows.length)return '<section class="px-req-check">'+heading+(pxExplicitZero(role.brief)?'<p>0 skallkrav enligt uppdragstexten.</p>':'<p>Kravlistan är oklar. Läs uppdragstexten nedan.</p>')+'</section>';
+  if(!rows.length)return '<section class="px-req-check">'+heading+pxRequirementSummary(role,match)+'</section>';
   function list(items){
     const html=items.map(({label,status,spoken})=>{
       const ok=status==="Belagt" || status==="Bekräftat i samtal";
