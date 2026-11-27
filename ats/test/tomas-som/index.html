@@ -518,6 +518,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="config.js"></script> <!-- supabase -->
+<script src="../../tomas/topplista-skallkrav.js"></script>
 <script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
@@ -1292,7 +1293,7 @@ function pxRoleProductionView(d,r){
   const genAllowed=pxRoleDecisionAllowsGeneration(r)&&!hiddenRole(r);
   const controls=genAllowed?genHTML(r):"";
   const panel=controls?`<section class="px-d-pane px-order"><h2>Kandidatleverans</h2><p class="px-d-muted">${genForstaKlar(r.id)?"Granska leveransen. Behöver du fler kandidater kan du begära search.":"Börja med en första kandidatleverans för uppdraget."}</p>${controls}</section>`:"";
-  d.innerHTML=`<div class="px-role-detail">${pxRoleHero(r)}${rows.some(m=>!m.egen&&!pxClosedPair(m))?pxRoleRows(r,rows)+panel:panel+pxRoleRows(r,rows)}${potRoleHTML(r)}${roleHeadHTML(r)}</div>`;
+  d.innerHTML=`<div class="px-role-detail">${pxRoleHero(r)}${pxStrongMatchesHTML(r)}${rows.some(m=>!m.egen&&!pxClosedPair(m))?pxRoleRows(r,rows)+panel:panel+pxRoleRows(r,rows)}${potRoleHTML(r)}${roleHeadHTML(r)}</div>`;
 }
 function pxPairView(d,r){
   const id=focusPick[r.id],m=matches.get(id);
@@ -1795,6 +1796,7 @@ function arbetsdagHTML(){
   const empty=state.blocked?unavailable:!state.personal?"Personliga kandidatåtgärder visas när du öppnar arbetsdagen med ditt partnerkonto.":ordersState==="fel"?"Beställningarnas status kunde inte läsas.":ordersState!=="ok"?"Läser beställningarnas status …":state.selected?"Inga öppna steg med bekräftat underlag. Välj en kandidat för ett uppdrag för att följa arbetet här.":"Välj först ett uppdrag att arbeta med. När du sedan väljer kandidater visas vad du behöver göra för var och en.";
   return `<section class="px-day" aria-label="Arbetsdag"><section class="px-toplist"><div class="px-section-head"><h2>Topplistan</h2><div class="px-skips"><a href="#agd-senast" data-agd-jump="recent">Senast inkomna</a><a href="#px-next" data-px-next>Till nästa steg</a></div></div>
     ${team && pxTeamState.phase==="ready" && state.top.length?'<p>Föreslagna för dig</p>':""}${state.top.map(pxRankCard).join("")||`<p class="px-none">${esc(emptyTop)}</p>`}${teamError?'<button class="px-j-button" type="button" data-team-refresh>Läs om fördelningen</button>':""}</section>
+    ${pxStrongMatchesHTML()}
     <section class="px-actionlist"><h1 tabindex="-1" id="px-next">Nästa steg</h1>${actions.length?`<ul>${actions.map(row).join("")}</ul>${pager}`:`<div class="px-none"><p>${esc(empty)}</p>${!state.blocked && state.personal?'<button type="button" class="btn light" data-px-jobs>Välj uppdrag</button>':""}</div>`}
     ${state.unknownReplies||state.unlinked||state.unverifiedChoices?`<details><summary>Ofullständigt underlag</summary><p>${state.unknownReplies?"Svar med okänd status kan hålla tillbaka en åtgärd. ":""}${state.unlinked?esc(state.unlinked)+" uppdrag saknar en säker koppling till en kandidat. ":""}${state.unverifiedChoices?esc(state.unverifiedChoices)+" av dina valda uppdrag väntar på fullständigt underlag om teamets kandidatval. Öppna uppdragskortet för att arbeta vidare.":""}</p></details>`:""}</section>${recentHTML()}${pxDayLists()}</section>`;
 }
