@@ -517,8 +517,9 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
+<script src="/ats/tomas/matchkort-uppgifter.js"></script>
 <script src="config.js"></script> <!-- supabase -->
-<script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
+<script src="ats-runtime.js?v=tb241124-matchkort-2"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
 const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -987,7 +988,7 @@ function procHTML(r){
 }
 // I listan ligger raden i en knapp, och en knapp får inte innehålla knappar. Där används span med role button, i kortet riktiga knappar.
 const jnHTML=(m,big)=>{if(!canWrite||procOf(m)!=="kontakt"||m.egen)return"";const b=bedOf(m);const tag=big?"button":"span";const extra=big?' type="button"':' role="button" tabindex="0"';return`<span class="jn ${big?"big":""}" role="group" aria-label="Din bedömning"><${tag}${extra} class="ja" data-bed="${esc(m.id)}" data-val="ja" aria-pressed="${b==="ja"}" title="Intressant, värd att kontakta">Intressant</${tag}><${tag}${extra} class="nej" data-bed="${esc(m.id)}" data-val="nej" aria-pressed="${b==="nej"}" title="Inte aktuell för det här uppdraget, arkiveras i listan">Inte aktuell</${tag}></span>${kollegaBed(m).map(k=>` <span class="jn-kollega" style="font-size:12px;color:var(--muted)">${esc(k.namn)}: ${k.b==="ja"?"Intressant":"Inte aktuell"}</span>`).join("")}`;};
-const TABS=[["profil","Profil"],["dialog","Dialog"],["anteckningar","Kommentarer"]];
+const TABS=[["profil","Profil"],["dialog","Historik"],["anteckningar","Kommentarer"]];
 const defaultTab=m=>["dialog","inskickad","klar"].includes(procOf(m))?"dialog":"profil";
 function prevHTML(m){
   const others=linksForCand(m.candId).filter(x=>x.id!==m.id&&pxVisibleDetailRole(x.roleId));if(!others.length)return"";
@@ -1016,6 +1017,15 @@ function egenCardHTML(m,idx,n){
 }
 const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
 const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
+function pxLatestMessageHTML(m,c){
+  const latest=TomasMatchkort.latestMessage({
+    match:m,candidate:c,contacts:roleContacts(c,m),replies:svarP.values(),
+    unambiguousPair:linksForCand(m.candId).filter(pair=>pair.roleId===m.roleId).length===1,
+    actorId:userId,actorEmail:userEmail,actorName:userName,preview:!!window.ATS_RUNTIME?.visaSom?.(),now:Date.now()
+  });
+  const value=latest?'<p><strong>'+t(latest.sender)+'</strong> · '+esc(fmt(latest.at))+'</p><p class="pre">'+t(latest.text)+'</p>':'<p class="fempty">Inget skickat eller mottaget meddelande med verifierad text och tid.</p>';
+  return '<section class="fsec"><h3>Senaste meddelande</h3>'+value+'</section>';
+}
 function cardHTML(m,idx,n){
   if(m.egen)return egenCardHTML(m,idx,n);
   const c=cands.get(m.candId)||{id:m.candId,name:m.candName,kontakter:[]};
@@ -1070,7 +1080,7 @@ function cardHTML(m,idx,n){
   tl.sort(sortAt);if(m.nextStep&&tl.length>1){const ni=tl.findIndex(i=>i.cls==="next");if(ni>0)tl.unshift(tl.splice(ni,1)[0]);}
   const replyHTML=`<section class="fsec"><h3>Svara kandidaten</h3><div class="rlist">${myReplies.filter(q=>q.status!=="aterkallad").map(q=>{const s=RS[q.status]||[q.status||"Okänd status",""];return`<div class="ordbox ${s[1]}"><p><b>${esc(s[0])}</b>${q.status==="skickat"&&q.skickatAt?" · "+fmt(q.skickatAt):q.at?" · skrivet "+fmt(q.at):""}${q.status==="bestalld"&&canWrite&&userId?` <button class="tbtn" type="button" data-reply-undo="${esc(q.id)}">Återkalla</button>`:""}</p><p class="pre">${t(q.text)}</p>${q.fel?`<p class="cerr">${t(q.fel)}</p>`:""}</div>`;}).join("")}</div>${!harSvar?`<p class="fempty">Du kan svara här när kandidaten har svarat på InMailet.</p>`:pend?`<p class="cnote">Ett svar ligger i kö. Återkalla det om du vill skriva ett nytt.</p>`:last?`<p class="cnote">${last.status==="skickas"?"Svaret skickas just nu.":"Ett svar behöver kontrolleras av Filip innan du kan lägga ett nytt i kö."}</p>`:canWrite&&userId?`<form class="compose" data-reply="${esc(m.id)}"><label for="rtext">Ditt svar till ${t(fornamn)}</label><textarea id="rtext" name="text" maxlength="1500" placeholder="Till exempel: Tack för svaret. Jag heter Tomas och håller i uppdraget tillsammans med Filip. Har du tid för ett kort samtal i morgon? Du når mig på ...">${esc(drafts["reply:"+m.id]||"")}</textarea>${replyErr[m.id]?`<p class="cerr" role="alert">${esc(replyErr[m.id])}</p>`:""}${saknas.length?`<div class="acts askrow"><span class="cnote">Saknas på kortet: ${esc(saknas.map(x=>x[0]).join(", "))}.</span><button class="tbtn" type="button" data-askfor="${esc(m.id)}" data-text="${esc(askText)}">Be om det i svaret</button></div>`:""}${redan.length?`<p class="cnote">Nämns i dialogen: ${esc(redan.join(", "))}.</p>`:""}${stam.length?`<p class="cnote">Kvar att stämma av: ${stam.map(x=>t(x)).join(" · ")}</p>`:""}<div class="acts"><button class="btn small" type="submit">Lägg svaret i kö</button></div><p class="cnote">Passa på att få med så mycket som möjligt i samma meddelande. Svaret går ut i samma InMail-tråd, från Filips konto, med nästa runda (en gång i timmen, vardagar). Skriv under med ditt namn så att kandidaten vet vem som svarar. Inga kundnamn och inga interna nummer.</p></form>`:`<p class="cnote">Du kan läsa men inte svara i den här vyn.</p>`}</section>`;
   const svarBox=rp?`<div class="fnext svar ${rp.tolkning==="negativ"?"neg":""}"><span class="fl">${esc((TOLK[rp.tolkning]||TOLK.okand)[0])}</span><span class="fnt">${rp.at?fmt(rp.at)+". ":""}${rp.text?t(rp.text):"Svaret är registrerat i huvudregistret."}</span>${canWrite&&userId?(pend?`<span class="ftxt">Svar i kö</span>`:`<button class="btn small" type="button" data-goreply>Svara</button>`):""}</div>`:"";
-  const pDialog=`<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
+  const pDialog=`${pxLatestMessageHTML(m,c)}<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
     ${replyHTML}
     <section class="fsec"><h3>Tidslinje${tl.length?` · ${tl.length}`:""}</h3>${tl.length?`<ul class="thread">${tl.map(i=>`<li class="${i.cls||""}"><span class="w"><b>${esc(i.who)}</b>${i.kanal?" · "+esc(i.kanal):""}${i.at?" · "+fmt(i.at):i.cls==="next"?"":" · datum saknas"}</span>${i.text?`<span class="pre">${t(i.text)}</span>`:""}</li>`).join("")}</ul>`:`<p class="fempty">Inget har hänt på det här uppdraget än.</p>`}</section>`;
   const pNotes=`<section class="fsec"><h3>Kommentarer${comm.length?` · ${comm.length}`:""}</h3>${comm.length?`<ul class="thread">${comm.map(q=>`<li class="${q.typ==="kontaktforslag"?"prop":"kom"}"><span class="w"><b>${t(who(q))}</b> · ${q.at?fmt(q.at):"datum saknas"}${q.typ==="kontaktforslag"?" · Förslag på kontaktändring, ej genomfört":""}${pingHTML("kommentar",m,q)}</span><span class="pre">${t(q.text)}</span></li>`).join("")}</ul>`:`<p class="fempty">Inga kommentarer på matchningen än.</p>`}</section>
@@ -1199,36 +1209,76 @@ function pxRoleRows(r,rows){
 function pxRequirementKey(value){
   return value.normalize("NFC").trim().replace(/\s+/g," ").replace(/[.]$/,"").toLocaleLowerCase("sv");
 }
-function pxListedRequirements(brief){
-  if(typeof brief!=="string")return [];
-  const heading=/^(?:ska(?:ll)?[ -]?krav(?:en)?|obligatoriska (?:krav|kvalifikationer)|mandatory (?:requirements|skills)|required (?:requirements|qualifications|skills)|must[ -]haves?)(?:\s*\((\d+)\))?\s*[:.]?$/i;
-  const boundary=/^(?:bör[ -]?krav|meriterande(?: (?:krav|kvalifikationer))?|önskvärda (?:krav|kvalifikationer)|arbetsuppgifter|övrigt|praktiska villkor|ansökan|nice[ -]to[ -]haves?|preferred qualifications|desired skills|responsibilities)\s*[:.]?$/i;
-  const incomplete=/(?:\.\.\.|…|se (?:även )?(?:bilaga|original|fullständig)|enligt (?:bilaga|bifogad)|separat (?:bilaga|kravlista)|övriga ska(?:ll)?[ -]?krav|fler (?:obligatoriska )?krav|inga (?:angivna|specificerade|obligatoriska)|framgår (?:ej|inte)|saknar underlag|(?:saknas|anges (?:ej|inte)|ej angivna)|see (?:annex|appendix|attachment)|additional requirements|not (?:specified|provided)|^[-–—]+$)/i;
-  const lines=brief.split(/\r?\n/).map(s=>s.trim().replace(/^#{1,6}\s+/,"").replace(/^\*\*(.+?)\*\*(:?)$/,"$1$2"));
-  const start=lines.findIndex(line=>heading.test(line));
-  if(start<0 || lines.slice(start+1).some(line=>heading.test(line)))return [];
-  const size=lines[start].match(heading)[1];
+function pxKravUnderlag(brief){
+  const unknown={status:"oklar",rows:[]},zero={status:"noll",rows:[]};
+  if(typeof brief!=="string" || !brief.trim())return unknown;
+  const lines=brief.split(/\r?\n/).map(s=>s.trim().replace(/^#{1,6}\s+/,"").replace(/^\*\*(.+?)\*\*(:?)$/,"$1$2").trim()).filter(Boolean);
+  const heading=/^(?:ska(?:ll)?[ -]?krav(?:en)?|obligatoriska (?:krav|kvalifikationer|kompetenser)|mandatory (?:requirements|skills|qualifications)|required (?:requirements|qualifications|skills)|must[ -]haves?)(?:\s*\((\d+)\))?\s*[:.]?$/i;
+  const boundary=/^(?:bör[ -]?krav|meriterande(?: (?:krav|kvalifikationer))?|meriter|önskvärda (?:krav|kvalifikationer)|arbetsuppgifter|övrigt|(?:praktiska |kommersiella )?villkor|ansökan|nice[ -]to[ -]haves?|preferred (?:requirements|qualifications|skills)|desired (?:qualifications|skills)|responsibilities|terms(?: and conditions)?|practical (?:details|conditions))(?:\s*\(\d+\))?\s*[:.]?$/i;
+  const explicitZero=/^(?:inga (?:ska(?:ll)?[ -]?krav|obligatoriska (?:krav|kvalifikationer)) (?:ställs|gäller)(?: för (?:detta )?uppdrag(?:et)?)?|no mandatory (?:requirements|qualifications|skills)(?: (?:apply|are required|are imposed))?)\.?$/i;
+  const missing=/(?:\.\.\.|…|se (?:även )?(?:bilaga|original|fullständig)|enligt (?:bilaga|bifogad)|(?:separat|saknad) (?:bilaga|kravlista)|övriga ska(?:ll)?[ -]?krav|fler (?:obligatoriska )?krav|inga (?:angivna|specificerade|obligatoriska|ska(?:ll)?[ -]?krav)|(?:anges|framgår) (?:ej|inte)|ej angivna|saknar underlag|^saknas\b|inte specificerat|not specified|not provided|see (?:annex|appendix|attachment)|additional requirements|no (?:mandatory |specified )?requirements|\bTBD\b|^[-–—]+$)/i;
+  const headingIndex=lines.findIndex(line=>heading.test(line));
+  const hasOtherMustLine=outside=>outside.some(line=>!boundary.test(line) && /(?:\bmåste\b|\bskall\b|\bska\b|\bmust\b|\brequired\b|obligatorisk[ta]?\b|mandatory\b)/i.test(line));
+  if(headingIndex<0){
+    // Unheaded zero is accepted only with an explicit opening declaration; unexplained text is ambiguous.
+    if(!explicitZero.test(lines[0]||""))return unknown;
+    return lines.length===1 || (boundary.test(lines[1]) && !hasOtherMustLine(lines.slice(1))) ? zero : unknown;
+  }
+  if(lines.slice(headingIndex+1).some(line=>heading.test(line)))return unknown;
+  const declared=lines[headingIndex].match(heading)[1];
+  const tail=lines.slice(headingIndex+1),stop=tail.findIndex(line=>boundary.test(line));
+  const section=stop<0?tail:tail.slice(0,stop);
+  const stripBullet=s=>s.replace(/^[-•*–]\s+/,"");
+  const explicit=section.length===1 && explicitZero.test(stripBullet(section[0]));
+  if(explicit || !section.length){
+    if(declared!==undefined && Number(declared)!==0 || !explicit&&declared===undefined)return unknown;
+    const outside=lines.slice(0,headingIndex).concat(stop<0?[]:tail.slice(stop));
+    return hasOtherMustLine(outside)?unknown:zero;
+  }
+  if(declared!==undefined && Number(declared)===0)return unknown;
   const rows=[],seen=new Set();
   let style="";
-  for(const line of lines.slice(start+1)){
-    if(!line)continue;
-    if(boundary.test(line))break;
+  for(const line of section){
     const item=line.match(/^(?:(\d+)[.)]\s+|([-•*–])\s+)?(.+)$/);
-    if(!item)return [];
+    if(!item)return unknown;
     const label=item[3].trim(),kind=item[1]?"number":item[2]?"bullet":"plain";
-    if(style && style!==kind || item[1] && Number(item[1])!==rows.length+1)return [];
-    if(incomplete.test(label) || label.endsWith(":") || /^\s*(?:bör[ -]?krav|meriterande|föredraget|nice[ -]to[ -]have|optional)\b/i.test(label))return [];
-    // Unmarked prose is ambiguous; accept only complete, individually punctuated statements.
-    if(kind==="plain" && !/[.!]$/.test(label))return [];
+    if(style && kind!==style || item[1] && Number(item[1])!==rows.length+1)return unknown;
+    if(explicitZero.test(label)||missing.test(label)||label.endsWith(":")||/^(?:bör[ -]?krav|meriterande|föredraget|nice[ -]to[ -]haves?|optional)\b/i.test(label))return unknown;
+    if(kind==="plain" && !/[.!]$/.test(label))return unknown;
     const key=pxRequirementKey(label);
-    if(!key || seen.has(key))return [];
-    style=kind;seen.add(key);rows.push(label);
+    if(!key||seen.has(key))return unknown;
+    seen.add(key);style=kind;rows.push(label);
   }
-  return size!==undefined && Number(size)!==rows.length ? [] : rows;
+  return declared!==undefined && Number(declared)!==rows.length?unknown:{status:"lista",rows};
+}
+function pxListedRequirements(brief){return pxKravUnderlag(brief).rows.filter(label=>!TomasMatchkort.isSubmissionTask(label));}
+let pxCommentsReady=false;
+function pxNoteVersion(r){
+  const value=r?.kravVersion;
+  if(value===undefined || value===null)return null;
+  return Number.isSafeInteger(value) && value>=1?value:undefined;
+}
+function pxCallNotes(m){
+  const version=pxNoteVersion(roles.get(m.roleId));
+  if(version===undefined)return [];
+  const all=[...comments.values()].filter(q=>q.matchId===m.id && q.roleId===m.roleId && q.candId===m.candId
+    && q.id && q.av && q.at && q.kravSamtal?.version===1 && (q.kravSamtal.kravVersion??null)===version && typeof q.kravSamtal.krav==="string"
+    && typeof q.kravSamtal.kalla==="string" && q.kravSamtal.kalla.trim());
+  const revoked=new Map();
+  for(const q of all){
+    const e=q.kravSamtal;
+    if(e.handling!=="aterkalla" || !Array.isArray(e.poster))continue;
+    for(const id of e.poster){
+      if(!revoked.has(id))revoked.set(id,[]);
+      revoked.get(id).push(q);
+    }
+  }
+  return all.filter(q=>q.kravSamtal.handling==="bekrafta" && !revoked.get(q.id)?.some(x=>x.av===q.av && x.kravSamtal.krav===q.kravSamtal.krav));
 }
 function pxRequirementRows(role, match){
   if(!role || match.roleId!==role.id)return [];
   const assessment=pxAssessment(match);
+  const notes=pxCommentsReady?pxCallNotes(match):[];
   const keys=items=>new Set(items.map(pxRequirementKey));
   const yes=keys(assessment.evidence), no=keys(assessment.missing), pending=keys(assessment.verify);
   return pxListedRequirements(role.brief).map(label=>{
@@ -1238,24 +1288,38 @@ function pxRequirementRows(role, match){
     if(overlap>1)status="Motstridiga besked";
     else if(no.has(key))status="Saknas enligt bedömningen";
     else if(yes.has(key))status="Belagt";
-    return {label,status};
+    const spoken=notes.filter(q=>q.kravSamtal.krav===label);
+    // A negative assessment is a conflict until the underlying evidence is resolved.
+    if(spoken.length && (overlap>1 || no.has(key)))status="Motstridiga besked";
+    else if(spoken.length && status!=="Belagt")status="Bekräftat i samtal";
+    return {label,status,spoken};
   });
 }
 function pxRequirementCount(rows){
-  return rows.filter(row=>row.status==="Belagt").length;
+  return rows.filter(row=>row.status==="Belagt" || row.status==="Bekräftat i samtal").length;
 }
-function pxRequirementSummary(role, match){
-  const rows=pxRequirementRows(role, match);
-  if(!rows.length)return "";
-  return '<p class="px-req-summary">'+pxRequirementCount(rows)+' av '+rows.length+' listade skallkrav belagda</p>';
+function pxRequirementSummary(role,match){
+  const rows=pxRequirementRows(role,match);
+  if(!rows.length){
+    const source=pxKravUnderlag(role?.brief);
+    if(source.status==="noll")return '<p class="px-d-muted">0 skallkrav enligt uppdraget.</p>';
+    if(source.status==="lista" && role.id===match.roleId)return '<p class="px-d-muted">0 kompetenskrav i uppdragets kravlista.</p>';
+    return '<p class="px-d-muted">Underlag saknas</p>';
+  }
+  const n=pxRequirementCount(rows);
+  const evidenced=rows.filter(row=>row.status==="Belagt").length;
+  const confirmed=n-evidenced;
+  const sources='Belagda i underlaget · '+evidenced+'<br>Bekräftade i samtal · '+(pxCommentsReady?confirmed:'Underlag saknas');
+  const percent=Math.round(100*n/rows.length);
+  return '<div class="px-evidence"><strong>'+percent+' % · '+n+' av '+rows.length+' skallkrav styrkta</strong><small>'+sources+'</small></div>';
 }
 function pxRequirementChecklist(role,match){
   const heading='<h2>Skallkrav för uppdraget</h2>';
   const rows=pxRequirementRows(role,match);
-  if(!rows.length)return '<section class="px-d-pane px-req-check">'+heading+'<p>Skallkraven behöver förtydligas i uppdragets kravtext. Se tillgängligt underlag nedan.</p></section>';
+  if(!rows.length)return '<section class="px-d-pane px-req-check">'+heading+pxRequirementSummary(role,match)+'</section>';
   function list(items){
     const html=items.map(({label,status})=>{
-      const ok=status==="Belagt";
+      const ok=status==="Belagt" || status==="Bekräftat i samtal";
       return '<li class="px-req-row"><span class="px-req-mark'+(ok?' is-confirmed':'')+'" aria-hidden="true">'+(ok?'☑':'☐')+'</span><span>'+t(label)+' <small class="px-d-muted">· '+status+'</small></span></li>';
     });
     return '<ul class="px-req-list">'+html.join("")+'</ul>';
@@ -1266,7 +1330,7 @@ function pxRequirementChecklist(role,match){
   const known=new Set(rows.map(row=>pxRequirementKey(row.label)));
   const unresolved=[...assessment.verify,...assessment.missing].some(note=>!known.has(pxRequirementKey(note)));
   const caution=unresolved?'<p class="px-d-muted">Se även öppna frågor i kravunderlaget nedan.</p>':"";
-  return '<section class="px-d-pane px-req-check">'+heading+'<p class="px-req-count"><strong>'+pxRequirementCount(rows)+' av '+rows.length+' listade skallkrav belagda</strong></p>'+list(rows.slice(0,6))+more+caution+'</section>';
+  return '<section class="px-d-pane px-req-check">'+heading+pxRequirementSummary(role,match)+list(rows.slice(0,6))+more+caution+'</section>';
 }
 
 function pxProof(m){
@@ -2650,7 +2714,7 @@ async function resolveNames(user){const ids=[...new Set([...comments.values()].m
   db.collection("roles").onSnapshot(s=>{arbetsdagRead.add("roles");arbetsdagFailed.delete("roles");roles=toMap(s);if(selected&&!roles.has(selected))selected=null;if(!selected){const v=visibleRoles();selected=v[0]?.id||null;}got|=1;render();done();},fail("uppdrag"));
   db.collection("candidates").onSnapshot(s=>{arbetsdagRead.add("candidates");arbetsdagFailed.delete("candidates");cands=toMap(s);got|=2;render();done();},fail("kandidater"));
   db.collection("matches").onSnapshot(s=>{arbetsdagRead.add("matches");arbetsdagFailed.delete("matches");matches=toMap(s);got|=4;render();done();},fail("matchningar"));
-  db.collection("kommentarer").onSnapshot(s=>{comments=toMap(s);renderDetail();resolveNames(user);},fail("kommentarer"));
+  db.collection("kommentarer").onSnapshot(s=>{pxCommentsReady=true;comments=toMap(s);renderDetail();resolveNames(user);},e=>{pxCommentsReady=false;fail("kommentarer")(e);renderDetail();});
   db.collection("partnersvar").onSnapshot(s=>{arbetsdagRead.add("partnersvar");arbetsdagFailed.delete("partnersvar");svarP=toMap(s);renderDetail();},()=>{arbetsdagFailed.add("partnersvar");if(view==="lista")renderDetail();});
   db.collection("andringar").onSnapshot(s=>{arbetsdagRead.add("ändringar");arbetsdagFailed.delete("ändringar");andr=toMap(s);render();},fail("ändringar"));
   db.collection("cv").onSnapshot(s=>{arbetsdagRead.add("CV");arbetsdagFailed.delete("CV");cvs=toMap(s);renderDetail();},fail("CV"));

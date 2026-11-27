@@ -301,6 +301,13 @@
     ["kanal", "text", "riktning", "av"].forEach(function (c) { if (r[c] !== null && r[c] !== undefined && !hasOwn(rec, c)) rec[c] = r[c]; });
     if (r.role_id !== null && r.role_id !== undefined && !hasOwn(rec, "roleId")) rec.roleId = r.role_id;
     if (!hasOwn(rec, "at") && r.at) rec.at = tsOut(r.at);
+    // Only the partner projection attests the body of an order sent via Recruiter.
+    // Ignore any same-named property in an unverified legacy contact payload.
+    delete rec.partnerMeddelande;
+    var verified = r.partner_meddelande;
+    if (PARTNER && isObj(verified) && typeof verified.matchId === "string" && typeof verified.text === "string") {
+      rec.partnerMeddelande = { matchId: verified.matchId, text: verified.text };
+    }
     return rec;
   }
   function sortKontakter(rows) {
