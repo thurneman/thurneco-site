@@ -125,13 +125,39 @@ for (const filename of ["ats/tomas/index.html", "ats/test/tomas-som/index.html"]
     const read=new Function("TomasMatchkort","window","document","linksForCand","pxVisibleDetailRole","contactOf",
       'let pxCallSnapshot=null;const userId="partner",cvs=new Map(),view="matchning",selected="role",focusPick={role:"pair"};\n'+declaration("pxCardSignals")+"\nreturn pxCardSignals;");
     const person={id:"person",cv:"https://example.test/cv.pdf",email:"demo@example.test",kontakter:[incoming]};
-    const rt={callOutcomes:async m=>{assert.deepEqual(m,samplePair);return [sampleCall];},visaSom:()=>filename.includes("/test/")?"partner":""};
+    const rt={callOutcomes:async m=>m.id===samplePair.id?[sampleCall]:[],visaSom:()=>filename.includes("/test/")?"partner":""};
     const render=read(helpers,{ATS_RUNTIME:rt},{querySelector:()=>badge},()=>[samplePair],()=>true,c=>c);
     assert.doesNotMatch(render(samplePair,person),/Givit samtycke/);
     await new Promise(resolve=>setImmediate(resolve));
     assert.match(badge.innerHTML,/Tidigare dialog.*CV finns!.*Kontaktuppgifter finns!.*Givit samtycke/);
     const other=render({...samplePair,id:"annan"},{id:"person"});
     assert.doesNotMatch(other,/Givit samtycke/);
+  });
+  test(filename+" begränsar samtalsläsningen till den visade partnern och matchningen",async()=>{
+    const code=fs.readFileSync(path.join(root,path.dirname(filename),"ats-runtime.js"),"utf8");
+    const start=code.indexOf("async callOutcomes(match)"),end=code.indexOf("\n    },",start);
+    assert.ok(start>=0 && end>start);
+    const method=new Function("sb","ctx","PARTNER","SOM","return ({"+code.slice(start,end)+"\n}}).callOutcomes;");
+    if(filename.includes("/test/")){
+      const api={rpc:async(name,args)=>{
+        assert.equal(name,"ats_visa_som");assert.deepEqual(args,{p_vem:"test@partner.example",p_kalla:"samtalsutfall"});
+        return {data:[{...sampleCall,rad:"Privat samtalsanteckning"},{...sampleCall,role_id:"annan"}]};
+      }};
+      assert.deepEqual(await method(api,{visaSom:true},true,"test@partner.example")(samplePair),[sampleCall]);
+      assert.deepEqual(await method({},null,true,"")(samplePair),[]);
+    } else {
+      const queries=[],api={from(table){
+        assert.equal(table,"samtalsutfall");
+        const q={filters:{},select(cols){assert.equal(cols,"id,match_id,cand_id,role_id,utfall,at");return this;},
+          eq(k,v){this.filters[k]=v;return this;},in(k,values){this.types=values;return this;},lte(){return this;},
+          order(){return this;},limit(n){assert.equal(n,1);queries.push(this);return Promise.resolve({data:[]});}};
+        return q;
+      }};
+      assert.deepEqual(await method(api,{roll:"partner"},true,"")(samplePair),[]);
+      assert.equal(queries.length,2);
+      for(const q of queries)assert.deepEqual(q.filters,{match_id:"pair",cand_id:"person",role_id:"role"});
+      assert.deepEqual(await method({}, {roll:"agare"},true,"")(samplePair),[]);
+    }
   });
   test(filename+" visar samma kravräkning och samma koppling till Historik", () => {
     assert.ok(html.includes('${pxLatestMessageHTML(m,c)}'));
