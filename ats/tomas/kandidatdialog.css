@@ -1,0 +1,15 @@
+.p12-dialog-filter { display:flex; flex-wrap:wrap; gap:.5rem; margin:.6rem 0 1rem }
+.p12-dialog-filter button { min-height:42px; padding:.45rem .9rem; font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--fg); cursor:pointer }
+.p12-dialog-filter button[aria-pressed="true"] { border-color:var(--accent); font-weight:700; color:var(--accent) }
+.p12-dialog-row { padding:.8rem 0; border-top:1px solid var(--line); overflow-wrap:anywhere }
+.p12-dialog-row h3,.p12-dialog-row p { margin:.2rem 0 .4rem }
+.p12-dialog-row h3 { font-size:1rem }
+.p12-dialog-row p,.p12-dialog-messages time { font-size:.92rem }
+.p12-dialog-wait { color:var(--muted) }
+.p12-dialog-messages { display:grid; gap:.7rem; list-style:none; margin:.7rem 0 0; padding:0 }
+.p12-dialog-messages li { border-inline-start:2px solid var(--line); padding-inline-start:.7rem; overflow-wrap:anywhere }
+.p12-dialog-messages .pre { white-space:pre-wrap; margin:.3rem 0 }
+.dialog-kontaktinfo { margin-top:.5rem }
+.dialog-kontakt-varden { margin:.55rem 0 }
+dl.dialog-kontakt-varden { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:.3rem .7rem }
+.dialog-kontakt-varden dd { margin:0; overflow-wrap:anywhere }

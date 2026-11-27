@@ -301,6 +301,13 @@
     ["kanal", "text", "riktning", "av"].forEach(function (c) { if (r[c] !== null && r[c] !== undefined && !hasOwn(rec, c)) rec[c] = r[c]; });
     if (r.role_id !== null && r.role_id !== undefined && !hasOwn(rec, "roleId")) rec.roleId = r.role_id;
     if (!hasOwn(rec, "at") && r.at) rec.at = tsOut(r.at);
+    if (PARTNER) {
+      // Only the projection for the signed-in partner can associate a message with a match.
+      delete rec.partnerMeddelande;
+      delete rec.kontaktId;
+      if (r.id != null) rec.kontaktId = String(r.id);
+      if (isObj(r.partner_meddelande)) rec.partnerMeddelande = r.partner_meddelande;
+    }
     return rec;
   }
   function sortKontakter(rows) {
@@ -671,10 +678,12 @@
   KBSpec.prototype.docIdFor = function (best) { return ctx.selfKeys.indexOf(String(best || "").toLowerCase()) >= 0 ? ctx.uid : best; };
   KBSpec.prototype.posterFromRow = function (r) {
     var d = mappedDoc("kontaktbestallningar", r);
+    if (PARTNER && r.id != null) d.orderId = String(r.id);
     return d;
   };
   KBSpec.prototype.posterToRow = function (nyckel, bestallare, docId, entry, namnFallback) {
     var e = Object.assign({}, entry);
+    if (PARTNER) delete e.orderId;
     if (e.bestallare === undefined || e.bestallare === null || e.bestallare === docId || e.bestallare === bestallare ||
         (this.isSelf(docId) && (e.bestallare === ctx.uid || ctx.selfKeys.indexOf(String(e.bestallare).toLowerCase()) >= 0))) delete e.bestallare;
     if ((e.bestallareNamn === undefined || e.bestallareNamn === null) && namnFallback) e.bestallareNamn = namnFallback;
