@@ -1151,6 +1151,18 @@
   window.ATS_RUNTIME = Object.freeze({
     // Tomas vy: databasfunktion och vy som den inloggade partnern (Listan och Generera kandidater). Ingen Visa som här.
     rpc: function (namn, arg) { return sb.rpc(namn, arg); },
+    async callOutcomes(match) {
+      if(!PARTNER || ctx?.roll!=="partner" || !match?.id || !match.candId || !match.roleId)return [];
+      const recent=types=>sb.from("samtalsutfall").select("id,match_id,cand_id,role_id,utfall,at")
+        .eq("match_id",match.id).eq("cand_id",match.candId).eq("role_id",match.roleId)
+        .in("utfall",types).lte("at",new Date().toISOString()).order("at",{ascending:false}).order("id",{ascending:false}).limit(1);
+      const decision=await recent(["ja_presentation","nej"]);
+      if(decision.error)throw decision.error;
+      if(decision.data?.length)return decision.data;
+      const dialog=await recent(["vill_veta_mer"]);
+      if(dialog.error)throw dialog.error;
+      return dialog.data||[];
+    },
     vyrad: function (namn) { return sb.from(namn).select("*"); },
     vy: VY,
     mappning: { MAP: MAP, mappedRow: mappedRow, mappedDoc: mappedDoc, rowCandidates: rowCandidates, rowKo: rowKo, docKo: docKo, kontaktRow: kontaktRow, kontaktDoc: kontaktDoc, genericRow: function (id, d) { return genericRow(ctx || { uid: null, email: null }, id, d); }, genericDoc: genericDoc, logRow: logRow, logDoc: logDoc, applyPatch: applyPatch }
