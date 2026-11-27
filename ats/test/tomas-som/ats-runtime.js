@@ -1212,6 +1212,13 @@
       return Promise.resolve({ data: null, error: { code: "VISA_SOM", message: "Bara läsning. Du ser Tomas vy, inget sparas." } });
     },
     vyrad: function (namn) { return SOM ? sb.rpc("ats_visa_som", { p_vem: SOM, p_kalla: namn }) : Promise.resolve({ data: null, error: { message: "Bara Visa som." } }); },
+    async callOutcomes(match) {
+      if(!SOM || !ctx?.visaSom || !match?.id || !match.candId || !match.roleId)return [];
+      const result=await sb.rpc("ats_visa_som",{p_vem:SOM,p_kalla:"samtalsutfall"});
+      if(result.error)throw result.error;
+      return (Array.isArray(result.data)?result.data:[]).filter(row=>row.match_id===match.id && row.cand_id===match.candId && row.role_id===match.roleId)
+        .map(({id,match_id,cand_id,role_id,utfall,at})=>({id,match_id,cand_id,role_id,utfall,at}));
+    },
     visaSom: function () { return SOM; },
     vy: VY,
     mappning: { MAP: MAP, mappedRow: mappedRow, mappedDoc: mappedDoc, rowCandidates: rowCandidates, rowKo: rowKo, docKo: docKo, kontaktRow: kontaktRow, kontaktDoc: kontaktDoc, genericRow: function (id, d) { return genericRow(ctx || { uid: null, email: null }, id, d); }, genericDoc: genericDoc, logRow: logRow, logDoc: logDoc, applyPatch: applyPatch }

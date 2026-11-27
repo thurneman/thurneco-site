@@ -58,6 +58,20 @@ test("Kvitterade Recruiter-utskick använder partnerprojektionens match och brö
     assert.equal(last([map({...raw,partner_meddelande:null,extra:{partnerMeddelande:outgoing.partnerMeddelande,brodtext:"Annan order"}})]),null);
   }
 });
+test("Endast tillgängliga CV och direkta kontaktvägar får en markering", () => {
+  const labels=(candidate,upload,contact)=>helpers.availabilityHTML(helpers.availableDetails(candidate,upload,contact));
+  assert.equal(labels({cv:"CV nämns i dialogen"},{filnamn:"cv.pdf"},{linkedin:"https://www.linkedin.com/in/demo"}),"");
+  assert.equal(labels({cv:"https://"},{url:"javascript:alert(1)"},{phone:"saknas",email:"—"}),"");
+  const cvOnly=labels({cv:"https://example.test/cv.pdf"},null,{});
+  assert.match(cvOnly,/CV finns!/);
+  assert.doesNotMatch(cvOnly,/Kontaktuppgifter/);
+  for(const contact of [{phone:"+46 (0)70-123 45 67"},{email:"demo@example.test"}]){
+    const contactOnly=labels({},null,contact);
+    assert.match(contactOnly,/Kontaktuppgifter finns!/);
+    assert.doesNotMatch(contactOnly,/CV finns!/);
+    assert.match(labels({},{assetId:"cv-1"},contact),/CV finns!.*Kontaktuppgifter finns!/);
+  }
+});
 test("Endast administrativa rader räknas bort", () => {
   for (const s of ["Bifoga ett aktuellt CV","Kontaktuppgifter","Kandidatens OK för uppdraget","CV ska bifogas.",
     "Konsultens godkännande till presentation","Kandidatens OK och timpris för uppdraget","Kandidatens bekräftelse","Kandidatens bekräftelse för uppdraget"]) {
@@ -67,6 +81,31 @@ test("Endast administrativa rader räknas bort", () => {
     "Tre års arbete med kundkontakt","CV ska visa minst två års erfarenhet av Java","Yrkesbevis ska bifogas","Bekräftelse av betalningar i SAP"]) {
     assert.equal(helpers.isSubmissionTask(s), false);
   }
+});
+
+const samplePair={id:"pair",roleId:"role",candId:"person"};
+const sampleCall={id:"23",match_id:"pair",role_id:"role",cand_id:"person",utfall:"ja_presentation",at:incoming.at};
+const checkedAt=Date.parse("2025-04-12T20:00:00Z");
+test("Dialog bygger på ett daterat inkommande meddelande i en synlig relation",()=>{
+  const has=(message,pairs=[samplePair])=>helpers.earlierDialog({id:"person",kontakter:[message]},pairs,checkedAt);
+  assert.equal(has(incoming),true);
+  for(const change of [{riktning:"ut"},{typ:"kommentar"},{kanal:"telefon"},{roleId:"annan"},{candId:"annan"},{matchId:"annan"},{text:" "},{at:"2040-01-01"}])
+    assert.equal(has({...incoming,...change}),false);
+  assert.equal(has(incoming,[]),false);
+  assert.equal(has(incoming,[samplePair,{...samplePair,id:"två"}]),false);
+  assert.equal(has({...incoming,matchId:"pair"},[samplePair,{...samplePair,id:"två"}]),true);
+});
+test("Enbart aktuellt presentationsbesked styr samtycket",()=>{
+  const signals=(...rows)=>helpers.callSignals(samplePair,rows,checkedAt);
+  assert.deepEqual(signals(sampleCall),{hasDialog:true,hasConsent:true});
+  const later={...sampleCall,at:"2025-04-12T14:00:00Z",id:"24"};
+  assert.deepEqual(signals(sampleCall,{...later,utfall:"ej_natt"}),{hasDialog:true,hasConsent:true});
+  assert.deepEqual(signals({...later,utfall:"nej"},sampleCall),{hasDialog:true,hasConsent:false});
+  assert.equal(signals(sampleCall,{...sampleCall,id:"24",utfall:"nej"}).hasConsent,false);
+  assert.equal(signals({...sampleCall,utfall:"vill_veta_mer"}).hasConsent,false);
+  assert.deepEqual(signals({...sampleCall,utfall:"ej_natt"}),{hasDialog:false,hasConsent:false});
+  for(const change of [{match_id:"annan"},{role_id:"annan"},{cand_id:"annan"},{at:"2040-01-01"},{utfall:"intresserad"}])
+    assert.deepEqual(signals({...sampleCall,...change}),{hasDialog:false,hasConsent:false});
 });
 
 for (const filename of ["ats/tomas/index.html", "ats/test/tomas-som/index.html"]) {
@@ -80,7 +119,46 @@ for (const filename of ["ats/tomas/index.html", "ats/test/tomas-som/index.html"]
     return html.slice(start,end+2);
   }
   const names=["pxRequirementKey","pxKravUnderlag","pxListedRequirements","pxRequirementRows","pxRequirementCount","pxRequirementSummary"];
-  const build=new Function("TomasMatchkort","pxAssessment","pxCommentsReady","pxCallNotes", names.map(declaration).join("\n")+"\nreturn pxRequirementSummary;");
+  const build=new Function("TomasMatchkort","pxAssessment","pxCommentsReady","pxCallNotes","pxCardSignals","esc", names.map(declaration).join("\n")+"\nreturn pxRequirementSummary;");
+  test(filename+" laddar samtycke enbart för det öppna matchkortet och visar rätt gröna markeringar",async()=>{
+    const badge={dataset:{pxCardSignals:"pair"},innerHTML:""};
+    const read=new Function("TomasMatchkort","window","document","linksForCand","pxVisibleDetailRole","contactOf",
+      'let pxCallSnapshot=null;const userId="partner",cvs=new Map(),view="matchning",selected="role",focusPick={role:"pair"};\n'+declaration("pxCardSignals")+"\nreturn pxCardSignals;");
+    const person={id:"person",cv:"https://example.test/cv.pdf",email:"demo@example.test",kontakter:[incoming]};
+    const rt={callOutcomes:async m=>m.id===samplePair.id?[sampleCall]:[],visaSom:()=>filename.includes("/test/")?"partner":""};
+    const render=read(helpers,{ATS_RUNTIME:rt},{querySelector:()=>badge},()=>[samplePair],()=>true,c=>c);
+    assert.doesNotMatch(render(samplePair,person),/Givit samtycke/);
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.match(badge.innerHTML,/Tidigare dialog.*CV finns!.*Kontaktuppgifter finns!.*Givit samtycke/);
+    const other=render({...samplePair,id:"annan"},{id:"person"});
+    assert.doesNotMatch(other,/Givit samtycke/);
+  });
+  test(filename+" begränsar samtalsläsningen till den visade partnern och matchningen",async()=>{
+    const code=fs.readFileSync(path.join(root,path.dirname(filename),"ats-runtime.js"),"utf8");
+    const start=code.indexOf("async callOutcomes(match)"),end=code.indexOf("\n    },",start);
+    assert.ok(start>=0 && end>start);
+    const method=new Function("sb","ctx","PARTNER","SOM","return ({"+code.slice(start,end)+"\n}}).callOutcomes;");
+    if(filename.includes("/test/")){
+      const api={rpc:async(name,args)=>{
+        assert.equal(name,"ats_visa_som");assert.deepEqual(args,{p_vem:"test@partner.example",p_kalla:"samtalsutfall"});
+        return {data:[{...sampleCall,rad:"Privat samtalsanteckning"},{...sampleCall,role_id:"annan"}]};
+      }};
+      assert.deepEqual(await method(api,{visaSom:true},true,"test@partner.example")(samplePair),[sampleCall]);
+      assert.deepEqual(await method({},null,true,"")(samplePair),[]);
+    } else {
+      const queries=[],api={from(table){
+        assert.equal(table,"samtalsutfall");
+        const q={filters:{},select(cols){assert.equal(cols,"id,match_id,cand_id,role_id,utfall,at");return this;},
+          eq(k,v){this.filters[k]=v;return this;},in(k,values){this.types=values;return this;},lte(){return this;},
+          order(){return this;},limit(n){assert.equal(n,1);queries.push(this);return Promise.resolve({data:[]});}};
+        return q;
+      }};
+      assert.deepEqual(await method(api,{roll:"partner"},true,"")(samplePair),[]);
+      assert.equal(queries.length,2);
+      for(const q of queries)assert.deepEqual(q.filters,{match_id:"pair",cand_id:"person",role_id:"role"});
+      assert.deepEqual(await method({}, {roll:"agare"},true,"")(samplePair),[]);
+    }
+  });
   test(filename+" visar samma kravräkning och samma koppling till Historik", () => {
     assert.ok(html.includes('${pxLatestMessageHTML(m,c)}'));
     assert.ok(html.includes('src="/ats/tomas/matchkort-uppgifter.js"'));
@@ -105,5 +183,11 @@ for (const filename of ["ats/tomas/index.html", "ats/test/tomas-som/index.html"]
     const six={id:"role",brief:"Skallkrav (6)\n- Java\n- Svenska\n- SQL\n- Python\n- C#\n- Finska"};
     const four=build(helpers,()=>({evidence:["Java","Svenska","SQL","Python"],missing:[],verify:[]}),true,()=>[]);
     assert.match(four(six,pair),/67 % · 4 av 6 skallkrav styrkta/);
+    const renderCard=build(helpers,assess,true,()=>[],(m,c)=>helpers.availabilityHTML(helpers.availableDetails(c,null,c)),String);
+    const details={id:"person",cv:"https://example.test/cv.pdf",email:"demo@example.test"};
+    assert.match(renderCard(role,pair,details),/50 % · 1 av 2 skallkrav styrkta<\/strong><div data-px-card-signals="pair"><div class="px-match-availability">.*CV finns!.*Kontaktuppgifter finns!/);
+    assert.doesNotMatch(renderCard(role,pair,{id:"person"}),/px-match-availability/);
+    assert.match(renderCard({id:"role",brief:"Endast rollbeskrivning"},pair,details),/Underlag saknas.*CV finns!/);
+    assert.doesNotMatch(renderCard({id:"role",brief:"Endast rollbeskrivning"},pair,details),/%/);
   });
 }
