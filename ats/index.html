@@ -1216,15 +1216,15 @@ async function hemsidaFyll(box){const id=box.dataset.hemsida,RT=window.ATS_RUNTI
    <div data-hs-textbox style="margin-top:.5rem;border-top:1px dashed var(--line,#ddd);padding-top:.45rem">${(()=>{const tg=g.text&&g.text.text?g.text:null,tf=g.textForslag&&g.textForslag.text?g.textForslag:null,val=tg?tg.text:tf?tf.text:"";
      if(!tg&&!tf)return`<p style="margin:0;font-size:.85rem"><b>Text på annonsen</b> · Inget förslag än. Den dagliga uppgiften skriver ett, sedan godkänner du med krysset.</p>`;
      return`<label style="display:inline-flex;gap:.35rem;align-items:center"><input type="checkbox" data-hs-text ${tg?"checked":""} ${canWrite?"":"disabled"}> <b>Visa texten på annonsen</b></label>
-     <textarea data-hs-texttext rows="4" maxlength="700" style="display:block;width:100%;margin-top:.3rem">${esc(val)}</textarea>
-     <p style="margin:.2rem 0;font-size:.8rem">${tg?`Godkänd ${esc(fmtDate(tg.godkandAt))}${tg.franForslag===false?", din egen text":""}. Ändra och kryssa om för att byta text.`:"Förslag från systemet, syns inte på sajten förrän du kryssar. Du kan ändra texten först."} Två till fyra meningar, inget kundnamn, nummer eller pris.</p>`;})()}</div>`;
+     <textarea data-hs-texttext rows="10" maxlength="8000" style="display:block;width:100%;margin-top:.3rem">${esc(val)}</textarea>
+     <p style="margin:.2rem 0;font-size:.8rem">${tg?`Godkänd ${esc(fmtDate(tg.godkandAt))}${tg.franForslag===false?", din egen text":""}. Ändra och kryssa om för att byta text.`:"Förslag från systemet, syns inte på sajten förrän du kryssar. Du kan ändra texten först."} Inget kundnamn, förmedlare, kontaktuppgifter, adress, internt nummer eller pris.</p>`;})()}</div>`;
   const spara=async v=>{const b=box.querySelector("[data-hs-visa]");b.disabled=true;
     const r2=await RT.rpc("ats_hemsida_satt",{p_role:id,p_visa:v,p_rubrik:box.querySelector("[data-hs-rubrik]").value,p_omrade:box.querySelector("[data-hs-omrade]").value});
     if(r2.error){toast(r2.error.message||"Gick inte att spara.");b.checked=!v;b.disabled=false;return;}
     const d=r2.data||{};toast(!v?"Borttagen från hemsidan.":d.synsPaSajten?"Godkänd. Annonsen syns på hemsidan.":"Godkänd, men syns inte förrän sista dag med källa finns.");hemsidaFyll(box);};
   box.querySelector("[data-hs-visa]").addEventListener("change",e=>spara(e.target.checked));
   const tb=box.querySelector("[data-hs-text]");if(tb)tb.addEventListener("change",async e=>{const v=e.target.checked;tb.disabled=true;
-    const r3=await RT.rpc("ats_hemsida_text_satt",{p_role:id,p_godkann:v,p_text:v?box.querySelector("[data-hs-texttext]").value:null});
+    const r3=await RT.rpc("ats_hemsida_annons_satt",{p_role:id,p_godkann:v,p_text:v?box.querySelector("[data-hs-texttext]").value:null});
     if(r3.error){toast(r3.error.message||"Gick inte att spara.");tb.checked=!v;tb.disabled=false;return;}
     toast(v?"Texten är godkänd och visas på annonsen.":"Texten är borttagen från annonsen.");hemsidaFyll(box);});}
 // Annonstexter i en lista (Filips beslut 27 november 10.44): annons och text under varandra, längst tid kvar först, kryss för kryss.
@@ -1233,7 +1233,7 @@ async function hsListaOppna(){const RT=window.ATS_RUNTIME;let ov=document.getEle
     ov.style.cssText="position:fixed;inset:4vh 4vw;z-index:50;background:var(--bg,#fff);border:1px solid var(--line,#ccc);border-radius:.8rem;box-shadow:0 10px 40px rgba(0,0,0,.25);overflow:auto;padding:1rem 1.2rem";document.body.appendChild(ov);
     ov.addEventListener("click",e=>{if(e.target.closest("[data-hs-stang]"))ov.remove();});
     ov.addEventListener("change",async e=>{const cb=e.target.closest("[data-hsl-kryss]");if(!cb)return;const rad=cb.closest("[data-hsl-id]"),id=rad.dataset.hslId,v=cb.checked;cb.disabled=true;
-      const r=await RT.rpc("ats_hemsida_text_satt",{p_role:id,p_godkann:v,p_text:v?rad.querySelector("textarea").value:null});cb.disabled=false;
+      const r=await RT.rpc("ats_hemsida_annons_satt",{p_role:id,p_godkann:v,p_text:v?rad.querySelector("textarea").value:null,p_arbetsform:v?rad.querySelector("[data-hsl-af]").value:null});cb.disabled=false;
       if(r.error){toast(r.error.message||"Gick inte att spara.");cb.checked=!v;return;}
       rad.querySelector("[data-hsl-status]").textContent=v?"Godkänd, visas på annonsen.":"Inte godkänd, visas inte.";rad.style.opacity=v?".6":"1";hsListaRakna(ov);});}
   ov.innerHTML="<p>Läser förslagen …</p>";
@@ -1241,10 +1241,11 @@ async function hsListaOppna(){const RT=window.ATS_RUNTIME;let ov=document.getEle
   const res=await RT.rpc("ats_hemsida_text_lista",{});if(res.error){ov.innerHTML=`<p>Listan gick inte att läsa (${esc(res.error.code||"fel")}).</p><button class="btn light small" type="button" data-hs-stang>Stäng</button>`;return;}
   const rows=Array.isArray(res.data)?res.data:[];
   ov.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;position:sticky;top:-1rem;background:var(--bg,#fff);padding:.4rem 0"><h2 style="margin:0">Annonstexter</h2><span data-hsl-rakna></span><button class="btn light small" type="button" data-hs-stang>Stäng</button></div>
-   <p style="font-size:.85rem;margin:.2rem 0 .8rem">Längst tid kvar först. Kryssa för att godkänna, texten syns då på annonsen. Du kan ändra texten innan du kryssar. Annonser tas ner dagen före sista dag.</p>
-   ${rows.length?rows.map(x=>{const godk=!!x.text;const val=x.text||x.forslag||"";return`<div data-hsl-id="${esc(x.id)}" style="border-top:1px solid var(--line,#ddd);padding:.7rem 0;${godk?"opacity:.6":""}">
-     <div><b>${esc(x.rubrik||x.ref||x.id)}</b> · ${esc(x.ort||"")} · sista dag ${esc(x.sistaDag)} (${esc(String(x.dagarKvar))} dagar kvar)${x.ref?` · <span style="color:var(--muted)">${esc(x.ref)}</span>`:""}</div>
-     <textarea rows="3" maxlength="700" style="display:block;width:100%;margin:.35rem 0">${esc(val)}</textarea>
+   <p style="font-size:.85rem;margin:.2rem 0 .8rem">Senast tillagda först. Kryssa för att godkänna. Du kan ändra raden och texten innan du kryssar. Den nya hemsidan visar bara annonser med ditt kryss, och den är inte publicerad än. Annonser tas ner dagen före sista dag.</p>
+   ${rows.length?rows.map(x=>{const godk=!!x.text;const val=x.text||x.forslag||"";const af=x.arbetsform||x.forslagArbetsform||"";return`<div data-hsl-id="${esc(x.id)}" style="border-top:1px solid var(--line,#ddd);padding:.7rem 0;${godk?"opacity:.6":""}">
+     <div><b>${esc(x.rubrik||x.ref||x.id)}</b> · ${esc(x.ort||"")} · sista dag ${esc(x.sistaDag)} (${esc(String(x.dagarKvar))} dagar kvar) · tillagd ${esc(x.tillagd||"")}${x.ref?` · <span style="color:var(--muted)">${esc(x.ref)}</span>`:""}</div>
+     <label style="display:block;margin-top:.35rem;font-size:.85rem">Raden på annonsen: Konsultuppdrag · ${esc(x.omrade||"")} · ${esc(x.ort||"")} · <input type="text" data-hsl-af value="${esc(af)}" maxlength="120" size="40" placeholder="omfattning och arbetsplats"></label>
+     <textarea rows="${Math.min(40,Math.max(4,val.split("\n").length+2))}" maxlength="8000" style="display:block;width:100%;margin:.35rem 0;font-family:inherit;line-height:1.5">${esc(val)}</textarea>
      <label style="display:inline-flex;gap:.35rem;align-items:center"><input type="checkbox" data-hsl-kryss ${godk?"checked":""} ${canWrite?"":"disabled"}> Godkänn</label> <span data-hsl-status style="font-size:.85rem;color:var(--muted)">${godk?"Godkänd "+esc(fmtDate(x.godkandAt)||""):"Förslag, visas inte än."}</span></div>`;}).join(""):"<p>Inga förslag än. Den dagliga uppgiften skriver dem varje morgon.</p>"}`;
   hsListaRakna(ov);}
 function hsListaRakna(ov){const n=ov.querySelectorAll("[data-hsl-id]").length,g=ov.querySelectorAll("[data-hsl-kryss]:checked").length,el=ov.querySelector("[data-hsl-rakna]");if(el)el.textContent=g+" av "+n+" godkända";}
