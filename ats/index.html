@@ -1200,7 +1200,7 @@ function updateKoCount(){const n=[...koPosts.values()].filter(k=>KO_OPEN.has(k.s
 function scrollToProfile(){const d=$("#detail"),f=$("#fprof");if(!d||!f)return;const st=d.querySelector(".rh-sticky");const off=st?st.offsetHeight:0;const top=f.getBoundingClientRect().top-d.getBoundingClientRect().top+d.scrollTop-off;if(d.scrollTop>top)d.scrollTop=Math.max(0,top);}
 function sizeFlist(){const d=$("#detail");if(!d)return;const st=d.querySelector(".rh-sticky");d.style.setProperty("--dh",d.clientHeight+"px");d.style.setProperty("--sticky",(st?st.offsetHeight:0)+"px");}
 window.addEventListener("resize",sizeFlist);
-// Visa på hemsidan (Filips beslut 25 november 2026). Sajten visar bara rubrik, ort, område och sista dag. Systemet föreslår, Filips kryss godkänner.
+// Visa på hemsidan (Filips beslut 25 november 2026). Sajten visar rubrik, ort, område, sista dag och, sedan 27 november, en godkänd text. Systemet föreslår, Filips kryss godkänner.
 const HS_OMR=["IT & data","Teknik & industri","Projektledning & verksamhet","HR & administration","Vård"];
 const hemsidaBox=r=>`<div class="hemsida-box" data-hemsida="${esc(r.id)}" style="border:1px solid var(--line,#ddd);border-radius:.6rem;padding:.6rem .8rem;margin:.6rem 0"><b>Hemsidan</b> <span data-hs-ut>Läser förslaget …</span></div>`;
 async function hemsidaFyll(box){const id=box.dataset.hemsida,RT=window.ATS_RUNTIME,ut=box.querySelector("[data-hs-ut]");
@@ -1212,12 +1212,21 @@ async function hemsidaFyll(box){const id=box.dataset.hemsida,RT=window.ATS_RUNTI
    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem"><label>Rubrik <input type="text" data-hs-rubrik value="${esc(rub)}" maxlength="70" size="34"></label>
    <label>Område <select data-hs-omrade><option value="">Välj</option>${HS_OMR.map(o=>`<option ${o===omr?"selected":""}>${esc(o)}</option>`).join("")}</select></label></div>
    <p style="margin:.35rem 0;font-size:.85rem">Ort: <b>${esc(f.ort||"saknas")}</b> · Sista dag: <b>${esc(f.sistaDag||"saknas")}</b>${godk?` · Godkänd ${esc(fmtDate(g.godkandAt))}`:visa?" · Ikryssad som standard med systemets förslag. Kryssa ur för att ta bort, eller ändra och kryssa om för att godkänna din egen rubrik.":" · Förslag från systemet, ditt kryss godkänner"}</p>
-   ${hinder.length?`<p class="cerr" style="font-size:.85rem;margin:.2rem 0">${hinder.map(esc).join(" ")}</p>`:""}`;
+   ${hinder.length?`<p class="cerr" style="font-size:.85rem;margin:.2rem 0">${hinder.map(esc).join(" ")}</p>`:""}
+   <div data-hs-textbox style="margin-top:.5rem;border-top:1px dashed var(--line,#ddd);padding-top:.45rem">${(()=>{const tg=g.text&&g.text.text?g.text:null,tf=g.textForslag&&g.textForslag.text?g.textForslag:null,val=tg?tg.text:tf?tf.text:"";
+     if(!tg&&!tf)return`<p style="margin:0;font-size:.85rem"><b>Text på annonsen</b> · Inget förslag än. Den dagliga uppgiften skriver ett, sedan godkänner du med krysset.</p>`;
+     return`<label style="display:inline-flex;gap:.35rem;align-items:center"><input type="checkbox" data-hs-text ${tg?"checked":""} ${canWrite?"":"disabled"}> <b>Visa texten på annonsen</b></label>
+     <textarea data-hs-texttext rows="4" maxlength="700" style="display:block;width:100%;margin-top:.3rem">${esc(val)}</textarea>
+     <p style="margin:.2rem 0;font-size:.8rem">${tg?`Godkänd ${esc(fmtDate(tg.godkandAt))}${tg.franForslag===false?", din egen text":""}. Ändra och kryssa om för att byta text.`:"Förslag från systemet, syns inte på sajten förrän du kryssar. Du kan ändra texten först."} Två till fyra meningar, inget kundnamn, nummer eller pris.</p>`;})()}</div>`;
   const spara=async v=>{const b=box.querySelector("[data-hs-visa]");b.disabled=true;
     const r2=await RT.rpc("ats_hemsida_satt",{p_role:id,p_visa:v,p_rubrik:box.querySelector("[data-hs-rubrik]").value,p_omrade:box.querySelector("[data-hs-omrade]").value});
     if(r2.error){toast(r2.error.message||"Gick inte att spara.");b.checked=!v;b.disabled=false;return;}
     const d=r2.data||{};toast(!v?"Borttagen från hemsidan.":d.synsPaSajten?"Godkänd. Annonsen syns på hemsidan.":"Godkänd, men syns inte förrän sista dag med källa finns.");hemsidaFyll(box);};
-  box.querySelector("[data-hs-visa]").addEventListener("change",e=>spara(e.target.checked));}
+  box.querySelector("[data-hs-visa]").addEventListener("change",e=>spara(e.target.checked));
+  const tb=box.querySelector("[data-hs-text]");if(tb)tb.addEventListener("change",async e=>{const v=e.target.checked;tb.disabled=true;
+    const r3=await RT.rpc("ats_hemsida_text_satt",{p_role:id,p_godkann:v,p_text:v?box.querySelector("[data-hs-texttext]").value:null});
+    if(r3.error){toast(r3.error.message||"Gick inte att spara.");tb.checked=!v;tb.disabled=false;return;}
+    toast(v?"Texten är godkänd och visas på annonsen.":"Texten är borttagen från annonsen.");hemsidaFyll(box);});}
 new MutationObserver(()=>document.querySelectorAll(".hemsida-box:not([data-fylld])").forEach(b=>{b.dataset.fylld="1";hemsidaFyll(b);})).observe(document.documentElement,{childList:true,subtree:true});
 function renderDetail(){
   const detail=$("#detail");
