@@ -32,6 +32,11 @@ body.ats-visa-som.px-shell .px-jobs input[data-px-jfilter]{pointer-events:auto}
 
 </style>
 <style id="px-detail-style">
+.px-pair-hero .px-evidence{display:grid;justify-items:start;gap:.3rem;margin:.5rem 0 .9rem}
+.px-pair-hero .px-evidence>strong{font-size:1.17rem}
+.px-match-availability{display:flex;flex-wrap:wrap;gap:.3rem .55rem;font-size:.85rem;font-weight:650}
+.px-match-availability span{display:inline-flex;align-items:center;gap:.28rem;border:1px solid #a3d5b4;background:#e6f8ec;color:#145a32;border-radius:.35rem;padding:.12rem .42rem}
+.px-match-availability i{font-style:normal}
 .px-role-detail,.px-match-detail,.px-consult-detail{color:var(--fg);width:min(100%,66rem);margin:0 auto;box-sizing:border-box}
 .px-role-detail,.px-match-detail{display:grid;gap:1rem;padding:clamp(.85rem,2.8vw,2rem);font:inherit}.px-d-pane{min-width:0;background:var(--surface,#19262e);border:1px solid var(--line,#344854);border-radius:14px;padding:clamp(1rem,2.7vw,1.7rem)}
 .px-d-pane h1,.px-d-pane h2,.px-d-pane h3{margin:0 0 .6rem;line-height:1.17;overflow-wrap:anywhere}.px-d-pane h1{font-size:clamp(1.65rem,3.2vw,2.7rem);letter-spacing:-.035em}.px-d-pane h2{font-size:clamp(1.2rem,2vw,1.55rem)}.px-d-pane h3{font-size:1rem}
@@ -557,6 +562,8 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"></script> <!-- supabase -->
 <script src="/ats/tomas/matchkort-uppgifter.js"></script>
+<link rel="stylesheet" href="/ats/tomas/matchkort-arbetsyta.css">
+<script src="/ats/tomas/matchkort-arbetsyta.js"></script>
 <script src="config.js"></script> <!-- supabase -->
 <script src="ats-runtime.js?v=tb241124-matchkort-2"></script> <!-- supabase -->
 <script>
@@ -1105,9 +1112,9 @@ function cardHTML(m,idx,n){
   const fornamn=String(c.name||m.candName||"kandidaten").trim().split(/\s+/)[0];
   const inTxt=" "+[...items.filter(i=>i.inn).map(i=>i.text||""),rp&&rp.text||"",m.nextStep||""].join(" | ");
   const iDialog={cv:/[^a-zåäö](cv|pdf|bifog|bilag)/i.test(inTxt),timpris:/[^a-zåäö](arvode|timpris|kr ?[/] ?h|kr per tim|kronor i tim)/i.test(inTxt),tillg:/[^a-zåäö](tillgänglig|ledig|kan börja|startdatum|kan starta)/i.test(inTxt)};
-  const harCv=!!((cvs.get(c.id)||{}).url||c.cv);
+  const harCv=TomasMatchkort.availableDetails(c,cvs.get(c.id),ct).hasCv;
   const saknas=[],redan=[];
-  if(!harCv){if(iDialog.cv)redan.push("CV nämns i tråden, kontrollera om filen finns");else saknas.push(["CV","ditt CV"]);}
+  if(!harCv && !iDialog.cv)saknas.push(["CV","ditt CV"]);
   if(!ct.phone)saknas.push(["telefon","ditt telefonnummer"]);if(!ct.email)saknas.push(["mejl","din mejladress"]);
   const fragor=[];
   if(!ct.tillganglig){if(iDialog.tillg)redan.push("tillgänglighet nämnd");else fragor.push(["tillgänglighet","när du kan börja"]);}
@@ -1121,7 +1128,7 @@ function cardHTML(m,idx,n){
   myReplies.forEach(q=>{if(q.status==="bestalld")tl.push({at:q.at,who:"Ditt svar",kanal:"I kö",text:q.text,cls:"ord"});
     else if(q.status==="skickat"&&!items.some(i=>!i.inn&&i.kanal==="InMail"&&sameDay(i.at,q.skickatAt||q.at)))tl.push({at:q.skickatAt||q.at,who:"Ditt svar",kanal:"Skickat",text:q.text,cls:"ord"});});
   tl.sort(sortAt);if(m.nextStep&&tl.length>1){const ni=tl.findIndex(i=>i.cls==="next");if(ni>0)tl.unshift(tl.splice(ni,1)[0]);}
-  const replyHTML=`<section class="fsec"><h3>Svara kandidaten</h3><div class="rlist">${myReplies.filter(q=>q.status!=="aterkallad").map(q=>{const s=RS[q.status]||[q.status||"Okänd status",""];return`<div class="ordbox ${s[1]}"><p><b>${esc(s[0])}</b>${q.status==="skickat"&&q.skickatAt?" · "+fmt(q.skickatAt):q.at?" · skrivet "+fmt(q.at):""}${q.status==="bestalld"&&canWrite&&userId?` <button class="tbtn" type="button" data-reply-undo="${esc(q.id)}">Återkalla</button>`:""}</p><p class="pre">${t(q.text)}</p>${q.fel?`<p class="cerr">${t(q.fel)}</p>`:""}</div>`;}).join("")}</div>${!harSvar?`<p class="fempty">Du kan svara här när kandidaten har svarat på InMailet.</p>`:pend?`<p class="cnote">Ett svar ligger i kö. Återkalla det om du vill skriva ett nytt.</p>`:last?`<p class="cnote">${last.status==="skickas"?"Svaret skickas just nu.":"Ett svar behöver kontrolleras av Filip innan du kan lägga ett nytt i kö."}</p>`:canWrite&&userId?`<form class="compose" data-reply="${esc(m.id)}"><label for="rtext">Ditt svar till ${t(fornamn)}</label><textarea id="rtext" name="text" maxlength="1500" placeholder="Till exempel: Tack för svaret. Jag heter Tomas och håller i uppdraget tillsammans med Filip. Har du tid för ett kort samtal i morgon? Du når mig på ...">${esc(drafts["reply:"+m.id]||"")}</textarea>${replyErr[m.id]?`<p class="cerr" role="alert">${esc(replyErr[m.id])}</p>`:""}${saknas.length?`<div class="acts askrow"><span class="cnote">Saknas på kortet: ${esc(saknas.map(x=>x[0]).join(", "))}.</span><button class="tbtn" type="button" data-askfor="${esc(m.id)}" data-text="${esc(askText)}">Be om det i svaret</button></div>`:""}${redan.length?`<p class="cnote">Nämns i dialogen: ${esc(redan.join(", "))}.</p>`:""}${stam.length?`<p class="cnote">Kvar att stämma av: ${stam.map(x=>t(x)).join(" · ")}</p>`:""}<div class="acts"><button class="btn small" type="submit">Lägg svaret i kö</button></div><p class="cnote">Passa på att få med så mycket som möjligt i samma meddelande. Svaret går ut i samma InMail-tråd, från Filips konto, med nästa runda (en gång i timmen, vardagar). Skriv under med ditt namn så att kandidaten vet vem som svarar. Inga kundnamn och inga interna nummer.</p></form>`:`<p class="cnote">Du kan läsa men inte svara i den här vyn.</p>`}</section>`;
+  const replyHTML=`<section class="fsec"><h3>Svara kandidaten</h3><div class="rlist">${myReplies.filter(q=>q.status!=="aterkallad").map(q=>{const s=RS[q.status]||[q.status||"Okänd status",""];return`<div class="ordbox ${s[1]}"><p><b>${esc(s[0])}</b>${q.status==="skickat"&&q.skickatAt?" · "+fmt(q.skickatAt):q.at?" · skrivet "+fmt(q.at):""}${q.status==="bestalld"&&canWrite&&userId?` <button class="tbtn" type="button" data-reply-undo="${esc(q.id)}">Återkalla</button>`:""}</p><p class="pre">${t(q.text)}</p>${q.fel?`<p class="cerr">${t(q.fel)}</p>`:""}</div>`;}).join("")}</div>${!harSvar?`<p class="fempty">Du kan svara här när kandidaten har svarat på InMailet.</p>`:pend?`<p class="cnote">Ett svar ligger i kö. Återkalla det om du vill skriva ett nytt.</p>`:last?`<p class="cnote">${last.status==="skickas"?"Svaret skickas just nu.":"Ett svar behöver kontrolleras av Filip innan du kan lägga ett nytt i kö."}</p>`:canWrite&&userId?`<form class="compose" data-reply="${esc(m.id)}"><label for="rtext">Ditt svar till ${t(fornamn)}</label><textarea id="rtext" name="text" maxlength="1500" placeholder="Till exempel: Tack för svaret. Jag heter Tomas och håller i uppdraget tillsammans med Filip. Har du tid för ett kort samtal i morgon? Du når mig på ...">${esc(drafts["reply:"+m.id]||"")}</textarea>${replyErr[m.id]?`<p class="cerr" role="alert">${esc(replyErr[m.id])}</p>`:""}${saknas.length?`<div class="acts askrow"><button class="tbtn" type="button" data-askfor="${esc(m.id)}" data-text="${esc(askText)}">Föreslå komplettering i svaret</button></div>`:""}${redan.length?`<p class="cnote">Nämns i dialogen: ${esc(redan.join(", "))}.</p>`:""}${stam.length?`<p class="cnote">Kvar att stämma av: ${stam.map(x=>t(x)).join(" · ")}</p>`:""}<div class="acts"><button class="btn small" type="submit">Lägg svaret i kö</button></div><p class="cnote">Passa på att få med så mycket som möjligt i samma meddelande. Svaret går ut i samma InMail-tråd, från Filips konto, med nästa runda (en gång i timmen, vardagar). Skriv under med ditt namn så att kandidaten vet vem som svarar. Inga kundnamn och inga interna nummer.</p></form>`:`<p class="cnote">Du kan läsa men inte svara i den här vyn.</p>`}</section>`;
   const svarBox=rp?`<div class="fnext svar ${rp.tolkning==="negativ"?"neg":""}"><span class="fl">${esc((TOLK[rp.tolkning]||TOLK.okand)[0])}</span><span class="fnt">${rp.at?fmt(rp.at)+". ":""}${rp.text?t(rp.text):"Svaret är registrerat i huvudregistret."}</span>${canWrite&&userId?(pend?`<span class="ftxt">Svar i kö</span>`:`<button class="btn small" type="button" data-goreply>Svara</button>`):""}</div>`:"";
   const pDialog=`${pxLatestMessageHTML(m,c)}<section class="fsec"><h3>InMail</h3>${o?`<div class="ordbox ${os.k==="ok"?"ok":os.k==="bad"?"bad":os.k===""?"blue":""}"><p><b>${esc(os.t)}</b></p><p>Beställt ${fmt(o.at)}${o.bestallareNamn?" av "+esc(o.bestallareNamn):""}${o.instruktion?`. Extra fråga: ${t(o.instruktion)}`:""}</p></div>`:ordersState==="ok"?`<p class="fempty">Inget InMail beställt${isOwner||canAdmin?"":" av dig"} på uppdraget.</p>`:`<p class="cerr">${ordersState==="fel"?"Beställningsstatus kunde inte läsas"+(ordersErr?` (${esc(ordersErr)})`:""):"Läser beställningsstatus …"}</p>`}</section>
     ${replyHTML}
@@ -1262,8 +1269,8 @@ function pxPairBrief(r,m,c,card=false){
     if(!known.has(key) && !disputed.has(key))point("Bedömaren anger",note);
   }
   const reasons=points.length?points.map(([label,value])=>`<p><strong>${label}</strong> · ${t(oneLine(value,110))}</p>`).join(""):"";
-  const meter=pxRequirementSummary(r,m);
-  const title=card?"<h3>Inför presentation</h3>":"";
+  const meter=pxRequirementSummary(r,m,card?c:null);
+  const title=card?"<h3>Matchning</h3>":"";
   const frame=body=>'<section class="px-pair-brief" aria-label="Inför presentation">'+title+meter+reasons+body+'</section>';
   if(pxClosedPair(m) || procOf(m)==="inskickad")return frame("");
   const tasks=[];
@@ -1277,11 +1284,9 @@ function pxPairBrief(r,m,c,card=false){
     task((conflict?"Red ut: ":"Verifiera: ")+oneLine(open.label,125),canConfirm?pxCallButton(m,open.label,false):jump("krav","Visa underlag"));
   }else if(raw)task("Kontrollera: "+oneLine(raw,125),jump("krav","Visa underlag"));
   else if(!rows.length && !pxExplicitZero(r.brief))task("Klargör uppdragets skallkrav",jump("krav","Visa kravtext"));
-  const cv=Arbetsdag.latestCv(c,m,cvs.get(c.id),Date.now(),linksForCand(c.id).filter(x=>pxVisibleDetailRole(x.roleId)));
   const actor=canWrite && userId && arbetsdagActor===userId && !window.ATS_RUNTIME?.visaSom?.();
-  if(cv!=="finns"){
-    const upload=assets && actor?`<label class="btn light small px-upload"><input type="file" accept=".pdf,.doc,.docx,application/pdf" data-cv="${esc(c.id)}">Ladda upp CV</label>`:"";
-    task(cv==="saknas"?"Aktuellt CV saknas":"Kontrollera CV-filen",upload || jump("historik","Öppna historik"));
+  if(!card && assets && actor && !TomasMatchkort.availableDetails(c,cvs.get(c.id),contactOf(c)).hasCv){
+    tasks.push(`<li><label class="btn light small px-upload"><input type="file" accept=".pdf,.doc,.docx,application/pdf" data-cv="${esc(c.id)}">Ladda upp CV</label></li>`);
   }
   const rate=contactOf(c).timpris,askRate=pxRequestsRate(r),knownRate=/\d/.test(rate||"");
   const priceLabel=knownRate?" · konsultkortets timpris "+oneLine(rate,36):"";
@@ -1422,20 +1427,48 @@ function pxRequirementRows(role, match){
 function pxRequirementCount(rows){
   return rows.filter(row=>row.status==="Belagt" || row.status==="Bekräftat i samtal").length;
 }
-function pxRequirementSummary(role,match){
+let pxCallSnapshot=null;
+function pxCardSignals(m,c){
+  const details=TomasMatchkort.availableDetails(c,cvs.get(c.id),contactOf(c));
+  const now=Date.now(),visible=linksForCand(c.id).filter(pair=>pxVisibleDetailRole(pair.roleId));
+  const rt=window.ATS_RUNTIME,actor=userId,scope=JSON.stringify([actor,rt?.visaSom?.()||"",m.id,m.roleId,c.id]);
+  let snapshot=pxCallSnapshot;
+  if(actor && rt?.callOutcomes && (!snapshot || snapshot.scope!==scope || !snapshot.pending && snapshot.expires<=now)){
+    snapshot={scope,pending:true,expires:0,rows:[]};pxCallSnapshot=snapshot;
+    rt.callOutcomes(m).then(rows=>{snapshot.rows=rows;},()=>{}).finally(()=>{
+      snapshot.pending=false;snapshot.expires=Date.now()+60000;
+      if(pxCallSnapshot!==snapshot || actor!==userId || view!=="matchning" || selected!==m.roleId || focusPick[selected]!==m.id)return;
+      const node=document.querySelector("[data-px-card-signals]");
+      if(node && node.dataset.pxCardSignals===m.id)node.innerHTML=pxCardSignals(m,c);
+    });
+  }
+  const calls=TomasMatchkort.callSignals(m,snapshot?.scope===scope?snapshot.rows:[],now);
+  return TomasMatchkort.availabilityHTML({...details,hasDialog:calls.hasDialog||TomasMatchkort.earlierDialog(c,visible,now),hasConsent:calls.hasConsent});
+}
+function pxRefreshCardSignals(){
+  if(document.hidden || view!=="matchning")return;
+  const badge=document.querySelector("[data-px-card-signals]"),match=matches.get(focusPick[selected]),person=match&&cands.get(match.candId);
+  if(!badge || !person || match.id!==badge.dataset.pxCardSignals || match.roleId!==selected || !pxVisibleDetailRole(selected))return;
+  if(pxCallSnapshot && !pxCallSnapshot.pending)pxCallSnapshot.expires=0;
+  badge.innerHTML=pxCardSignals(match,person);
+}
+window.setInterval(pxRefreshCardSignals,60000);
+document.addEventListener("visibilitychange",pxRefreshCardSignals);
+function pxRequirementSummary(role,match,candidate){
+  const availability=candidate?'<div data-px-card-signals="'+esc(match.id)+'">'+pxCardSignals(match,candidate)+'</div>':"";
   const rows=pxRequirementRows(role,match);
   if(!rows.length){
     const source=pxKravUnderlag(role?.brief);
-    if(source.status==="noll")return '<p class="px-d-muted">0 skallkrav enligt uppdraget.</p>';
-    if(source.status==="lista" && role.id===match.roleId)return '<p class="px-d-muted">0 kompetenskrav i uppdragets kravlista.</p>';
-    return '<p class="px-d-muted">Underlag saknas</p>';
+    if(source.status==="noll")return '<p class="px-d-muted">0 skallkrav enligt uppdraget.</p>'+availability;
+    if(source.status==="lista" && role.id===match.roleId)return '<p class="px-d-muted">0 kompetenskrav i uppdragets kravlista.</p>'+availability;
+    return '<p class="px-d-muted">Underlag saknas</p>'+availability;
   }
   const n=pxRequirementCount(rows);
   const evidenced=rows.filter(row=>row.status==="Belagt").length;
   const confirmed=n-evidenced;
   const sources='Belagda i underlaget · '+evidenced+'<br>Bekräftade i samtal · '+(pxCommentsReady?confirmed:'Underlag saknas');
   const percent=Math.round(100*n/rows.length);
-  return '<div class="px-evidence"><strong>'+percent+' % · '+n+' av '+rows.length+' skallkrav styrkta</strong><small>'+sources+'</small></div>';
+  return '<div class="px-evidence"><strong>'+percent+' % · '+n+' av '+rows.length+' skallkrav styrkta</strong>'+availability+'<small>'+sources+'</small></div>';
 }
 function pxCallButton(m,label,own){
   if(!pxCanNote(m))return "";
@@ -1511,14 +1544,15 @@ function pxSubmissionPanel(r,m,c){
   const value=x=>x?t(x):"Uppgift saknas";
   const title=count || pxExplicitZero(r.brief)?"Visa alla "+count+" skallkrav och underlag":"Visa kravtext och underlag";
   const up=cvs.get(c.id);
-  const actualLink=[up?.url,c.cv].find(v=>typeof v==="string" && /^https?:\/\//i.test(v));
-  const evidence=actualLink?`<a href="${esc(actualLink)}" target="_blank" rel="noopener noreferrer" data-ext>Öppna CV ↗</a>`:
-    up?.assetId?"CV-fil registrerad":"Ingen verifierad CV-fil eller länk.";
+  const {cvLink,hasCv}=TomasMatchkort.availableDetails(c,up,ct);
+  const evidence=cvLink?`<a href="${esc(cvLink)}" target="_blank" rel="noopener noreferrer" data-ext>Öppna CV ↗</a>`:hasCv?"CV-fil registrerad":"";
+  const actor=canWrite && userId && arbetsdagActor===userId && !window.ATS_RUNTIME?.visaSom?.();
+  const upload=assets && actor?`<label class="btn light small px-upload"><input type="file" accept=".pdf,.doc,.docx,application/pdf" data-cv="${esc(c.id)}">${hasCv?"Byt CV":"Ladda upp CV"}</label>`:"";
   return `<details class="px-submission" data-px-proof><summary>${title}</summary>
     ${pxRequirementChecklist(r,m)}
     ${count?"":(typeof r.brief==="string" && r.brief.trim()?`<p class="pre">${t(r.brief)}</p>`:'<p>Uppdragets kravtext saknas.</p>')}
     ${pxProof(m)}<p class="px-d-muted">Bedömarens formuleringar räknas som kravbelägg när de motsvarar ett listat krav ordagrant. Bedömningens kravversion framgår inte.</p>
-    <dl class="px-d-facts"><div><dt>CV</dt><dd>${evidence}</dd></div><div><dt>Bolagsform</dt><dd>${value(BOLAG[form]||form)}</dd></div>
+    <dl class="px-d-facts">${evidence||upload?`<div><dt>CV</dt><dd>${evidence} ${upload}</dd></div>`:""}<div><dt>Bolagsform</dt><dd>${value(BOLAG[form]||form)}</dd></div>
     ${ct.timpris?`<div><dt>Timpris på konsultkortet</dt><dd>${t(ct.timpris)}</dd></div>`:pxRequestsRate(r)?'<div><dt>Timpris för uppdraget</dt><dd>Efterfrågat. Uppgift saknas.</dd></div>':""}
     <div><dt>Kandidatens OK för uppdraget</dt><dd>Kontrollera konsultens uttryckliga besked i Historik.</dd></div>
     ${ct.tillganglig||c.tillganglig?`<div><dt>Tillgänglighet</dt><dd>${t(ct.tillganglig||c.tillganglig)}</dd></div>`:""}
@@ -1646,7 +1680,7 @@ function pxMovePair(direction){
 function renderUppdrag(d){
   const r=roles.get(selected);
   if(!r||!pxVisibleDetailRole(r.id)){d.innerHTML='<div class="empty">Välj ett synligt uppdrag.</div>';return;}
-  if(view==="matchning"){pxPairView(d,r);return;}
+  if(view==="matchning"){pxRenderMatchWorkspace(d,r);return;}
   pxRoleProductionView(d,r);
 }
 document.addEventListener("click",e=>{
