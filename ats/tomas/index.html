@@ -695,7 +695,7 @@ function blockReason(m,c){
   c=c||cands.get(m.candId)||{};
   const o=findOrder(m);
   if(hasStop(c,m))return"Kontaktstopp eller praktiskt stopp på matchningen. Inget InMail beställs.";
-  if(o&&(OPEN.has(o.status)||o.status==="skickat"||o.status==="svar"))return"Det finns redan en beställning för kandidaten på uppdraget.";
+  if(o&&(OPEN.has(o.status)||o.status==="skickat"||o.status==="svar"||o.status==="kontrolleras"))return"Det finns redan en beställning för kandidaten på uppdraget.";
   const inm=roleContacts(c,m).filter(k=>k.kanal==="inmail");
   if(inm.length)return`InMail finns redan registrerat på uppdraget (${inm.map(k=>fmtDay(k.at)).join(", ")}).`;
   if(["kontaktad","intresserad","presenterad","intervju","erbjudande","avslutad"].includes(stageOf(m)))return`Kandidaten står redan som ${STAGE[stageOf(m)]||stageOf(m)} på uppdraget.`;
@@ -1051,14 +1051,26 @@ function egenCardHTML(m,idx,n){
 }
 const DLG_K=new Set(["inmail","mail","telefon","sms","mote"]);
 const dlg30=c=>((c&&c.kontakter)||[]).some(k=>k&&DLG_K.has(k.kanal)&&Date.now()-Date.parse(k.at)<30*864e5);
+function orderPartnerChoice(m){
+  const choice=m.partnerBedomning;
+  return choice && Object.hasOwn(choice,"alla") ? choice.alla?.[userEmail]?.bedomning : choice?.bedomning;
+}
+function orderNeedsChoice(m){
+  return !isOwner && !canAdmin && orderPartnerChoice(m)!=="ja";
+}
 function pxMatchOrder(m,c){
   if(!m || m.egen || !c || !pxVisibleDetailRole(m.roleId))return "";
   const o=findOrder(m);
   if(window.ATS_RUNTIME?.visaSom?.())return o?.status==="angerfrist"?fristHTML(o,key(m)):"";
   if(o?.status!=="angerfrist" && pxClosedPair(m))return "";
   const blocked=blockReason(m,c);
+  const needsChoice=orderNeedsChoice(m);
+  const canSelect=needsChoice && !orderPartnerChoice(m) && pxMayChoose(m) && !pxOwnCandidate(m);
+  if(!blocked && procOf(m)==="kontakt" && ordersState==="ok" && canWrite && needsChoice && !canSelect){
+    return '<span class="cnote">Kontrollera kandidatvalet för uppdraget innan du beställer InMail.</span>';
+  }
   return ordersState==="ok"&&o&&o.status==="angerfrist"?fristHTML(o,key(m)):ordersState!=="ok"?`<button class="btn light small" type="button" disabled>${ordersState==="fel"?"Beställningsstatus kunde inte läsas":"Läser beställningar …"}</button>`
-    :!canWrite||!userId?"":procOf(m)==="kontakt"?`<button class="btn ${blocked||bedOf(m)!=="ja"?"light":""} small" type="button" data-order="${esc(m.id)}" title="${blocked?"Visar varför InMail inte kan beställas":bedOf(m)==="ja"?"Beställ InMail med uppdragets fasta text":"Sätt Ja först om du vill att personen kontaktas. Knappen fungerar ändå."}">${blocked?"Visa kontaktstatus":"Skicka InMail"}</button>`:"";
+    :!canWrite||!userId?"":procOf(m)==="kontakt"?`<button class="btn ${blocked?"light":""} small" type="button" data-order="${esc(m.id)}">${blocked?"Visa kontaktstatus":canSelect?"Välj och beställ InMail":"Beställ InMail"}</button>`:"";
 }
 function cardHTML(m,idx,n){
   if(m.egen)return egenCardHTML(m,idx,n);
@@ -3080,39 +3092,82 @@ function openOrder(list){
   const r=roles.get(list[0].roleId)||{};
   if(list.length===1){const m=list[0];const c=cands.get(m.candId)||{name:m.candName};const blocked=blockReason(m,c);const o=findOrder(m);const os=orderStatus(o,m);
     if(blocked){modal("Kontaktstatus",`<dl class="kv"><dt>Kandidat</dt><dd><b>${t(c.name||m.candName||"")}</b></dd><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd></dl><div class="ordbox ${os&&os.k==="ok"?"ok":"blue"}"><p>${esc(blocked)}</p>${os?`<p><b>${esc(os.t)}</b>${o.at?`, beställt ${fmt(o.at)}`:""}</p>`:""}</div><div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Stäng</button></div>`);return;}}
+  const selectFirst=list.length===1 && orderNeedsChoice(list[0]);
+  const orderLabel=selectFirst?"Välj och beställ InMail":"Beställ InMail";
   const names=list.map(m=>(cands.get(m.candId)||{}).name||m.candName||"");
   const sugg=list.length===1?suggestQuestion(list[0]):"";
-  const {bg}=modal(list.length===1?"Skicka InMail":`Skicka InMail till ${list.length} kandidater`,`<dl class="kv"><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd><dt>Till</dt><dd>${list.length===1?`<b>${t(names[0])}</b>`:`<ul class="plain">${names.map(n=>`<li>${t(n)}</li>`).join("")}</ul>`}</dd><dt>Text</dt><dd>Uppdragets fasta InMail-text, med en kort rad om kandidatens bakgrund</dd><dt>Avsändare</dt><dd>Thurnes Recruiter-konto</dd></dl>
-    <div class="ordbox"><p><b>Ditt klick är ett godkännande.</b> Har du ångerfrist visas en nedräkning och knappen Ångra direkt efter klicket. Annars går InMailen ut vid kontaktkedjans nästa körning, normalt inom en timme på vardagar. Här visas "InMail skickat" först när utföraren lämnat kvittens. Svar visas på kortet när de lästs in.</p></div>
+  const {bg}=modal(list.length===1?orderLabel:`Beställ InMail till ${list.length} kandidater`,`<dl class="kv"><dt>Uppdrag</dt><dd>${t(r.title||"Uppdrag utan titel")}</dd><dt>Till</dt><dd>${list.length===1?`<b>${t(names[0])}</b>`:`<ul class="plain">${names.map(n=>`<li>${t(n)}</li>`).join("")}</ul>`}</dd><dt>Text</dt><dd>Kontaktkedjan hanterar meddelandet och eventuella frågor för uppdraget.</dd><dt>Avsändare</dt><dd>Thurnes Recruiter-konto</dd></dl>
+    <div class="ordbox"><p><b>${selectFirst?"Ditt klick väljer kandidaten för uppdraget och godkänner kontaktbeställningen.":"Ditt klick godkänner kontaktbeställningen."}</b> Har du ångerfrist visas en nedräkning och knappen Ångra direkt efter klicket. Beställningen går till kontaktkön. Om text eller godkännande behöver kompletteras visas det i kontaktstatus. Här visas "InMail skickat" först när utföraren har kvitterat utskicket. Svar visas på kortet när de lästs in.</p></div>
     <label for="o-instr">Något särskilt att stämma av i InMailen? Valfritt${list.length>1?", gäller alla":""}</label><textarea id="o-instr" maxlength="600" placeholder="Skriv en egen fråga eller lämna tomt">${esc(sugg)}</textarea>
     <p class="cnote" style="margin-top:10px">${r.published?"Annonsen ligger på thurneco.se, länken läggs sist i InMailen.":"Uppdraget har ingen annons på thurneco.se, InMailen går i varianten utan länk."}</p>
-    <div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Avbryt</button><button class="btn" type="button" id="o-send">Skicka InMail${list.length>1?` (${list.length})`:""}</button></div>`);
+    <div class="acts" style="justify-content:flex-end"><button class="btn light" type="button" data-close>Avbryt</button><button class="btn" type="button" id="o-send">${orderLabel}${list.length>1?` (${list.length})`:""}</button></div>`);
   let placing=false;
   bg.querySelector("#o-send").addEventListener("click",async()=>{if(placing)return;placing=true;bg.dataset.busy="1";const btn=bg.querySelector("#o-send");btn.disabled=true;btn.textContent="Registrerar …";
     const instr=bg.querySelector("#o-instr").value.trim();const okList=[],bad=[];const annons=r.published?"ja":"nej";
     const frist=[];
-    for(const m of list){const c=cands.get(m.candId)||{name:m.candName};const res=await placeOrder(m,c,instr,annons);if(res.ok){okList.push(c.name||m.candName);if(res.entry&&res.entry.status==="angerfrist")frist.push([c.name||m.candName,res.entry,key(m)]);}else bad.push(`${c.name||m.candName}: ${res.msg}`);}
+    for(const m of list){const c=cands.get(m.candId)||{name:m.candName};const res=await placeOrder(m,c,instr,annons,selectFirst);if(res.ok){okList.push(c.name||m.candName);if(res.entry&&res.entry.status==="angerfrist")frist.push([c.name||m.candName,res.entry,key(m)]);}else bad.push(`${c.name||m.candName}: ${res.msg}`);}
     if(frist.length){try{const s=await db.doc("kontaktbestallningar/"+userId).get();if(s.exists)orders[userId]=s.data();}catch(_){}}
-    if(frist.length&&frist.length===okList.length)receipt(bg,"InMail beställt",[`<b>Skickas om fem minuter. Du kan ångra fram till dess.</b>`,...frist.map(([n,en,k])=>`${esc(n)}: ${fristHTML({...en,uid:userId},k)}`),`När fristen är ute går InMailet till utskick. Här visas "InMail skickat" först när utföraren har kvitterat.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
-    else if(okList.length)receipt(bg,"InMail beställt",[`<b>${okList.length===1?"Beställningen":okList.length+" beställningar"} registrerad${okList.length===1?"":"e"} ${fmt(nowIso())} med ditt godkännande, återläst från databasen.</b>`,`Går ut vid nästa körning. Inget är skickat ännu.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
-    else{placing=false;fail(bg,"#o-send","Skicka InMail",bad.join("; ")||"Inget registrerades.");}
+    if(frist.length&&frist.length===okList.length)receipt(bg,"InMail beställt",[`<b>Ångerfristen har börjat. Du kan ångra fram till tiden nedan.</b>`,...frist.map(([n,en,k])=>`${esc(n)}: ${fristHTML({...en,uid:userId},k)}`),`Efter ångerfristen tar kontaktkedjan över. Här visas "InMail skickat" först när utföraren har kvitterat.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
+    else if(okList.length)receipt(bg,"InMail beställt",[`<b>${okList.length===1?"Beställningen":okList.length+" beställningar"} registrerad${okList.length===1?"":"e"} ${fmt(nowIso())} med ditt godkännande, återläst från databasen.</b>`,`Följ kontaktstatus på kandidatkortet. Inget utskick är kvitterat ännu.`,...(bad.length?[`<span class="cerr">Inte registrerade: ${esc(bad.join("; "))}</span>`]:[])]);
+    else{placing=false;fail(bg,"#o-send",orderLabel,bad.join("; ")||"Inget registrerades.");}
     renderDetail();});
 }
-async function placeOrder(m,c,instr,annons){
-  if(!db||!userId)return{ok:false,msg:"Ingen inloggad identitet, beställningen går inte att knyta till dig."};
-  const k=key(m);const ref=db.doc("kontaktbestallningar/"+userId);
+async function prepareOrderChoice(m,c,selectFirst){
+  const current=await db.doc("matches/"+m.id).get();
+  const read=current.exists && current.data();
+  if(!read || read.roleId!==m.roleId || read.candId!==m.candId)return "Matchningen kan inte bekräftas. Öppna uppdraget igen.";
+  const fresh={...read,id:m.id};
+  const blocked=blockReason(fresh,c);
+  if(blocked)return blocked;
+  if(pxClosedPair(fresh))return "Matchningen är avslutad eller spärrad för kontakt.";
+  if(!orderNeedsChoice(fresh))return "";
+  if(!selectFirst || orderPartnerChoice(fresh) || !pxMayChoose(fresh) || pxOwnCandidate(fresh)==="nej"){
+    return "Kontrollera ditt kandidatval för uppdraget innan du beställer InMail.";
+  }
+  if(pxOwnCandidate(fresh)==="ja")return "Ditt val har ännu inte bekräftats på matchningen. Uppdatera kandidatkortet.";
+  if(!await setBedomning(m.id,"ja"))return "Kandidatvalet kunde inte bekräftas. Ingen kontaktbeställning har gjorts.";
+  let selected;
   try{
+    const back=await db.doc("matches/"+m.id).get();
+    selected=back.exists && back.data();
+  }catch(e){
+    const reported=await rapporteraFel("återläsning av kandidatval",e,{roleId:m.roleId,matchId:m.id});
+    return "Kandidatvalet har sparats men kunde inte läsas tillbaka. Ingen kontaktbeställning har gjorts."+rapportText(reported);
+  }
+  if(!selected || selected.roleId!==m.roleId || selected.candId!==m.candId || orderPartnerChoice(selected)!=="ja"){
+    return "Valet har registrerats men kunde inte bekräftas på matchningen. Ingen kontaktbeställning har gjorts.";
+  }
+  return "";
+}
+function orderErrorMessage(error){
+  const message=String(error?.message||"");
+  if(message.startsWith("Kandidaten är inte bedömd."))return "Ditt kandidatval saknas på matchningen. Öppna kandidatkortet och välj kandidaten innan du beställer igen.";
+  if(message.startsWith("Kollegan har redan beställt kontakt"))return "En kollega har redan beställt kontakt med kandidaten för uppdraget.";
+  if(message.includes("23505"))return "Beställningen kan redan finnas. Kontrollera kontaktstatus.";
+  return "Beställningen kunde inte bekräftas. Kontrollera kontaktstatus innan du försöker igen.";
+}
+async function placeOrder(m,c,instr,annons,selectFirst){
+  if(!db||!userId||!canWrite||window.ATS_RUNTIME?.visaSom?.())return{ok:false,msg:"Inloggningen tillåter ingen kontaktbeställning."};
+  const k=key(m);const ref=db.doc("kontaktbestallningar/"+userId);
+  let choiceConfirmed=false;
+  try{
+    const issue=await prepareOrderChoice(m,c,selectFirst);
+    if(issue)return {ok:false,msg:issue};
+    choiceConfirmed=selectFirst;
     const snap=await ref.get();
     const cur=snap.exists&&snap.data()&&snap.data().poster&&snap.data().poster[k];
-    if(cur&&(OPEN.has(cur.status)||cur.status==="skickat"||cur.status==="svar"))return{ok:false,msg:"det finns redan en beställning."};
+    if(cur&&(OPEN.has(cur.status)||cur.status==="skickat"||cur.status==="svar"||cur.status==="kontrolleras"))return{ok:false,msg:"det finns redan en beställning."};
     const now=nowIso();
     const entry={candId:m.candId,candName:c.name||m.candName||"",roleId:m.roleId,matchId:m.id,instruktion:instr,annonslank:annons||"nej",at:now,konto:"recruiter-filip",kravGodkannande:false,go:{status:"ja",via:"staende-go-konsult",av:userId,avNamn:userName,at:now},status:"bestalld",statusAt:now,statusAv:userId,bestallare:userId,bestallareNamn:userName,kalla:"konsult-ats",kvittens:null,fel:""};
     if(snap.exists)await ref.update({poster:{[k]:entry},updatedAt:now});
     else await ref.set({bestallare:userId,bestallareNamn:userName,kalla:"konsult-ats",poster:{[k]:entry},createdAt:now,updatedAt:now});
     const check=await ref.get();const saved=check.exists&&check.data().poster&&check.data().poster[k];
-    if(!saved||saved.at!==now)return{ok:false,msg:"gick inte att bekräfta vid återläsning."};
+    if(!saved||saved.at!==now)return{ok:false,msg:(choiceConfirmed?"Kandidaten är vald. ":"")+"Beställningen kunde inte bekräftas. Kontrollera kontaktstatus."};
     return{ok:true,entry:saved};
-  }catch(e){return{ok:false,msg:"kunde inte sparas ("+(e.code||"fel")+")."};}
+  }catch(e){
+    const reported=await rapporteraFel("kontaktbeställning",e,{roleId:m.roleId,matchId:m.id});
+    return {ok:false,msg:(choiceConfirmed?"Kandidaten är vald. ":"")+orderErrorMessage(e)+rapportText(reported)};
+  }
 }
 function openBegar(r){
   const {bg}=modal("Begär search",`<dl class="kv"><dt>Uppdrag</dt><dd><b>${t(r.title||"Uppdrag utan titel")}</b></dd><dt>Sista dag</dt><dd>${effDeadline(r).text?esc(effDeadline(r).text):"saknas, sätt gärna den först"}</dd></dl>
@@ -3141,7 +3196,7 @@ async function setBedomning(matchId,val){
   const prev=bed.get(matchId);const now=nowIso();const docId=(prev&&prev._docId)||(matchId+"~"+userId);
   const doc={matchId,roleId:m.roleId,candId:m.candId,bedomning:nv,at:now,av:userId,avNamn:userName,synkad:false};
   bed.set(matchId,{...doc,_docId:docId});renderDetail();
-  try{await db.doc("bedomningar/"+docId).set(doc);toast(nv==="ja"?"Kandidaten är vald.":nv==="nej"?"Kandidaten ligger under Avslutade och avvisade.":"Ditt val har återställts.");}
+  try{await db.doc("bedomningar/"+docId).set(doc);toast(nv==="ja"?"Kandidaten är vald.":nv==="nej"?"Kandidaten ligger under Avslutade och avvisade.":"Ditt val har återställts.");return true;}
   catch(e){if(prev)bed.set(matchId,prev);else bed.delete(matchId);renderDetail();const rap=await rapporteraFel("bedömning",e,doc);toast("Bedömningen kunde inte sparas ("+(e.code||"fel")+")."+rapportText(rap));}
   finally{pxSavingChoice.delete(matchId);renderDetail();}
 }
