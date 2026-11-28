@@ -562,6 +562,7 @@ body.dolj-kside .page.kand2{grid-template-columns:1fr}body.dolj-kside .kand2 .ks
 <script src="partner-notiser.js?v=1"></script>
 <script src="partner-notiser-ui.js?v=1"></script>
 <script src="config.js"></script> <!-- supabase -->
+<script src="topplista-skallkrav.js"></script>
 <script src="ats-runtime.js?v=tb241124"></script> <!-- supabase -->
 <script>
 const $=s=>document.querySelector(s);
@@ -1625,7 +1626,7 @@ function pxRoleProductionView(d,r){
   const genAllowed=pxRoleDecisionAllowsGeneration(r)&&!hiddenRole(r);
   const controls=genAllowed?genHTML(r):"";
   const panel=controls?`<section class="px-d-pane px-order"><h2>Kandidatleverans</h2><p class="px-d-muted">${genForstaKlar(r.id)?"Granska leveransen. Behöver du fler kandidater kan du begära search.":"Börja med en första kandidatleverans för uppdraget."}</p>${controls}</section>`:"";
-  d.innerHTML=`<div class="px-role-detail">${pxRoleHero(r)}${rows.some(m=>!m.egen&&!pxClosedPair(m))?pxRoleRows(r,rows)+panel:panel+pxRoleRows(r,rows)}${potRoleHTML(r)}${roleHeadHTML(r)}</div>`;
+  d.innerHTML=`<div class="px-role-detail">${pxRoleHero(r)}${pxStrongMatchesHTML(r)}${rows.some(m=>!m.egen&&!pxClosedPair(m))?pxRoleRows(r,rows)+panel:panel+pxRoleRows(r,rows)}${potRoleHTML(r)}${roleHeadHTML(r)}</div>`;
 }
 function pxPairView(d,r){
   const id=focusPick[r.id],m=matches.get(id);
@@ -2267,7 +2268,7 @@ function arbetsdagHTML(){
     ${suggestions.length?`<section><h2>Föreslagna uppdrag</h2>${suggestions.join("")}</section>`:""}
     ${teamError?'<p>Teamets ansvar kunde inte läsas. <button type="button" class="tbtn" data-team-refresh>Försök igen</button></p>':""}
     ${empty?`<p>${waiting?"Hämtar arbetsdagen …":state.blocked?"Underlaget för agendan är ofullständigt.":"Inga öppna punkter i agendan."}</p><button type="button" class="btn light" data-px-jobs>Visa uppdrag</button>`:""}
-    ${sentList}${state.unknownReplies||state.unlinked||state.unverifiedChoices?'<details><summary>Ofullständigt underlag</summary><p>Vissa val eller svar saknar en säker koppling. Öppna uppdraget för att granska underlaget.</p></details>':""}</section>
+    ${pxStrongMatchesHTML()}${sentList}${state.unknownReplies||state.unlinked||state.unverifiedChoices?'<details><summary>Ofullständigt underlag</summary><p>Vissa val eller svar saknar en säker koppling. Öppna uppdraget för att granska underlaget.</p></details>':""}</section>
     <aside class="px-agenda-news">
     <details class="px-agenda-recent" ${pxAgendaRecentOpen?"open":""}><summary>Senast inkomna uppdrag</summary>${recentHTML()}</details></aside></section>`;
 }
